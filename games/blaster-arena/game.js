@@ -184,7 +184,12 @@ function gcyl(g, r, len, c, x, y, z, glow) { const geo = new THREE.CylinderGeome
 const GUNS = {
   pop() { const g = new THREE.Group(); gbox(g, .075, .1, .32, 0x23c4c4, 0, 0, 0); gbox(g, .07, .05, .3, 0xffffff, 0, .07, -.01); gcyl(g, .022, .12, 0x333a50, 0, .02, -.2); gbox(g, .07, .16, .08, 0xffd34e, 0, -.12, .08, [.25, 0, 0]); gbox(g, .02, .02, .02, 0xff4a4a, 0, .12, -.1); return { g, muzzle: new V3(0, .03, -.28) }; },
   zip() { const g = new THREE.Group(); gbox(g, .09, .12, .42, 0xff7a1a, 0, 0, 0); gbox(g, .08, .05, .3, 0x2a2a3a, 0, .085, -.02); gcyl(g, .025, .18, 0x2a2a3a, 0, .01, -.3); gbox(g, .07, .2, .1, 0x2a2a3a, 0, -.14, -.02, [.15, 0, 0]); gbox(g, .08, .15, .07, 0x2a2a3a, 0, -.1, .12, [.3, 0, 0]); gbox(g, .09, .1, .2, 0xffd34e, 0, -.01, .3); return { g, muzzle: new V3(0, .02, -.4) }; },
-  ar() { const g = new THREE.Group(); gbox(g, .08, .11, .5, 0x3a86ff, 0, 0, 0); gbox(g, .06, .04, .34, 0x1e2438, 0, .08, -.04); gcyl(g, .022, .26, 0x1e2438, 0, .015, -.38); gbox(g, .034, .042, .05, 0xff4a4a, 0, .115, -.08); gbox(g, .07, .17, .09, 0x1e2438, 0, -.13, 0, [.12, 0, 0]); gbox(g, .07, .16, .07, 0x1e2438, 0, -.1, .14, [.3, 0, 0]); gbox(g, .08, .1, .22, 0xe8f0ff, 0, -.01, .36); return { g, muzzle: new V3(0, .015, -.52) }; },
+  ar() { const g = new THREE.Group(); gbox(g, .08, .11, .5, 0x3a86ff, 0, 0, 0); gbox(g, .06, .04, .34, 0x1e2438, 0, .08, -.04); gcyl(g, .022, .26, 0x1e2438, 0, .015, -.38); gbox(g, .05, .025, .07, 0x2c2a66, 0, .1, -.03); const SY = .21, HC = 0x6a5cff, DK = 0x3f3a9a;
+    gbox(g, .16, .02, .05, HC, 0, SY + .0525, -.03); gbox(g, .16, .02, .05, HC, 0, SY - .0525, -.03); gbox(g, .02, .085, .05, HC, -.07, SY, -.03); gbox(g, .02, .085, .05, HC, .07, SY, -.03);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(.12, .085), new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: .1, depthWrite: false, side: THREE.DoubleSide })); glass.position.set(0, SY, -.03); g.add(glass);
+    const rmat = new THREE.MeshBasicMaterial({ color: 0xff3030, depthWrite: false, side: THREE.DoubleSide }); const ring = new THREE.Mesh(new THREE.RingGeometry(.011, .0145, 28), rmat), dot = new THREE.Mesh(new THREE.CircleGeometry(.0034, 14), rmat); ring.position.set(0, SY, -.028); dot.position.set(0, SY, -.028); g.add(ring, dot);
+    for (let i = 0; i < 3; i++) gbox(g, .012, .014, .016, DK, -.082, SY - .012, -.045 + i * .02);
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(.016, .016, .02, 14), toon(DK)); dial.rotation.z = Math.PI / 2; dial.position.set(.082, SY, -.03); outline(dial, 1.1); g.add(dial); gbox(g, .07, .17, .09, 0x1e2438, 0, -.13, 0, [.12, 0, 0]); gbox(g, .07, .16, .07, 0x1e2438, 0, -.1, .14, [.3, 0, 0]); gbox(g, .08, .1, .22, 0xe8f0ff, 0, -.01, .36); return { g, muzzle: new V3(0, .015, -.52) }; },
   boom() { const g = new THREE.Group(); gcyl(g, .04, .62, 0xb06bff, -.04, .03, -.15); gcyl(g, .04, .62, 0xb06bff, .04, .03, -.15); gbox(g, .14, .09, .16, 0xffd34e, 0, -.03, -.15); gbox(g, .1, .14, .3, 0xff8a3a, 0, -.05, .22); gbox(g, .08, .15, .09, 0x4a3a2a, 0, -.14, .08, [.3, 0, 0]); gbox(g, .11, .08, .22, 0x6a3a8a, 0, -.03, -.3); return { g, muzzle: new V3(0, .04, -.48) }; },
   zap() { const g = new THREE.Group(); gbox(g, .07, .1, .55, 0x8aff3a, 0, 0, .0); gcyl(g, .018, .5, 0x333a50, 0, .02, -.5); gcyl(g, .045, .26, 0x2a2a3a, 0, .12, -.05); gcyl(g, .04, .01, 0x2ee6ff, 0, .12, -.18, true); gbox(g, .09, .13, .3, 0x4a3a6a, 0, -.02, .38); gbox(g, .06, .16, .07, 0x2a2a3a, 0, -.12, .06, [.25, 0, 0]); gbox(g, .015, .04, .015, 0xff4a4a, 0, .06, -.74); return { g, muzzle: new V3(0, .02, -.78) }; },
   kab() { const g = new THREE.Group(); gcyl(g, .09, .55, 0xff4a4a, 0, .02, -.1); gcyl(g, .125, .14, 0xffd34e, 0, .02, -.4); gcyl(g, .06, .02, 0xff4fe0, 0, .02, -.47, true); gbox(g, .08, .15, .1, 0x2a2a3a, 0, -.14, .06, [.2, 0, 0]); gbox(g, .1, .1, .22, 0x2a2a3a, 0, -.01, .26); gbox(g, .07, .11, .14, 0xffd34e, 0, .12, -.05); return { g, muzzle: new V3(0, .02, -.52) }; },
@@ -192,7 +197,7 @@ const GUNS = {
 const WDEF = [
   { id: 'pop', name: 'POP-GUN', mag: 12, dmg: 24, rate: .17, auto: false, spread: .003, reload: 1.1, kick: .06, pellets: 1, hs: 1.7, shake: .004 },
   { id: 'zip', name: 'ZIP SMG', mag: 32, dmg: 10, rate: .072, auto: true, spread: .02, reload: 1.5, kick: .02, pellets: 1, hs: 1.5, shake: .002 },
-  { id: 'ar', name: 'STORM AR', mag: 30, dmg: 17, rate: .1, auto: true, spread: .012, reload: 1.9, kick: .04, pellets: 1, hs: 1.6, shake: .003 },
+  { id: 'ar', name: 'STORM AR', mag: 30, dmg: 17, rate: .1, auto: true, spread: .012, reload: 1.9, kick: .04, pellets: 1, hs: 1.6, shake: .003, holo: true, adsFov: 56, adsY: -.152, adsZ: -.35 },
   { id: 'boom', name: 'BOOMER', mag: 6, dmg: 9, rate: .8, auto: false, spread: .05, reload: 2.0, kick: .15, pellets: 9, hs: 1.4, shake: .012 },
   { id: 'zap', name: 'ZAPPER', mag: 5, dmg: 82, rate: .95, auto: false, spread: .0004, hip: .035, reload: 2.1, kick: .13, pellets: 1, hs: 1.5, zoom: 22, shake: .01 },
   { id: 'kab', name: 'KABOOM', mag: 4, dmg: 78, rate: .85, auto: false, spread: 0, reload: 2.3, kick: .11, pellets: 1, proj: true, radius: 5.5, hs: 1, shake: .012 },
@@ -1046,7 +1051,7 @@ function updatePlayer(dt) {
 }
 function updateCamera(dt) {
   const w = W[cur], tgt = mouseR && P.alive && swapT <= 0 && reloadT <= 0 && !use ? 1 : 0; adsK += (tgt - adsK) * clamp(dt * 12, 0, 1);
-  const wantFov = S.fov * (1 - adsK) + (w.d.zoom ? w.d.zoom : S.fov * .8) * adsK; if (Math.abs(wantFov - camera.fov) > .01) { camera.fov += (wantFov - camera.fov) * clamp(dt * 14, 0, 1); camera.updateProjectionMatrix(); }
+  const wantFov = S.fov * (1 - adsK) + (w.d.zoom ? w.d.zoom : (w.d.adsFov || S.fov * .8)) * adsK; if (Math.abs(wantFov - camera.fov) > .01) { camera.fov += (wantFov - camera.fov) * clamp(dt * 14, 0, 1); camera.updateProjectionMatrix(); }
   // recoil climbs smoothly instead of snapping
   const ap = recP * clamp(dt * 26, 0, 1), ay = recY * clamp(dt * 26, 0, 1); P.pitch += ap; P.yaw += ay; recP -= ap; recY -= ay; P.pitch = clamp(P.pitch, -1.5, 1.5);
   // step-ups teleport the player up a bit; ease the camera instead of popping
@@ -1060,7 +1065,7 @@ function updateCamera(dt) {
   // viewmodel
   const g = w.g; vmKick = Math.max(0, vmKick - dt * 14); useK += ((use ? 1 : 0) - useK) * clamp(dt * 10, 0, 1);
   const sw = swapT > 0 ? Math.sin((swapT / .22) * Math.PI) : 0, rl = reloadT > 0 ? Math.sin((1 - reloadT / w.s.reload) * Math.PI) : 0, thr = throwAnim > 0 ? Math.sin((throwAnim / .35) * Math.PI) : 0;
-  const base = new V3(.27 * (1 - adsK), -.25 * (1 - adsK) + (-.17) * adsK, -.5 * (1 - adsK) + (-.42) * adsK); vmBase.copy(base);
+  const adsOffY = w.d.adsY !== undefined ? w.d.adsY : -.17, adsOffZ = w.d.adsZ !== undefined ? w.d.adsZ : -.42; const base = new V3(.27 * (1 - adsK), -.25 * (1 - adsK) + adsOffY * adsK, -.5 * (1 - adsK) + adsOffZ * adsK); vmBase.copy(base);
   g.position.set(base.x + Math.sin(vmBob) * .012 * bobAmp * (1 - adsK), base.y + Math.abs(Math.cos(vmBob)) * .01 * bobAmp * (1 - adsK) - sw * .35 - rl * .1 - useK * .5 - thr * .12, base.z + vmKick * .08 + rl * .05);
   g.rotation.set(vmKick * .09 - rl * .5 + sw * .6 + thr * .5 + useK * .4, 0, rl * .25 + Math.sin(vmBob) * .01 * bobAmp);
   if (held) { held.position.set(.04 + Math.sin(vmBob) * .01, -.62 + useK * .38 + Math.sin(time * 8) * .006, -.55); held.rotation.y += dt * 1.6; held.rotation.x = .3; }
@@ -1091,7 +1096,7 @@ function updateHUD(dt) {
   const spread = (8 + Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8) * 10 + (P.onGround ? 0 : 8) + w.s.spread * 500) * (1 - P.crouchK * .35) * (adsK > .5 ? .5 : 1), c = $('cross');
   const T = { t: [0, -spread], b: [0, spread], l: [-spread, 0], r: [spread, 0] };
   for (const key in T) setSty('cross_' + key, 'transform', `translate(${T[key][0].toFixed(1)}px,${T[key][1].toFixed(1)}px)`);
-  c.style.opacity = w.d.zoom && adsK > .85 ? 0 : 1;
+  c.style.opacity = (w.d.zoom && adsK > .85) || (w.d.holo && adsK > .4) ? 0 : 1;
   for (const [pid, rp] of remotes) if ($('tmh_' + pid)) setSty('tmh_' + pid, 'width', (rp.alive ? clamp(rp.hp, 0, 100) : 0) + '%');
   const boss = bots.find(b => b.boss && b.alive); $('boss').classList.toggle('hide', !boss); if (boss) setSty('bossFill', 'width', clamp(boss.hp / boss.maxHp * 100, 0, 100) + '%');
   // direction indicators
