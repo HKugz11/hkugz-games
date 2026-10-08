@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Snake</title>
+<link rel="stylesheet" href="../../assets/site.css">
+<body class="game">
+<div class="bar"><a href="../../index.html">&larr; All games</a><span class="title">Snake</span><span class="hint">Arrow keys / WASD / swipe</span></div>
+<div class="stage"><canvas class="game" id="c" width="480" height="480" tabindex="0"></canvas></div>
+<div class="credit">A classic, made from scratch. Eat the apples, don't bite yourself.</div>
+<script>
+(() => {
+  const c = document.getElementById('c'), g = c.getContext('2d'), N = 20, S = c.width / N, KEY = 'hkugz.snake.best';
+  let snake, dir, nextDir, apple, score, best = +(localStorage.getItem(KEY) || 0), alive, tick, speed, particles = [], started = false, last = 0;
+  const fit = () => { const m = Math.min(innerWidth - 28, innerHeight - 130, 640); c.style.width = c.style.height = Math.max(240, m) + 'px'; };
+  addEventListener('resize', fit); fit();
+  function reset() { snake = [{ x: 9, y: 10 }, { x: 8, y: 10 }, { x: 7, y: 10 }]; dir = nextDir = { x: 1, y: 0 }; score = 0; alive = true; speed = 130; placeApple(); particles = []; }
+  function placeApple() { do { apple = { x: Math.floor(Math.random() * N), y: Math.floor(Math.random() * N) }; } while (snake.some(s => s.x === apple.x && s.y === apple.y)); }
+  function turn(dx, dy) { if (!started) { started = true; } if (dx === -dir.x && dy === -dir.y) return; nextDir = { x: dx, y: dy }; }
+  addEventListener('keydown', e => {
+    const m = { ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0] }[e.code];
+    if (m) { e.preventDefault(); if (!alive) reset(); turn(...m); } else if (e.code === 'Space') { e.preventDefault(); if (!alive) { reset(); started = true; } else started = !started || started; }
+  });
+  let tx = 0, ty = 0;
+  c.addEventListener('pointerdown', e => { tx = e.clientX; ty = e.clientY; if (!alive) { reset(); started = true; } });
+  c.addEventListener('pointerup', e => { const dx = e.clientX - tx, dy = e.clientY - ty; if (Math.hypot(dx, dy) < 20) return; if (Math.abs(dx) > Math.abs(dy)) turn(Math.sign(dx), 0); else turn(0, Math.sign(dy)); });
+  function step() {
+    dir = nextDir; const h = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    if (h.x < 0 || h.y < 0 || h.x >= N || h.y >= N || snake.some(s => s.x === h.x && s.y === h.y)) { alive = false; if (score > best) { best = score; localStorage.setItem(KEY, best); } return; }
+    snake.unshift(h);
+    if (h.x === apple.x && h.y === apple.y) { score++; speed = Math.max(60, speed - 3); for (let i = 0; i < 10; i++) particles.push({ x: (apple.x + .5) * S, y: (apple.y + .5) * S, vx: (Math.random() - .5) * 6, vy: (Math.random() - .5) * 6, l: 24 }); placeApple(); } else snake.pop();
+  }
+  function draw() {
+    g.fillStyle = '#10161a'; g.fillRect(0, 0, c.width, c.height);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { g.fillStyle = (x + y) & 1 ? '#131b20' : '#0f1519'; g.fillRect(x * S, y * S, S, S); }
+    const pulse = 1 + Math.sin(performance.now() / 160) * .08;
+    g.fillStyle = '#ff4d5a'; g.beginPath(); g.arc((apple.x + .5) * S, (apple.y + .55) * S, S * .38 * pulse, 0, 7); g.fill();
+    g.fillStyle = '#3ad060'; g.fillRect((apple.x + .45) * S, (apple.y + .05) * S, S * .12, S * .22);
+    snake.forEach((s, i) => { const t = 1 - i / (snake.length + 6); g.fillStyle = `hsl(${140 - i * 2}, 70%, ${28 + t * 28}%)`; g.beginPath(); g.roundRect(s.x * S + 2, s.y * S + 2, S - 4, S - 4, i ? 6 : 9); g.fill(); });
+    const h = snake[0]; g.fillStyle = '#fff'; const ex = dir.y ? 6 : (dir.x > 0 ? 12 : 6), ey = dir.x ? 6 : (dir.y > 0 ? 12 : 6);
+    g.beginPath(); g.arc(h.x * S + ex + (dir.y ? 0 : 0), h.y * S + ey, 3, 0, 7); g.arc(h.x * S + (dir.y ? S - 6 : ex), h.y * S + (dir.x ? S - 6 : ey), 3, 0, 7); g.fill();
+    for (const p of particles) { g.globalAlpha = p.l / 24; g.fillStyle = '#ffb3b8'; g.fillRect(p.x, p.y, 4, 4); } g.globalAlpha = 1;
+    g.fillStyle = '#e8f6ff'; g.font = '700 22px system-ui, sans-serif'; g.textBaseline = 'top'; g.fillText('Score ' + score, 12, 10); g.textAlign = 'right'; g.fillText('Best ' + best, c.width - 12, 10); g.textAlign = 'left';
+    if (!alive || !started) { g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '700 34px system-ui'; g.fillText(alive ? 'Snake' : 'Game over', c.width / 2, 190); g.font = '18px system-ui'; g.fillText(alive ? 'Press an arrow key or swipe to start' : 'Tap or press any arrow key to play again', c.width / 2, 240); g.textAlign = 'left'; }
+  }
+  function loop(t) {
+    if (started && alive && t - last > speed) { last = t; step(); }
+    for (const p of particles) { p.x += p.vx; p.y += p.vy; p.l--; } particles = particles.filter(p => p.l > 0);
+    draw(); requestAnimationFrame(loop);
+  }
+  reset(); requestAnimationFrame(loop);
+})();
+</script>

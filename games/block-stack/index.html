@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Block Stack</title>
+<link rel="stylesheet" href="../../assets/site.css">
+<body class="game">
+<div class="bar"><a href="../../index.html">&larr; All games</a><span class="title">Block Stack</span><span class="hint">Click / tap / Space to drop</span></div>
+<div class="stage"><canvas class="game" id="c" width="420" height="640" tabindex="0"></canvas></div>
+<div class="credit">An original one-button game. Drop the sliding block so it lands on the tower. Overhang gets cut off, so line it up! Perfect drops keep your block size and start a streak.</div>
+<script>
+(() => {
+  const c = document.getElementById('c'), g = c.getContext('2d'), W = c.width, H = c.height, KEY = 'hkugz.blockstack.best', BH = 28;
+  let blocks, cur, score, best = +(localStorage.getItem(KEY) || 0), state = 'ready', camY, streak, falling, particles, t0 = 0, flash = 0;
+  const fit = () => { const m = Math.min(innerHeight - 120, 760); c.style.height = m + 'px'; c.style.width = (m * W / H) + 'px'; if (innerWidth - 24 < parseFloat(c.style.width)) { c.style.width = (innerWidth - 24) + 'px'; c.style.height = ((innerWidth - 24) * H / W) + 'px'; } };
+  addEventListener('resize', fit); fit();
+  const hue = n => (n * 14 + 200) % 360;
+  function reset() { blocks = [{ x: W / 2 - 100, w: 200, n: 0 }]; score = 0; camY = 0; streak = 0; falling = []; particles = []; spawn(); state = 'ready'; flash = 0; }
+  function spawn() { const top = blocks[blocks.length - 1], n = blocks.length; cur = { x: 0, w: top.w, n, dir: 1, speed: Math.min(7.5, 2.6 + n * .09) }; cur.x = -cur.w; }
+  function drop() {
+    if (state === 'over') { reset(); return; }
+    if (state === 'ready') state = 'play'; else if (state !== 'play') return;
+    const top = blocks[blocks.length - 1]; const left = Math.max(cur.x, top.x), right = Math.min(cur.x + cur.w, top.x + top.w), ov = right - left;
+    if (ov <= 0) { falling.push({ x: cur.x, w: cur.w, y: yOf(blocks.length), vy: 0, n: cur.n }); state = 'over'; if (score > best) { best = score; localStorage.setItem(KEY, best); } return; }
+    const perfect = Math.abs(cur.x - top.x) < 5;
+    if (perfect) { streak++; cur.x = top.x; ov2 = top.w; flash = 10; } else { streak = 0; if (cur.x < top.x) falling.push({ x: cur.x, w: top.x - cur.x, y: yOf(blocks.length), vy: 0, n: cur.n }); if (cur.x + cur.w > top.x + top.w) falling.push({ x: top.x + top.w, w: cur.x + cur.w - (top.x + top.w), y: yOf(blocks.length), vy: 0, n: cur.n }); }
+    const nb = perfect ? { x: top.x, w: top.w + (streak >= 3 ? Math.min(14, 40) * 0 : 0), n: cur.n } : { x: left, w: ov, n: cur.n };
+    if (perfect && streak >= 4 && nb.w < 220) { nb.x -= 6; nb.w += 12; }
+    blocks.push(nb); score++; if (perfect) for (let i = 0; i < 14; i++) particles.push({ x: nb.x + Math.random() * nb.w, y: yOf(blocks.length - 1), vx: (Math.random() - .5) * 5, vy: -Math.random() * 4, l: 30 });
+    spawn();
+  }
+  let ov2; const yOf = i => H - 90 - i * BH + camY;
+  c.addEventListener('pointerdown', e => { e.preventDefault(); drop(); }); addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); drop(); } });
+  function update() {
+    if (state === 'play' || state === 'ready') { cur.x += cur.dir * cur.speed; if (state === 'ready') cur.x = W / 2 - cur.w / 2 + Math.sin(performance.now() / 500) * 130; else { if (cur.x + cur.w > W + 10) { cur.x = W + 10 - cur.w; cur.dir = -1; } if (cur.x < -10) { cur.x = -10; cur.dir = 1; } } }
+    const targetCam = Math.max(0, (blocks.length - 8) * BH); camY += (targetCam - camY) * .12;
+    for (const f of falling) { f.vy += .6; f.y += f.vy; } falling = falling.filter(f => f.y < H + 80);
+    for (const p of particles) { p.x += p.vx; p.y += p.vy; p.vy += .25; p.l--; } particles = particles.filter(p => p.l > 0); if (flash > 0) flash--;
+  }
+  function blockPath(x, y, w, n, a = 1) { g.globalAlpha = a; g.fillStyle = `hsl(${hue(n)},70%,58%)`; g.fillRect(x, y, w, BH - 2); g.fillStyle = `hsl(${hue(n)},70%,72%)`; g.fillRect(x, y, w, 5); g.fillStyle = `hsl(${hue(n)},70%,42%)`; g.fillRect(x, y + BH - 8, w, 6); g.globalAlpha = 1; }
+  function draw() {
+    const sky = g.createLinearGradient(0, 0, 0, H); const k = Math.min(1, blocks.length / 60); sky.addColorStop(0, `hsl(${230 + k * 30},60%,${24 - k * 14}%)`); sky.addColorStop(1, `hsl(${200 - k * 20},70%,${48 - k * 22}%)`); g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 40; i++) g.fillRect((i * 97) % W, ((i * 53 + camY * .2) % H), 2, 2);
+    g.fillStyle = '#2b1f3a'; g.fillRect(0, yOf(0) + BH, W, H);
+    blocks.forEach((b, i) => blockPath(b.x, yOf(i), b.w, b.n));
+    if (state !== 'over' || true) { if (state !== 'over') blockPath(cur.x, yOf(blocks.length), cur.w, cur.n); }
+    for (const f of falling) blockPath(f.x, f.y, f.w, f.n, .8);
+    for (const p of particles) { g.globalAlpha = p.l / 30; g.fillStyle = '#fff'; g.fillRect(p.x, p.y, 4, 4); } g.globalAlpha = 1;
+    if (flash) { g.fillStyle = `rgba(255,255,255,${flash / 40})`; g.fillRect(0, 0, W, H); }
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '700 54px system-ui'; g.textBaseline = 'top'; g.fillText(score, W / 2, 24); g.font = '600 16px system-ui'; g.fillStyle = 'rgba(255,255,255,.8)'; g.fillText('Best ' + best + (streak > 1 ? '   •   Perfect x' + streak : ''), W / 2, 86);
+    if (state === 'ready' || state === 'over') { g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(0, 150, W, 120); g.fillStyle = '#fff'; g.font = '700 32px system-ui'; g.fillText(state === 'over' ? 'Game over - ' + score : 'Block Stack', W / 2, 168); g.font = '17px system-ui'; g.fillText(state === 'over' ? 'Click or press Space to try again' : 'Click or press Space to drop', W / 2, 218); }
+    g.textAlign = 'left';
+  }
+  reset(); (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+})();
+</script>

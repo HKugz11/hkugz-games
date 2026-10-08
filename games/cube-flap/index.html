@@ -1,0 +1,53 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Cube Flap</title>
+<link rel="stylesheet" href="../../assets/site.css">
+<body class="game">
+<div class="bar"><a href="../../index.html">&larr; All games</a><span class="title">Cube Flap</span><span class="hint">Click / tap / Space to flap</span></div>
+<div class="stage"><canvas class="game" id="c" width="480" height="640" tabindex="0"></canvas></div>
+<div class="credit">An original one-button game. Flap through the gaps between the towers and grab the gold coins.</div>
+<script>
+(() => {
+  const c = document.getElementById('c'), g = c.getContext('2d'), W = c.width, H = c.height, KEY = 'hkugz.cubeflap.best', GAP = 170, SKY = [['#5ad8ff', '#bff3ff'], ['#ffb36b', '#ffe3a8'], ['#3b2f6b', '#7a58b8']];
+  let cube, pipes, coins, score, gold, best = +(localStorage.getItem(KEY) || 0), state = 'ready', t = 0, parts = [], shake = 0, bgx = 0, spawnT = 0;
+  const fit = () => { let h = Math.min(innerHeight - 120, 780), w = h * W / H; if (w > innerWidth - 24) { w = innerWidth - 24; h = w * H / W; } c.style.width = w + 'px'; c.style.height = h + 'px'; }; addEventListener('resize', fit); fit();
+  function reset() { cube = { x: 120, y: H / 2, vy: 0, rot: 0 }; pipes = []; coins = []; score = 0; gold = 0; state = 'ready'; spawnT = 0; parts = []; }
+  function flap() { if (state === 'over') { if (t > 25) reset(); return; } if (state === 'ready') state = 'play'; cube.vy = -7.6; for (let i = 0; i < 5; i++) parts.push({ x: cube.x - 14, y: cube.y + 12, vx: -1 - Math.random() * 2, vy: Math.random() * 2, l: 16 }); }
+  c.addEventListener('pointerdown', e => { e.preventDefault(); flap(); }); addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); flap(); } });
+  function addPipe() { const y = 130 + Math.random() * (H - 260 - GAP); pipes.push({ x: W + 40, gapY: y, w: 70, passed: false }); if (Math.random() < .7) coins.push({ x: W + 75, y: y + GAP / 2, got: false }); }
+  function update() {
+    t++; bgx = (bgx + (state === 'play' ? 1.4 : .5)) % 1000;
+    if (state === 'ready') { cube.y = H / 2 + Math.sin(t / 15) * 10; cube.rot = 0; }
+    if (state === 'play') {
+      cube.vy += .42; cube.y += cube.vy; cube.rot = Math.max(-.5, Math.min(1.1, cube.vy / 11)); spawnT++; if (spawnT > 92) { spawnT = 0; addPipe(); }
+      for (const p of pipes) { p.x -= 3.1; if (!p.passed && p.x + p.w < cube.x - 14) { p.passed = true; score++; } if (cube.x + 14 > p.x && cube.x - 14 < p.x + p.w && (cube.y - 14 < p.gapY || cube.y + 14 > p.gapY + GAP)) die(); }
+      for (const q of coins) { q.x -= 3.1; if (!q.got && Math.hypot(q.x - cube.x, q.y - cube.y) < 24) { q.got = true; gold++; score++; for (let i = 0; i < 8; i++) parts.push({ x: q.x, y: q.y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5, l: 20, gold: true }); } }
+      pipes = pipes.filter(p => p.x > -90); coins = coins.filter(q => q.x > -30 && !q.got); if (cube.y > H - 40 || cube.y < -40) die();
+    }
+    if (state === 'over') { cube.vy += .5; cube.y = Math.min(H - 40, cube.y + cube.vy); cube.rot += .12; }
+    for (const p of parts) { p.x += p.vx; p.y += p.vy; p.l--; } parts = parts.filter(p => p.l > 0); if (shake > 0) shake--;
+  }
+  function die() { if (state === 'over') return; state = 'over'; t = 0; shake = 14; if (score > best) { best = score; localStorage.setItem(KEY, best); } for (let i = 0; i < 18; i++) parts.push({ x: cube.x, y: cube.y, vx: (Math.random() - .5) * 8, vy: (Math.random() - .5) * 8, l: 30 }); }
+  function drawCube(x, y, rot) {
+    g.save(); g.translate(x, y); g.rotate(rot);
+    g.fillStyle = '#ff6eb4'; g.beginPath(); g.roundRect(-16, -15, 32, 30, 5); g.fill(); g.fillStyle = 'rgba(255,255,255,.3)'; g.fillRect(-16, -15, 32, 5); g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(10, -15, 6, 30); g.fillRect(-16, 10, 32, 5);
+    g.fillStyle = '#12101a'; g.beginPath(); g.roundRect(-4, -8, 22, 14, 5); g.fill(); g.fillStyle = '#38d0ff'; g.beginPath(); g.moveTo(0, -4); g.lineTo(6, -1); g.lineTo(1, 2); g.fill(); g.beginPath(); g.moveTo(14, -4); g.lineTo(8, -1); g.lineTo(13, 2); g.fill();
+    g.strokeStyle = '#ff86c6'; g.lineWidth = 2.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-10, -15); g.lineTo(-14, -23); g.moveTo(-6, -15); g.lineTo(-8, -24); g.stroke(); g.restore();
+  }
+  function draw() {
+    const th = SKY[Math.floor(score / 12) % SKY.length]; const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, th[0]); sky.addColorStop(1, th[1]); g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    g.save(); if (shake) g.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+    g.fillStyle = 'rgba(255,255,255,.45)'; for (let i = 0; i < 5; i++) { const x = ((i * 230 - bgx * .5) % 1000 + 1000) % 1000 - 100; g.beginPath(); g.ellipse(x, 90 + (i % 3) * 70, 60, 20, 0, 0, 7); g.ellipse(x + 30, 80 + (i % 3) * 70, 40, 18, 0, 0, 7); g.fill(); }
+    for (const p of pipes) { const gr = g.createLinearGradient(p.x, 0, p.x + p.w, 0); gr.addColorStop(0, '#8a6a52'); gr.addColorStop(.5, '#b08d70'); gr.addColorStop(1, '#6e5440'); g.fillStyle = gr; g.fillRect(p.x, 0, p.w, p.gapY); g.fillRect(p.x, p.gapY + GAP, p.w, H); g.fillStyle = '#c9a384'; g.fillRect(p.x - 5, p.gapY - 22, p.w + 10, 22); g.fillRect(p.x - 5, p.gapY + GAP, p.w + 10, 22); g.fillStyle = 'rgba(0,0,0,.18)'; for (let y = 8; y < p.gapY - 24; y += 20) g.fillRect(p.x, y, p.w, 2); for (let y = p.gapY + GAP + 30; y < H; y += 20) g.fillRect(p.x, y, p.w, 2); }
+    for (const q of coins) { g.fillStyle = '#ffd34e'; g.beginPath(); g.ellipse(q.x, q.y + Math.sin(t / 8 + q.x) * 3, 9 * Math.abs(Math.cos(t / 12)) + 2, 11, 0, 0, 7); g.fill(); }
+    g.fillStyle = '#4a3a2a'; g.fillRect(0, H - 30, W, 30); g.fillStyle = '#6f9a3a'; g.fillRect(0, H - 30, W, 6);
+    for (const p of parts) { g.globalAlpha = p.l / 20; g.fillStyle = p.gold ? '#ffd34e' : '#fff'; g.fillRect(p.x, p.y, 4, 4); } g.globalAlpha = 1;
+    drawCube(cube.x, cube.y, cube.rot); g.restore();
+    g.textAlign = 'center'; g.textBaseline = 'top'; g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 5; g.font = '700 56px system-ui'; g.strokeText(score, W / 2, 28); g.fillText(score, W / 2, 28); g.font = '600 16px system-ui'; g.fillText('Best ' + best + '   Coins ' + gold, W / 2, 96);
+    if (state !== 'play') { g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(0, 210, W, 130); g.fillStyle = '#fff'; g.font = '700 34px system-ui'; g.fillText(state === 'over' ? 'Game over' : 'Cube Flap', W / 2, 224); g.font = '17px system-ui'; g.fillText(state === 'over' ? 'Score ' + score + ' - click to try again' : 'Click or press Space to flap', W / 2, 276); }
+    g.textAlign = 'left';
+  }
+  reset(); (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+})();
+</script>

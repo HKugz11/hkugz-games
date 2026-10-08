@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Tower of Destiny</title>
+
+<style>
+  html,body{margin:0;height:100%;background:#07040a;color:#f5c53d;font-family:system-ui,sans-serif;overflow:hidden}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  #wrap{width:min(100vw,calc((100vh - 56px) * 264 / 160));aspect-ratio:264/160;position:relative}
+  canvas{width:100%;height:100%;display:block;touch-action:none;background:#000;outline:none;cursor:pointer}
+  #fs{position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:8px;border:1px solid rgba(245,197,61,.55);background:rgba(10,8,12,.55);color:#f5c53d;display:grid;place-items:center;cursor:pointer;opacity:.55;transition:opacity .15s;padding:0}
+  #fs:hover{opacity:1}
+  #wrap:fullscreen{width:min(100vw,calc(100vh * 264 / 160));height:auto;margin:auto;background:#000}
+  :fullscreen::backdrop{background:#000}
+  #credit{font-size:12px;line-height:1.5;text-align:center;opacity:.7;padding:0 12px}
+  #credit a{color:#f5c53d}
+  #hint{font-size:11px;opacity:.45;text-align:center}
+  /* when embedded in an iframe the game fills the frame exactly, no extra text around it */
+  body.embed{gap:0}
+  body.embed #wrap{width:min(100vw,calc(100vh * 264 / 160))}
+  body.embed #credit,body.embed #hint{display:none}
+  @media (pointer:coarse){#hint{display:none}}
+</style>
+<script>if (window.self !== window.top) document.documentElement.className = 'embed', document.addEventListener('DOMContentLoaded', () => document.body.classList.add('embed'));</script>
+<div id="wrap"><canvas id="screen" tabindex="0"></canvas>
+  <button id="fs" type="button" title="Fullscreen (F)" aria-label="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+<div id="credit">Fan remake of <b>Tower of Destiny</b> &mdash; original game by its creators.
+  Play the real one on <a href="https://www.coolmathgames.com/0-tower-of-destiny" target="_blank" rel="noopener">Coolmath Games</a>. Not affiliated or official; free and non-commercial.</div>
+<div id="hint">Click or Space = jump &nbsp;·&nbsp; Mouse for all menus &nbsp;·&nbsp; Esc / P = pause &nbsp;·&nbsp; M = sound &nbsp;·&nbsp; F = fullscreen</div>
+<script src="assets.js"></script>
+<script src="skins_vec.js"></script>
+<script src="hd.js"></script>
+<script src="game.js"></script>
