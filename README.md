@@ -5,6 +5,7 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 | Game | Type |
 |---|---|
 | **Tower of Destiny** | Unofficial fan remake (see below) |
+| **Blaster Arena** | Original 3D shooter vs bots (Three.js) |
 | **Block Stack** | Original one-button game |
 | **Cube Flap** | Original one-button game |
 | **Snake** | Classic |
@@ -24,3 +25,7 @@ It is not affiliated with or endorsed by the original creators. All code and art
 ## Running locally
 
 It is a plain static site. Serve the folder with any static file server, for example `npx serve` or `python -m http.server`, and open `index.html`.
+
+## Third-party code
+
+Blaster Arena bundles [Three.js](https://threejs.org/) r160 (MIT license, see `games/blaster-arena/THREE-LICENSE.txt`).

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Blaster Arena</title>
+<style>
+  :root { --o: #ff7a1a; --c: #2ee6ff; --y: #ffd34e; --ink: #0c0818; }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; background: #0a0618; color: #fff; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud { position: fixed; inset: 0; pointer-events: none; }
+  .hide { display: none !important; }
+  /* crosshair */
+  #cross { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+  #cross i { position: absolute; background: #fff; box-shadow: 0 0 0 1.5px rgba(0,0,0,.55); border-radius: 2px; transition: transform .06s; }
+  #cross .t, #cross .b { width: 3px; height: 9px; left: -1.5px; } #cross .l, #cross .r { height: 3px; width: 9px; top: -1.5px; }
+  #cross .d { width: 4px; height: 4px; left: -2px; top: -2px; border-radius: 50%; }
+  #hit { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; opacity: 0; transform: scale(.7); transition: opacity .12s, transform .12s; }
+  #hit:before, #hit:after { content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 36px; margin: -18px 0 0 -2.5px; background: #fff; border-radius: 3px; box-shadow: 0 0 6px rgba(0,0,0,.6); }
+  #hit:before { transform: rotate(45deg); } #hit:after { transform: rotate(-45deg); }
+  #hit.on { opacity: 1; transform: scale(1); transition: none; } #hit.head:before, #hit.head:after { background: var(--y); } #hit.kill:before, #hit.kill:after { background: #ff4a6a; width: 6px; }
+  /* score */
+  #score { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; font-weight: 800; font-size: 26px; text-shadow: 0 3px 0 rgba(0,0,0,.5); }
+  #score .me { color: var(--c); } #score .bots { color: #ff6a6a; } #score small { font-size: 12px; opacity: .8; font-weight: 700; letter-spacing: .1em; display: block; text-align: center; }
+  #score .pill { background: rgba(10,6,24,.55); padding: 6px 16px; border-radius: 14px; border: 2px solid rgba(255,255,255,.18); min-width: 90px; text-align: center; }
+  #radar { position: absolute; top: 14px; left: 14px; width: 132px; height: 132px; border-radius: 50%; background: rgba(10,6,24,.5); border: 3px solid rgba(255,255,255,.25); }
+  #feed { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  #feed div { background: rgba(10,6,24,.6); padding: 5px 12px; border-radius: 10px; font-weight: 700; font-size: 15px; animation: slide .25s ease-out; }
+  @keyframes slide { from { transform: translateX(30px); opacity: 0; } }
+  /* health / ammo */
+  #hp { position: absolute; left: 22px; bottom: 22px; width: 280px; }
+  #hp .bar { height: 26px; border-radius: 14px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.3); overflow: hidden; }
+  #hp .fill { height: 100%; width: 100%; background: linear-gradient(180deg, #7dffa0, #20c864); transition: width .15s; } #hp .fill.low { background: linear-gradient(180deg, #ff9a8a, #e63a3a); }
+  #hp .num { font-size: 34px; font-weight: 900; text-shadow: 0 3px 0 rgba(0,0,0,.5); margin-bottom: 4px; }
+  #ammo { position: absolute; right: 26px; bottom: 22px; text-align: right; text-shadow: 0 3px 0 rgba(0,0,0,.5); }
+  #ammo .wname { font-size: 20px; font-weight: 800; letter-spacing: .08em; color: var(--y); } #ammo .cnt { font-size: 60px; font-weight: 900; line-height: 1; } #ammo .cnt small { font-size: 24px; opacity: .7; } #ammo .rl { font-size: 15px; font-weight: 700; color: var(--c); height: 18px; }
+  #slots { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 8px; }
+  #slots div { width: 78px; padding: 6px 4px 5px; text-align: center; background: rgba(10,6,24,.55); border: 3px solid rgba(255,255,255,.2); border-radius: 12px; font-weight: 800; font-size: 12px; letter-spacing: .04em; opacity: .7; }
+  #slots div b { display: block; font-size: 16px; } #slots div.on { opacity: 1; border-color: var(--y); transform: translateY(-6px); background: rgba(60,40,10,.7); }
+  #medal { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 0) scale(1); font-size: 46px; font-weight: 900; color: var(--y); text-shadow: 0 4px 0 #b3400a, 0 0 22px rgba(255,160,40,.7); opacity: 0; letter-spacing: .06em; white-space: nowrap; }
+  #medal.on { animation: medal 1.4s ease-out; } @keyframes medal { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.5); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 70% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -26px) scale(1); } }
+  #buff { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); font-weight: 900; color: #ff8aff; font-size: 18px; letter-spacing: .1em; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #vig { position: absolute; inset: 0; box-shadow: inset 0 0 140px 30px rgba(255, 40, 70, 0); transition: box-shadow .25s; } #vig.on { box-shadow: inset 0 0 140px 40px rgba(255, 40, 70, .65); transition: none; } #vig.low { box-shadow: inset 0 0 120px 20px rgba(255, 40, 70, .35); }
+  #dir { position: absolute; left: 50%; top: 50%; width: 0; height: 0; } #dir i { position: absolute; left: -70px; top: -150px; width: 140px; height: 30px; transform-origin: 70px 150px; background: radial-gradient(ellipse at 50% 100%, rgba(255,60,80,.9), rgba(255,60,80,0) 70%); opacity: 0; transition: opacity .8s; }
+  #scope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 24%, #000 24.4%); }
+  #scope:before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(0,0,0,.7); } #scope:after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(0,0,0,.7); }
+  /* overlays */
+  .screen { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.82), rgba(8,4,20,.96)); z-index: 5; text-align: center; padding: 20px; }
+  .screen .box { max-width: 760px; width: 100%; }
+  h1 { font-size: clamp(44px, 9vw, 96px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff6b0, #ffb02a 55%, #ff5a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(120,30,0,.7)) drop-shadow(0 0 28px rgba(255,140,40,.5)); }
+  .sub { opacity: .85; font-size: 18px; margin: 10px 0 24px; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
+  button { font: inherit; font-weight: 800; font-size: 18px; color: #1a0c00; background: linear-gradient(180deg, #ffd34e, #ff9a1a); border: 0; border-radius: 14px; padding: 12px 26px; cursor: pointer; box-shadow: 0 5px 0 #a24a00; pointer-events: auto; }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #a24a00; } button.alt { background: linear-gradient(180deg, #7cecff, #20b8e8); box-shadow: 0 5px 0 #0a6a88; color: #04202a; }
+  button.sel { outline: 4px solid #fff; } button.big { font-size: 28px; padding: 16px 44px; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 18px 0; font-size: 14px; text-align: left; }
+  .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
+  label { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 6px 0; font-weight: 700; } input[type=range] { width: 200px; pointer-events: auto; }
+  #board { margin: 14px auto; border-collapse: collapse; min-width: 340px; } #board td, #board th { padding: 6px 16px; border-bottom: 1px solid rgba(255,255,255,.15); font-weight: 700; } #board tr.me { color: var(--c); }
+  a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div class="hud" id="hud">
+  <div id="vig"></div><div id="dir"></div>
+  <div id="scope" class="hide"></div>
+  <div id="cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><i class="d"></i></div>
+  <div id="hit"></div>
+  <div id="score"><div class="pill me"><small>YOU</small><span id="sMe">0</span></div><div><small>FIRST TO</small><span id="sTarget">25</span></div><div class="pill bots"><small>BOTS</small><span id="sBots">0</span></div></div>
+  <canvas id="radar" width="264" height="264"></canvas>
+  <div id="feed"></div>
+  <div id="medal"></div>
+  <div id="buff"></div>
+  <div id="hp"><div class="num"><span id="hpNum">100</span></div><div class="bar"><div class="fill" id="hpFill"></div></div></div>
+  <div id="ammo"><div class="wname" id="wName">POP-GUN</div><div class="cnt"><span id="aMag">12</span><small> / <span id="aRes">&infin;</span></small></div><div class="rl" id="rl"></div></div>
+  <div id="slots"></div>
+</div>
+
+<div class="screen" id="menu">
+  <div class="box">
+    <h1>BLASTER<br>ARENA</h1>
+    <p class="sub">Bright, bouncy robot deathmatch. First to 25 eliminations wins.<br>No blood, just confetti. 5 blasters, tons of bots.</p>
+    <div class="row" id="diffRow"><button data-d="easy">Chill bots</button><button data-d="normal" class="sel">Normal bots</button><button data-d="hard">Sweaty bots</button></div>
+    <div class="keys">
+      <div><b>WASD</b> move</div><div><b>Mouse</b> aim</div><div><b>Click</b> shoot</div><div><b>Right click</b> zoom</div>
+      <div><b>Space</b> jump</div><div><b>Shift</b> sprint</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> switch gun</div>
+      <div><b>Tab</b> scoreboard</div><div><b>Esc</b> pause</div>
+    </div>
+    <div class="row"><button class="big" id="play">PLAY</button></div>
+    <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
+  </div>
+</div>
+
+<div class="screen hide" id="pause">
+  <div class="box">
+    <h1 style="font-size:64px">PAUSED</h1>
+    <label>Mouse sensitivity <input type="range" id="sens" min="0.3" max="2.5" step="0.05"> <span id="sensV"></span></label>
+    <label>Field of view <input type="range" id="fovR" min="70" max="105" step="1"> <span id="fovV"></span></label>
+    <label>Volume <input type="range" id="vol" min="0" max="1" step="0.05"> <span id="volV"></span></label>
+    <div class="row"><button id="resume" class="big">RESUME</button><button id="restart" class="alt">Restart match</button></div>
+  </div>
+</div>
+
+<div class="screen hide" id="over">
+  <div class="box">
+    <h1 id="overT" style="font-size:72px">VICTORY</h1>
+    <p class="sub" id="overS"></p>
+    <table id="board"></table>
+    <div class="row"><button id="again" class="big">PLAY AGAIN</button></div>
+  </div>
+</div>
+<div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
+<a class="back" href="../../index.html">&larr; All games</a>
+<script type="module" src="game.js"></script>
+</body>
+</html>
