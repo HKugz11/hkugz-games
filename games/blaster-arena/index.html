@@ -40,14 +40,14 @@
   #slots div b { display: block; font-size: 16px; } #slots div.on { opacity: 1; border-color: var(--y); transform: translateY(-6px); background: rgba(60,40,10,.7); }
   #medal { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 0) scale(1); font-size: 46px; font-weight: 900; color: var(--y); text-shadow: 0 4px 0 #b3400a, 0 0 22px rgba(255,160,40,.7); opacity: 0; letter-spacing: .06em; white-space: nowrap; }
   #medal.on { animation: medal 1.4s ease-out; } @keyframes medal { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.5); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 70% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -26px) scale(1); } }
-  #buff { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); font-weight: 900; color: #ff8aff; font-size: 18px; letter-spacing: .1em; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #buff { position: absolute; left: 50%; bottom: 210px; transform: translateX(-50%); font-weight: 900; color: #ff8aff; font-size: 18px; letter-spacing: .1em; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
   #vig { position: absolute; inset: 0; box-shadow: inset 0 0 140px 30px rgba(255, 40, 70, 0); transition: box-shadow .25s; } #vig.on { box-shadow: inset 0 0 140px 40px rgba(255, 40, 70, .65); transition: none; } #vig.low { box-shadow: inset 0 0 120px 20px rgba(255, 40, 70, .35); }
   #dir { position: absolute; left: 50%; top: 50%; width: 0; height: 0; } #dir i { position: absolute; left: -70px; top: -150px; width: 140px; height: 30px; transform-origin: 70px 150px; background: radial-gradient(ellipse at 50% 100%, rgba(255,60,80,.9), rgba(255,60,80,0) 70%); opacity: 0; transition: opacity .8s; }
   #scope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 24%, #000 24.4%); }
   #scope:before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(0,0,0,.7); } #scope:after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(0,0,0,.7); }
   /* overlays */
-  .screen { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.82), rgba(8,4,20,.96)); z-index: 5; text-align: center; padding: 20px; }
-  .screen .box { max-width: 760px; width: 100%; }
+  .screen { position: fixed; inset: 0; display: grid; place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.82), rgba(8,4,20,.96)); z-index: 5; text-align: center; padding: 20px; }
+  .screen .box { max-width: 760px; width: 100%; margin: auto; }
   h1 { font-size: clamp(44px, 9vw, 96px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff6b0, #ffb02a 55%, #ff5a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(120,30,0,.7)) drop-shadow(0 0 28px rgba(255,140,40,.5)); }
   .sub { opacity: .85; font-size: 18px; margin: 10px 0 24px; }
   .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
@@ -58,6 +58,23 @@
   .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
   label { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 6px 0; font-weight: 700; } input[type=range] { width: 200px; pointer-events: auto; }
   #board { margin: 14px auto; border-collapse: collapse; min-width: 340px; } #board td, #board th { padding: 6px 16px; border-bottom: 1px solid rgba(255,255,255,.15); font-weight: 700; } #board tr.me { color: var(--c); }
+  /* shield, items, use bar, flash */
+  #hp .num .shnum { font-size: 22px; color: #6ad0ff; margin-left: 12px; }
+  #hp .bar.shb { height: 14px; margin-bottom: 6px; } #hp .fill.sh { background: linear-gradient(180deg, #a6ecff, #2a8cff); width: 0; }
+  #vig.on.sh { box-shadow: inset 0 0 140px 40px rgba(60,160,255,.6); } #vig.heal { box-shadow: inset 0 0 140px 30px rgba(80,255,150,.45); transition: none; } #vig.shup { box-shadow: inset 0 0 140px 30px rgba(80,170,255,.5); transition: none; }
+  #items { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); display: flex; gap: 6px; }
+  #items .it { position: relative; width: 52px; height: 52px; border-radius: 12px; background: rgba(10,6,24,.55); border: 3px solid rgba(255,255,255,.2); display: grid; place-items: center; transition: transform .1s; }
+  #items .it.gap { margin-left: 16px; } #items .it.empty { opacity: .38; } #items .it.using { border-color: var(--y); transform: translateY(-6px); }
+  #items .k { position: absolute; left: 5px; top: 1px; font-size: 11px; font-weight: 900; opacity: .9; } #items .n { position: absolute; right: 5px; bottom: 1px; font-size: 14px; font-weight: 900; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  .ic { display: block; background: var(--c); border: 2px solid rgba(0,0,0,.5); position: relative; }
+  .ic-bandage { width: 24px; height: 16px; border-radius: 4px; } .ic-medkit { width: 28px; height: 22px; border-radius: 5px; }
+  .ic-bandage:after, .ic-medkit:after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font: 900 15px/1 sans-serif; color: #ff4a5a; } .ic-medkit:after { color: #fff; }
+  .ic-mini { width: 14px; height: 14px; border-radius: 50%; } .ic-pot { width: 24px; height: 24px; border-radius: 50%; }
+  .ic-frag { width: 18px; height: 18px; border-radius: 50%; } .ic-flash { width: 14px; height: 22px; border-radius: 4px; } .ic-smoke { width: 14px; height: 22px; border-radius: 7px; } .ic-molly { width: 16px; height: 22px; border-radius: 4px 4px 9px 9px; }
+  #useBar { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); width: 280px; text-align: center; }
+  #useBar .lbl { font-weight: 900; letter-spacing: .1em; font-size: 14px; text-shadow: 0 2px 0 rgba(0,0,0,.6); margin-bottom: 4px; } #useBar .trk { height: 14px; border-radius: 8px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.3); overflow: hidden; } #useFill { height: 100%; width: 0; background: linear-gradient(180deg, #ffe98a, #ffb02a); }
+  #hint { position: absolute; left: 50%; bottom: 190px; transform: translateX(-50%); font-weight: 900; font-size: 18px; letter-spacing: .08em; text-shadow: 0 2px 0 rgba(0,0,0,.7); opacity: 0; white-space: nowrap; } #hint.on { animation: hintA 1.8s ease-out; } @keyframes hintA { 0% { opacity: 0; transform: translate(-50%, 8px); } 10% { opacity: 1; transform: translate(-50%, 0); } 75% { opacity: 1; } 100% { opacity: 0; } }
+  #flashfx { position: absolute; inset: 0; background: #fff; opacity: 0; }
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
 </head>
@@ -74,20 +91,26 @@
   <div id="feed"></div>
   <div id="medal"></div>
   <div id="buff"></div>
-  <div id="hp"><div class="num"><span id="hpNum">100</span></div><div class="bar"><div class="fill" id="hpFill"></div></div></div>
+  <div id="hp"><div class="num"><span id="hpNum">100</span><span class="shnum" id="shNum"></span></div><div class="bar shb"><div class="fill sh" id="shFill"></div></div><div class="bar"><div class="fill" id="hpFill"></div></div></div>
   <div id="ammo"><div class="wname" id="wName">POP-GUN</div><div class="cnt"><span id="aMag">12</span><small> / <span id="aRes">&infin;</span></small></div><div class="rl" id="rl"></div></div>
   <div id="slots"></div>
+  <div id="items"></div>
+  <div id="useBar" class="hide"><div class="lbl" id="useLbl"></div><div class="trk"><div id="useFill"></div></div></div>
+  <div id="hint"></div>
+  <div id="flashfx"></div>
 </div>
 
 <div class="screen" id="menu">
   <div class="box">
     <h1>BLASTER<br>ARENA</h1>
-    <p class="sub">Bright, bouncy robot deathmatch. First to 25 eliminations wins.<br>No blood, just confetti. 5 blasters, tons of bots.</p>
+    <p class="sub">Bright, bouncy robot deathmatch. First to 25 eliminations wins.<br>No blood, just confetti. 5 blasters, grenades, heals and shields to loot.</p>
     <div class="row" id="diffRow"><button data-d="easy">Chill bots</button><button data-d="normal" class="sel">Normal bots</button><button data-d="hard">Sweaty bots</button></div>
     <div class="keys">
       <div><b>WASD</b> move</div><div><b>Mouse</b> aim</div><div><b>Click</b> shoot</div><div><b>Right click</b> zoom</div>
-      <div><b>Space</b> jump</div><div><b>Shift</b> sprint</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> switch gun</div>
-      <div><b>Tab</b> scoreboard</div><div><b>Esc</b> pause</div>
+      <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div><div><b>Left Ctrl</b> sprint (+W)</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> switch gun</div>
+      <div><b>G</b> frag</div><div><b>F</b> flashbang</div><div><b>Q</b> smoke</div><div><b>E</b> molotov</div>
+      <div><b>Z</b> bandage</div><div><b>X</b> medkit</div><div><b>V</b> mini shield</div><div><b>B</b> big pot</div>
+      <div><b>Tab</b> scoreboard</div><div><b>Esc</b> pause</div><div><b>Walk over loot</b> to pick it up</div>
     </div>
     <div class="row"><button class="big" id="play">PLAY</button></div>
     <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
@@ -100,6 +123,7 @@
     <label>Mouse sensitivity <input type="range" id="sens" min="0.3" max="2.5" step="0.05"> <span id="sensV"></span></label>
     <label>Field of view <input type="range" id="fovR" min="70" max="105" step="1"> <span id="fovV"></span></label>
     <label>Volume <input type="range" id="vol" min="0" max="1" step="0.05"> <span id="volV"></span></label>
+    <p class="sub" id="perf" style="font-size:13px;margin:6px 0 0;opacity:.6"></p>
     <div class="row"><button id="resume" class="big">RESUME</button><button id="restart" class="alt">Restart match</button></div>
   </div>
 </div>
