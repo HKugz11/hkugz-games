@@ -5,7 +5,7 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 | Game | Type |
 |---|---|
 | **Tower of Destiny** | Unofficial fan remake (see below) |
-| **Blaster Arena** | Original 3D shooter vs bots (Three.js) |
+| **Blaster Arena** | Original 3D shooter vs bots (Three.js): 4 maps, 3 modes, solo or online co-op for up to 4 players |
 | **Block Stack** | Original one-button game |
 | **Cube Flap** | Original one-button game |
 | **Snake** | Classic |
@@ -28,4 +28,8 @@ It is a plain static site. Serve the folder with any static file server, for exa
 
 ## Third-party code
 
-Blaster Arena bundles [Three.js](https://threejs.org/) r160 (MIT license, see `games/blaster-arena/THREE-LICENSE.txt`).
+Blaster Arena bundles [Three.js](https://threejs.org/) r160 (MIT license, see `games/blaster-arena/THREE-LICENSE.txt`) and [PeerJS](https://peerjs.com/) 1.5.4 (MIT license, see `games/blaster-arena/vendor/PEERJS-LICENSE.txt`).
+
+### Blaster Arena online co-op
+
+One player hosts and gets a 5-letter room code; up to 3 friends join with it. Players connect directly (WebRTC). The free PeerJS Cloud service is only used to introduce them to each other, so players can see each other's network address; only share your room code with people you know. The host runs the bots; there is no chat, only player names. For offline testing, open two tabs with `?net=local`.
