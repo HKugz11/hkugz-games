@@ -34,10 +34,10 @@
   #hp .fill { height: 100%; width: 100%; background: linear-gradient(180deg, #7dffa0, #20c864); transition: width .15s; } #hp .fill.low { background: linear-gradient(180deg, #ff9a8a, #e63a3a); }
   #hp .num { font-size: 34px; font-weight: 900; text-shadow: 0 3px 0 rgba(0,0,0,.5); margin-bottom: 4px; }
   #ammo { position: absolute; right: 26px; bottom: 22px; text-align: right; text-shadow: 0 3px 0 rgba(0,0,0,.5); }
-  #ammo .wname { font-size: 20px; font-weight: 800; letter-spacing: .08em; color: var(--y); } #ammo .cnt { font-size: 60px; font-weight: 900; line-height: 1; } #ammo .cnt small { font-size: 24px; opacity: .7; } #ammo .rl { font-size: 15px; font-weight: 700; color: var(--c); height: 18px; }
+  #ammo .wrar { font-size: 12px; font-weight: 900; letter-spacing: .18em; } #ammo .wname { font-size: 20px; font-weight: 800; letter-spacing: .08em; color: var(--y); } #ammo .cnt { font-size: 60px; font-weight: 900; line-height: 1; } #ammo .cnt small { font-size: 24px; opacity: .7; } #ammo .rl { font-size: 15px; font-weight: 700; color: var(--c); height: 18px; }
   #slots { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 8px; }
-  #slots div { width: 78px; padding: 6px 4px 5px; text-align: center; background: rgba(10,6,24,.55); border: 3px solid rgba(255,255,255,.2); border-radius: 12px; font-weight: 800; font-size: 12px; letter-spacing: .04em; opacity: .7; }
-  #slots div b { display: block; font-size: 16px; } #slots div.on { opacity: 1; border-color: var(--y); transform: translateY(-6px); background: rgba(60,40,10,.7); }
+  #slots div { width: 78px; padding: 6px 4px 5px; text-align: center; background: rgba(10,6,24,.55); border: 3px solid var(--rc, rgba(255,255,255,.2)); border-radius: 12px; font-weight: 800; font-size: 12px; letter-spacing: .04em; opacity: .75; }
+  #slots div b { display: block; font-size: 16px; } #slots div.on { opacity: 1; transform: translateY(-6px); background: rgba(40,30,60,.85); box-shadow: 0 0 16px var(--rc); } #slots div.off { opacity: .3; }
   #medal { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 0) scale(1); font-size: 46px; font-weight: 900; color: var(--y); text-shadow: 0 4px 0 #b3400a, 0 0 22px rgba(255,160,40,.7); opacity: 0; letter-spacing: .06em; white-space: nowrap; }
   #medal.on { animation: medal 1.4s ease-out; } @keyframes medal { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.5); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 70% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -26px) scale(1); } }
   #buff { position: absolute; left: 50%; bottom: 210px; transform: translateX(-50%); font-weight: 900; color: #ff8aff; font-size: 18px; letter-spacing: .1em; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
@@ -62,10 +62,10 @@
   #hp .num .shnum { font-size: 22px; color: #6ad0ff; margin-left: 12px; }
   #hp .bar.shb { height: 14px; margin-bottom: 6px; } #hp .fill.sh { background: linear-gradient(180deg, #a6ecff, #2a8cff); width: 0; }
   #vig.on.sh { box-shadow: inset 0 0 140px 40px rgba(60,160,255,.6); } #vig.heal { box-shadow: inset 0 0 140px 30px rgba(80,255,150,.45); transition: none; } #vig.shup { box-shadow: inset 0 0 140px 30px rgba(80,170,255,.5); transition: none; }
-  #items { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); display: flex; gap: 6px; }
-  #items .it { position: relative; width: 52px; height: 52px; border-radius: 12px; background: rgba(10,6,24,.55); border: 3px solid rgba(255,255,255,.2); display: grid; place-items: center; transition: transform .1s; }
-  #items .it.gap { margin-left: 16px; } #items .it.empty { opacity: .38; } #items .it.using { border-color: var(--y); transform: translateY(-6px); }
-  #items .k { position: absolute; left: 5px; top: 1px; font-size: 11px; font-weight: 900; opacity: .9; } #items .n { position: absolute; right: 5px; bottom: 1px; font-size: 14px; font-weight: 900; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #items { position: absolute; left: 22px; bottom: 128px; display: flex; gap: 5px; flex-wrap: wrap; max-width: 360px; }
+  #items .it { position: relative; width: 42px; height: 42px; border-radius: 12px; background: rgba(10,6,24,.55); border: 3px solid rgba(255,255,255,.2); display: grid; place-items: center; transition: transform .1s; }
+  #items .it.empty { display: none; } #items .it.using { border-color: var(--y); transform: translateY(-6px); }
+  #items .k { position: absolute; left: 4px; top: 0; font-size: 10px; font-weight: 900; opacity: .9; } #items .n { position: absolute; right: 4px; bottom: 0; font-size: 12px; font-weight: 900; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
   .ic { display: block; background: var(--c); border: 2px solid rgba(0,0,0,.5); position: relative; }
   .ic-bandage { width: 24px; height: 16px; border-radius: 4px; } .ic-medkit { width: 28px; height: 22px; border-radius: 5px; }
   .ic-bandage:after, .ic-medkit:after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font: 900 15px/1 sans-serif; color: #ff4a5a; } .ic-medkit:after { color: #fff; }
@@ -75,6 +75,11 @@
   #useBar .lbl { font-weight: 900; letter-spacing: .1em; font-size: 14px; text-shadow: 0 2px 0 rgba(0,0,0,.6); margin-bottom: 4px; } #useBar .trk { height: 14px; border-radius: 8px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.3); overflow: hidden; } #useFill { height: 100%; width: 0; background: linear-gradient(180deg, #ffe98a, #ffb02a); }
   #hint { position: absolute; left: 50%; bottom: 190px; transform: translateX(-50%); font-weight: 900; font-size: 18px; letter-spacing: .08em; text-shadow: 0 2px 0 rgba(0,0,0,.7); opacity: 0; white-space: nowrap; } #hint.on { animation: hintA 1.8s ease-out; } @keyframes hintA { 0% { opacity: 0; transform: translate(-50%, 8px); } 10% { opacity: 1; transform: translate(-50%, 0); } 75% { opacity: 1; } 100% { opacity: 0; } }
   #flashfx { position: absolute; inset: 0; background: #fff; opacity: 0; }
+  /* inventory panel (hold I) */
+  #invpanel { background: rgba(8,4,20,.82); pointer-events: none; z-index: 4; } #invpanel .box { max-width: 720px; text-align: left; } #invpanel h2 { margin: 14px 0 8px; font-size: 15px; letter-spacing: .18em; opacity: .7; }
+  .invg { display: grid; gap: 6px; } .ig { display: grid; grid-template-columns: 30px 130px 110px 1fr; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border-left: 6px solid var(--rc); padding: 8px 12px; border-radius: 10px; } .ig.off { opacity: .35; border-left-color: #555; } .ig.off .nm { grid-column: 2 / -1; } .ig .nm { font-weight: 900; } .ig .rr { color: var(--rc); font-weight: 900; letter-spacing: .1em; font-size: 13px; } .ig .st { font-size: 13px; opacity: .85; } .ig b { color: var(--y); }
+  .invi { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .ii { display: grid; grid-template-columns: 34px 1fr auto 24px; grid-template-areas: 'ic nm ct kk' 'ic ds ds ds'; align-items: center; column-gap: 8px; background: rgba(255,255,255,.07); padding: 7px 10px; border-radius: 10px; } .ii.off { opacity: .4; } .ii .ic { grid-area: ic; justify-self: center; } .ii .nm { grid-area: nm; font-weight: 800; } .ii .ct { grid-area: ct; font-weight: 900; } .ii .kk { grid-area: kk; background: rgba(255,255,255,.15); border-radius: 6px; text-align: center; font-weight: 900; font-size: 12px; padding: 2px 0; } .ii .ds { grid-area: ds; font-size: 12px; opacity: .7; }
+  .hintline { text-align: center; opacity: .55; font-size: 13px; margin: 14px 0 0; }
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
 </head>
@@ -92,7 +97,7 @@
   <div id="medal"></div>
   <div id="buff"></div>
   <div id="hp"><div class="num"><span id="hpNum">100</span><span class="shnum" id="shNum"></span></div><div class="bar shb"><div class="fill sh" id="shFill"></div></div><div class="bar"><div class="fill" id="hpFill"></div></div></div>
-  <div id="ammo"><div class="wname" id="wName">POP-GUN</div><div class="cnt"><span id="aMag">12</span><small> / <span id="aRes">&infin;</span></small></div><div class="rl" id="rl"></div></div>
+  <div id="ammo"><div class="wrar" id="wRar"></div><div class="wname" id="wName">POP-GUN</div><div class="cnt"><span id="aMag">12</span><small> / <span id="aRes">&infin;</span></small></div><div class="rl" id="rl"></div></div>
   <div id="slots"></div>
   <div id="items"></div>
   <div id="useBar" class="hide"><div class="lbl" id="useLbl"></div><div class="trk"><div id="useFill"></div></div></div>
@@ -103,14 +108,14 @@
 <div class="screen" id="menu">
   <div class="box">
     <h1>BLASTER<br>ARENA</h1>
-    <p class="sub">Bright, bouncy robot deathmatch. First to 25 eliminations wins.<br>No blood, just confetti. 5 blasters, grenades, heals and shields to loot.</p>
+    <p class="sub">Bright, bouncy robot deathmatch. First to 25 eliminations wins.<br>No blood, just confetti. Loot blasters in 5 rarities, plus grenades, heals and shields.</p>
     <div class="row" id="diffRow"><button data-d="easy">Chill bots</button><button data-d="normal" class="sel">Normal bots</button><button data-d="hard">Sweaty bots</button></div>
     <div class="keys">
       <div><b>WASD</b> move</div><div><b>Mouse</b> aim</div><div><b>Click</b> shoot</div><div><b>Right click</b> zoom</div>
       <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div><div><b>Tab</b> sprint (hold + W)</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> switch gun</div>
       <div><b>G</b> frag</div><div><b>F</b> flashbang</div><div><b>Q</b> smoke</div><div><b>E</b> molotov</div>
       <div><b>Z</b> bandage</div><div><b>X</b> medkit</div><div><b>V</b> mini shield</div><div><b>B</b> big pot</div>
-      <div><b>T</b> scoreboard (hold)</div><div><b>Esc</b> pause</div><div><b>Walk over loot</b> to pick it up</div>
+      <div><b>T</b> scoreboard (hold)</div><div><b>I</b> inventory (hold)</div><div><b>Esc</b> pause</div><div><b>Walk over loot</b> to grab it. Blasters come in 5 rarities!</div>
     </div>
     <div class="row"><button class="big" id="play">PLAY</button></div>
     <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
@@ -136,6 +141,7 @@
     <div class="row"><button id="again" class="big">PLAY AGAIN</button></div>
   </div>
 </div>
+<div class="screen hide" id="invpanel"></div>
 <div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
 <a class="back" href="../../index.html">&larr; All games</a>
 <script type="module" src="game.js"></script>
