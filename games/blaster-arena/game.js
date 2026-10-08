@@ -584,7 +584,7 @@ function updatePlayer(dt) {
   P.h = STAND_H - (STAND_H - CROUCH_H) * P.crouchK; P.eyeH = STAND_EYE - (STAND_EYE - CROUCH_EYE) * P.crouchK;
   const fwd = new V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), right = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)), wish = new V3();
   if (keys.KeyW) wish.add(fwd); if (keys.KeyS) wish.sub(fwd); if (keys.KeyD) wish.add(right); if (keys.KeyA) wish.sub(right); if (wish.lengthSq() > 0) wish.normalize();
-  const sprint = keys.ControlLeft && keys.KeyW && P.crouchK < .3 && !use;   // sprint = Left Ctrl
+  const sprint = keys.Tab && keys.KeyW && P.crouchK < .3 && !use;   // sprint = Tab (hold) + W
   const spd = (sprint ? 10.5 : 7.2) * (adsK > .5 ? .65 : 1) * (1 - .5 * P.crouchK) * (use ? .6 : 1), ctl = P.onGround ? 14 : 2.8;
   P.vel.x += (wish.x * spd - P.vel.x) * clamp(ctl * dt, 0, 1); P.vel.z += (wish.z * spd - P.vel.z) * clamp(ctl * dt, 0, 1);
   if (keys.Space && P.onGround && P.crouchK < .6) { P.vel.y = 7.6; P.onGround = false; }
@@ -701,19 +701,17 @@ addEventListener('mouseup', e => { if (e.button === 0) mouseL = false; if (e.but
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('wheel', e => { if (state !== 'play') return; selectWeapon((cur + (e.deltaY > 0 ? 1 : 4)) % 5); }, { passive: true });
 addEventListener('keydown', e => {
-  if ((state === 'play' || state === 'pause') && e.ctrlKey && e.code !== 'KeyW' && e.code !== 'KeyT' && e.code !== 'KeyN') e.preventDefault();   // keep Ctrl+<item key> from triggering browser shortcuts
+  if (e.code === 'Tab' && state === 'play') e.preventDefault();   // Tab is sprint, don't let it move browser focus
   keys[e.code] = true;
   if (state !== 'play') return;
   if (e.code === 'KeyR') startReload();
   if (e.code.startsWith('Digit')) { const n = +e.code.slice(5) - 1; if (n >= 0 && n < 5) selectWeapon(n); }
-  if (e.code === 'Tab') { e.preventDefault(); $('board2').innerHTML = boardHTML(); $('board-screen').classList.remove('hide'); }
+  if (e.code === 'KeyT') { $('board2').innerHTML = boardHTML(); $('board-screen').classList.remove('hide'); }
   if (e.code === 'Space') e.preventDefault();
   const id = BY_CODE[e.code]; if (id && !e.repeat) { if (ITEMS[id].kind === 'nade') playerThrow(id); else startUse(id); }
 });
-addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'Tab') $('board-screen').classList.add('hide'); });
+addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'KeyT') $('board-screen').classList.add('hide'); });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseL = mouseR = false; });
-// Ctrl+W (sprint forward!) closes the tab and no web page can block it, so ask first while a match is running
-addEventListener('beforeunload', e => { if (!DEBUG && started && (state === 'play' || state === 'pause')) { e.preventDefault(); e.returnValue = ''; } });
 $('play').onclick = lockPointer; $('resume').onclick = lockPointer;
 $('again').onclick = () => { $('over').classList.add('hide'); started = true; startMatch(); if (!DEBUG) lockPointer(); };
 $('restart').onclick = () => { startMatch(); lockPointer(); };
