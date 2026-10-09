@@ -10,6 +10,7 @@ const load = (k, d) => { try { const v = localStorage.getItem('ba.' + k); return
 const save = (k, v) => { try { localStorage.setItem('ba.' + k, JSON.stringify(v)); } catch (e) {} };
 const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7) };
 const CFG = { mode: load('mode', 'tdm'), map: load('map', 'plaza'), diff: load('diff', 'normal'), rarity: load('rarity', 2), fp: load('fp', 'dummy') };
+if (CFG.mode !== 'royale' && (MAPS.find(m => m.id === CFG.map) || {}).br) CFG.map = 'plaza';
 const MODES = {
   tdm:   { name: 'Team Deathmatch', blurb: 'You (and your friends) vs the bots. First team to the target wins.' },
   horde: { name: 'Horde', blurb: 'Survive waves of bots that get tougher each round. A boss shows up every 5 waves.' },
@@ -101,13 +102,13 @@ const freeAt = (x, z, rad) => !world.some(b => b.minY < 1.8 && b.maxY > .1 && x 
 let curBig = false;
 function loadMap(id, big = false) {
   const def = MAPS.find(m => m.id === id) || MAPS[0]; if (curMap === def && curBig === big) return def;
-  clearMap(); curMap = def; curBig = big; const H = def.half; HALF = big ? H * 2 : H; const t = def.theme; applyTheme(t, HALF);
+  clearMap(); curMap = def; curBig = big; const H = def.half, tile = big && !def.br; HALF = tile ? H * 2 : H; const t = def.theme; applyTheme(t, HALF);
   sun.position.set(30, 50, 20); sun.target.position.set(0, 0, 0);
   // boundary walls + glowing strips
   for (const [x, z, sx, sz] of [[0, -HALF - 1, 2 * HALF + 4, 2], [0, HALF + 1, 2 * HALF + 4, 2], [-HALF - 1, 0, 2, 2 * HALF], [HALF + 1, 0, 2, 2 * HALF]]) addBox(x, 4, z, sx, 8, sz, t.wall);
   [[0, -HALF + .08, 2 * HALF, .1, t.strips[0]], [0, HALF - .08, 2 * HALF, .1, t.strips[1]], [-HALF + .08, 0, .1, 2 * HALF, t.strips[2]], [HALF - .08, 0, .1, 2 * HALF, t.strips[3]]].forEach(([x, z, sx, sz, c]) => { addGlow(x, .6, z, sx, .35, sz, c); addGlow(x, 5.2, z, sx, .35, sz, c); });
   // battle royale builds the map four times (mirrored) side by side: twice as wide, four times the area
-  const copies = big ? [[-H, -H, 0, 0], [H, -H, 1, 0], [-H, H, 0, 1], [H, H, 1, 1]] : [[0, 0, 0, 0]];
+  const copies = tile ? [[-H, -H, 0, 0], [H, -H, 1, 0], [-H, H, 0, 1], [H, H, 1, 1]] : [[0, 0, 0, 0]];
   for (const [ox, oz, mx, mz] of copies) {
     const T = (x, z) => [ox + (mx ? -x : x), oz + (mz ? -z : z)];
     def.build({ box: (cx, cy, cz, sx, sy, sz, c, o) => { const [x, z] = T(cx, cz); return addBox(x, cy, z, sx, sy, sz, c, o); }, glow: (cx, cy, cz, sx, sy, sz, c) => { const [x, z] = T(cx, cz); return addGlow(x, cy, z, sx, sy, sz, c); } });
@@ -840,7 +841,7 @@ const okVec = a => Array.isArray(a) && a.length >= 3 && a.every(n => Number.isFi
 const myName = () => cleanName($('pname') ? $('pname').value : load('name', '')) || 'Player';
 const nameOf = pid => { const r = NET.roster.find(r => r.pid === pid); return r ? r.name : 'Player'; };
 const colorOf = pid => PLAYER_COLORS[(pid | 0) % 4];
-const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.some(m => c && m.id === c.map) ? c.map : 'plaza', diff: DIFF[c && c.diff] ? c.diff : 'normal', rarity: clamp((c && c.rarity) | 0, 0, 4), fp: c && c.fp === 'bots' ? 'bots' : 'dummy' });
+const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.some(m => c && m.id === c.map && (!m.br || c.mode === 'royale')) ? c.map : 'plaza', diff: DIFF[c && c.diff] ? c.diff : 'normal', rarity: clamp((c && c.rarity) | 0, 0, 4), fp: c && c.fp === 'bots' ? 'bots' : 'dummy' });
 const wireCfg = () => ({ mode: CFG.mode, map: CFG.map, diff: CFG.diff, rarity: CFG.rarity, fp: CFG.fp });
 const botsAlive = () => bots.filter(b => b.alive).length;
 function newMatch(cfg, np) {
@@ -1459,10 +1460,11 @@ function step(dt) {
 }
 let renderTick = 0;
 function render() { if (QL.skip) renderer.shadowMap.needsUpdate = (renderTick++ & 1) === 0; renderer.clear(); renderer.render(scene, camera); if (vmScene.visible) { renderer.clearDepth(); vmCam.fov = 58; renderer.render(vmScene, vmCam); } }
-let last = performance.now(), hudVis = null;
+let last = performance.now(), hudVis = null, fpsN = 0, fpsT = 0, fpsTxt = '';
+function fpsTick(raw) { fpsN++; fpsT += raw; if (fpsT >= .5) { const t = String(Math.round(fpsN / fpsT)); if (t !== fpsTxt) { $('fps').textContent = t + ' FPS'; fpsTxt = t; } fpsN = 0; fpsT = 0; } }
 function loop(now) {
   const raw = (now - last) / 1000, dt = Math.min(.05, raw); last = now; const hv = (state === 'menu' || state === 'lobby') ? 'hidden' : 'visible'; if (hv !== hudVis) { $('hud').style.visibility = hv; hudVis = hv; }
-  step(dt); render(); adaptRes(raw); requestAnimationFrame(loop);
+  step(dt); render(); adaptRes(raw); fpsTick(raw); requestAnimationFrame(loop);
 }
 
 
@@ -1472,6 +1474,7 @@ function setNetMsg(t) { for (const id of ['netMsg', 'lobbyMsg']) { const e = $(i
 function buildPickupsPreview() { if (!M) hostRollPickups(1); }
 function setCfg(k, v) {
   if (NET.role === 'client') return; CFG[k] = v; save(k, v);
+  if (k === 'mode' && v !== 'royale' && (MAPS.find(m => m.id === CFG.map) || {}).br) { CFG.map = 'plaza'; save('map', 'plaza'); }
   if ((k === 'map' || k === 'mode') && !M) { loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); }
   renderPickers(); if (NET.role === 'host') NET.net.hostBroadcast({ t: 'cfg', cfg: wireCfg() });
 }
@@ -1482,7 +1485,7 @@ function renderPickers() {
     for (const id of Object.keys(MODES)) { const b = mk('button', id === CFG.mode ? 'sel' : '', MODES[id].name); b.disabled = !editable; b.onclick = () => setCfg('mode', id); rm.appendChild(b); }
     gm.appendChild(rm); gm.appendChild(mk('p', 'mdesc', MODES[CFG.mode].blurb)); root.appendChild(gm);
     const gp = mk('div', 'grp'); gp.appendChild(mk('h3', '', 'MAP')); const maps = mk('div', 'maps');
-    for (const m of MAPS) { const c = mk('button', 'mapc' + (m.id === CFG.map ? ' sel' : '')); c.disabled = !editable; c.style.background = `linear-gradient(180deg, rgba(10,6,24,0) 15%, rgba(10,6,24,.62)), linear-gradient(180deg, ${m.swatch[0]}, ${m.swatch[1]} 55%, ${m.swatch[2]})`; c.appendChild(mk('b', '', m.name)); c.appendChild(mk('span', '', m.blurb)); c.onclick = () => setCfg('map', m.id); maps.appendChild(c); }
+    for (const m of MAPS.filter(m => !m.br || CFG.mode === 'royale')) { const c = mk('button', 'mapc' + (m.id === CFG.map ? ' sel' : '')); c.disabled = !editable; c.style.background = `linear-gradient(180deg, rgba(10,6,24,0) 15%, rgba(10,6,24,.62)), linear-gradient(180deg, ${m.swatch[0]}, ${m.swatch[1]} 55%, ${m.swatch[2]})`; c.appendChild(mk('b', '', m.name)); c.appendChild(mk('span', '', m.blurb)); c.onclick = () => setCfg('map', m.id); maps.appendChild(c); }
     gp.appendChild(maps); root.appendChild(gp);
     const gd = mk('div', 'grp'); gd.appendChild(mk('h3', '', 'BOTS')); const rd = mk('div', 'row');
     for (const [id, nm] of [['easy', 'Chill bots'], ['normal', 'Normal bots'], ['hard', 'Sweaty bots']]) { const b = mk('button', id === CFG.diff ? 'sel' : '', nm); b.disabled = !editable; b.onclick = () => setCfg('diff', id); rd.appendChild(b); }

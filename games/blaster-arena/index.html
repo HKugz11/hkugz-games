@@ -25,7 +25,8 @@
   #score .me { color: var(--c); } #score .bots { color: #ff6a6a; } #score small { font-size: 12px; opacity: .8; font-weight: 700; letter-spacing: .1em; display: block; text-align: center; }
   #score .pill { background: rgba(10,6,24,.55); padding: 6px 16px; border-radius: 14px; border: 2px solid rgba(255,255,255,.18); min-width: 90px; text-align: center; }
   #radar { position: absolute; top: 14px; left: 14px; width: 132px; height: 132px; border-radius: 50%; background: rgba(10,6,24,.5); border: 3px solid rgba(255,255,255,.25); }
-  #feed { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  #fps { position: absolute; top: 8px; right: 14px; font: 700 12px/1 ui-monospace, Consolas, monospace; color: #fff; opacity: .85; text-shadow: 0 1px 2px rgba(0,0,0,.8); letter-spacing: .02em; pointer-events: none; }
+  #feed { position: absolute; top: 30px; right: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
   #feed div { background: rgba(10,6,24,.6); padding: 5px 12px; border-radius: 10px; font-weight: 700; font-size: 15px; animation: slide .25s ease-out; }
   @keyframes slide { from { transform: translateX(30px); opacity: 0; } }
   /* health / ammo */
@@ -97,7 +98,8 @@
   #team { position: absolute; left: 20px; top: 190px; } .tm { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; margin-bottom: 6px; text-shadow: 0 2px 0 rgba(0,0,0,.6); } .tm i { width: 10px; height: 10px; border-radius: 50%; } .tbar { width: 76px; height: 7px; border-radius: 4px; background: rgba(10,6,24,.65); overflow: hidden; } .tbar b { display: block; height: 100%; width: 100%; background: #4aff8a; }
   #boss { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); width: 440px; text-align: center; font-weight: 900; letter-spacing: .25em; font-size: 13px; color: #ff8aa0; text-shadow: 0 2px 0 rgba(0,0,0,.7); } #boss .trk { height: 14px; margin-top: 4px; border-radius: 8px; background: rgba(10,6,24,.65); border: 3px solid rgba(255,255,255,.3); overflow: hidden; } #bossFill { height: 100%; width: 100%; background: linear-gradient(180deg, #ff8aa0, #e0204a); }
   /* small screens (Chromebooks, 1366x768): keep the action buttons pinned to the bottom, and tighten everything else */
-  .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 18px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.93) 24%); }
+  .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 22px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.97) 32%); }
+  @media (max-width: 700px) { .stick { position: static; margin: 0; padding: 0; background: none; } }
   .stick .row { margin: 6px 0; }
   @media (max-height: 900px) {
     .screen { padding: 12px 16px; }
@@ -122,6 +124,7 @@
   <canvas id="radar" width="264" height="264"></canvas>
   <div id="team"></div>
   <div id="boss" class="hide">BOSS<div class="trk"><div id="bossFill"></div></div></div>
+  <div id="fps">-- FPS</div>
   <div id="feed"></div>
   <div id="medal"></div>
   <div id="buff"></div>
@@ -197,6 +200,6 @@
 <div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
 <a class="back" href="../../index.html">&larr; All games</a>
 <script src="vendor/peerjs.min.js"></script>
-<script type="module" src="game.js?v=3.1"></script>
+<script type="module" src="game.js?v=3.2"></script>
 </body>
 </html>
