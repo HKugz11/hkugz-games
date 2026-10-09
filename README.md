@@ -7,6 +7,7 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 | **Tower of Destiny** | Unofficial fan remake (see below) |
 | **Blaster Arena** | Original 3D shooter vs bots (Three.js): 8 maps (4 classic + 4 huge Battle Royale maps: Candy Canyon, Jungle Temple, Skyline City, Moonbase Alpha), 6 modes (incl. player-vs-player Brawl, Battle Royale and a Freeplay practice range), 11 blasters with rarities and ammo, a 5-slot hotbar, chests, solo or online co-op for up to 4 players. Runs on Chromebooks (auto Low-graphics mode, trackpad-friendly aim toggle) |
 | **Fort Fight** | Original building shooter (Three.js), first person with a third-person option: walls, floors, stairs and roofs on a grid with materials and HP, editing (cut doors, windows and holes), a build range with a sky-ring ramp challenge, box fights (first to 5 rounds), a 6-player island free-for-all against bots, and online play for up to 4 players (box fights or building together, room codes through PeerJS). Auto Low-graphics mode for Chromebooks |
+| **Sky Tower** | Original 3D obby tower climber (Three.js): a generated tower of 10 themed stages (moving platforms and lifts, crumbling tiles, ice, bounce pads, conveyor belts, spinning bars, hammers, pistons, zap strips) with checkpoints, best times, a seeded Random Tower and a no-checkpoint Hardcore mode. Auto Low-graphics mode for Chromebooks |
 | **Block Stack** | Original one-button game |
 | **Cube Flap** | Original one-button game |
 | **Snake** | Classic |
@@ -29,7 +30,7 @@ It is a plain static site. Serve the folder with any static file server, for exa
 
 ## Third-party code
 
-Blaster Arena and Fort Fight bundle [Three.js](https://threejs.org/) r160 (MIT license, see `games/blaster-arena/THREE-LICENSE.txt` and `games/fort-fight/THREE-LICENSE.txt`) and [PeerJS](https://peerjs.com/) 1.5.4 (MIT license, see `games/blaster-arena/vendor/PEERJS-LICENSE.txt` and `games/fort-fight/vendor/PEERJS-LICENSE.txt`).
+Blaster Arena, Fort Fight and Sky Tower bundle [Three.js](https://threejs.org/) r160 (MIT license, see `games/blaster-arena/THREE-LICENSE.txt` and `games/fort-fight/THREE-LICENSE.txt`) and [PeerJS](https://peerjs.com/) 1.5.4 (MIT license, see `games/blaster-arena/vendor/PEERJS-LICENSE.txt` and `games/fort-fight/vendor/PEERJS-LICENSE.txt`).
 
 ### Blaster Arena online co-op
 

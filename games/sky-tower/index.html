@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Tower</title>
+<meta name="description" content="Climb a huge colorful tower of moving platforms, crumbling tiles and spinning bars. A free 3D obby that runs in your browser and on Chromebooks.">
+<style>
+  :root { --y: #ffd34e; --c: #2ee6ff; --p: #ff4fa8; }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0720; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hide { display: none !important; }
+  .hud { position: fixed; inset: 0; pointer-events: none; }
+  .hud > * { position: absolute; }
+  #fps { top: 8px; right: 14px; font: 700 12px/1 ui-monospace, Consolas, monospace; color: #fff; opacity: .85; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+  #deaths { top: 28px; right: 14px; font-weight: 800; font-size: 14px; letter-spacing: .08em; text-shadow: 0 2px 0 rgba(0,0,0,.6); background: rgba(10,6,24,.5); padding: 4px 12px; border-radius: 10px; }
+  #stage { top: 14px; left: 16px; min-width: 230px; background: rgba(10,6,24,.55); border: 2px solid rgba(255,255,255,.2); border-radius: 14px; padding: 8px 14px 10px; text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+  #stageT { font-size: 12px; letter-spacing: .2em; opacity: .75; font-weight: 800; } #stageN { font-size: 22px; font-weight: 900; color: var(--y); margin: 2px 0 6px; }
+  #prog { height: 10px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; } #progF { height: 100%; width: 0; background: linear-gradient(90deg, #6affb0, #ffd34e, #ff4fa8); }
+  #timerBox { top: 12px; left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #timer { font-size: 36px; font-weight: 900; letter-spacing: .05em; background: rgba(10,6,24,.5); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 2px 22px; display: inline-block; min-width: 150px; } #timer.prac { color: #8affc8; }
+  #bestT { font-size: 12px; font-weight: 800; letter-spacing: .12em; opacity: .85; margin-top: 3px; }
+  #toast { left: 50%; top: 24%; transform: translate(-50%, 0); text-align: center; opacity: 0; text-shadow: 0 4px 0 rgba(0,0,0,.55); } #toast.on { animation: toastA 2.2s ease-out forwards; }
+  #toastA { font-size: 46px; font-weight: 900; color: var(--y); letter-spacing: .05em; } #toastB { font-size: 22px; font-weight: 800; }
+  @keyframes toastA { 0% { opacity: 0; transform: translate(-50%, 16px) scale(.6); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -20px); } }
+  #hint { left: 50%; bottom: 26px; transform: translateX(-50%); background: rgba(10,6,24,.65); border-radius: 14px; padding: 8px 18px; font-weight: 800; font-size: 15px; text-align: center; } #hint kbd { background: #fff; color: #1a0c00; border-radius: 6px; padding: 1px 7px; font-family: inherit; box-shadow: 0 2px 0 #999; }
+  #lockhint { left: 50%; top: 42%; transform: translateX(-50%); background: rgba(10,6,24,.8); border: 2px solid var(--y); border-radius: 14px; padding: 12px 22px; font-weight: 900; font-size: 18px; text-align: center; }
+  #fade { inset: 0; background: #fff; opacity: 0; transition: opacity .5s; } #fade.on { opacity: .85; }
+  /* screens */
+  .screen { position: fixed; inset: 0; display: grid; place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.72), rgba(8,4,20,.9)); z-index: 5; text-align: center; padding: 20px; }
+  #pause, #win { background: rgba(8,4,20,.8); place-items: center; }
+  .screen .box { max-width: 900px; width: 100%; margin: auto; }
+  h1 { font-size: clamp(40px, 9vw, 92px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff6b0, #ffb02a 55%, #ff5a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(120,30,0,.7)) drop-shadow(0 0 28px rgba(255,140,40,.5)); }
+  .sub { opacity: .85; font-size: 17px; margin: 10px 0 18px; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+  button { font: inherit; font-weight: 800; font-size: 17px; color: #1a0c00; background: linear-gradient(180deg, #ffd34e, #ff9a1a); border: 0; border-radius: 14px; padding: 11px 24px; cursor: pointer; box-shadow: 0 5px 0 #a24a00; }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #a24a00; } button.alt { background: linear-gradient(180deg, #7cecff, #20b8e8); box-shadow: 0 5px 0 #0a6a88; color: #04202a; } button.small { padding: 8px 16px; font-size: 15px; min-width: 46px; }
+  button.sel { outline: 4px solid #fff; } button.big { font-size: 26px; padding: 14px 42px; }
+  .grp { margin: 14px 0; } .grp h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .22em; opacity: .65; } .mdesc { margin: 8px 0 0; font-size: 14px; opacity: .8; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  button.modec { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; font-weight: 700; font-size: 13px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.65); box-shadow: 0 4px 0 rgba(0,0,0,.45); border: 3px solid transparent; background: linear-gradient(160deg, #3a2f78, #6a3a9a); } button.modec b { font-size: 18px; } button.modec span { font-weight: 600; opacity: .92; font-size: 12.5px; line-height: 1.3; } button.modec i { font-style: normal; color: var(--y); font-weight: 800; font-size: 12px; } button.modec.sel { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.3), 0 4px 0 rgba(0,0,0,.45); }
+  .sw { gap: 10px; } button.swatch { width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); box-shadow: 0 4px 0 rgba(0,0,0,.4); } button.swatch.sel { outline: 4px solid #fff; }
+  input[type=text] { font: inherit; font-weight: 800; padding: 10px 14px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.6); color: #fff; width: 190px; text-align: center; user-select: text; -webkit-user-select: text; letter-spacing: .1em; }
+  .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 22px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.97) 32%); } .stick .row { margin: 6px 0; }
+  details { margin: 10px 0; } details summary { cursor: pointer; opacity: .75; font-weight: 700; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 14px 0; font-size: 14px; text-align: left; } .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
+  label { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 6px 0; font-weight: 700; } input[type=range] { width: 200px; }
+  .fine { font-size: 12px; opacity: .55; max-width: 620px; margin: 6px auto 12px; line-height: 1.5; }
+  a.back { position: fixed; left: 18px; top: 14px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; }
+  #winS { font-size: 20px; line-height: 1.7; } #winS b { color: var(--y); }
+  @media (max-width: 700px) { .stick { position: static; margin: 0; padding: 0; background: none; } #stage { min-width: 170px; } #stageN { font-size: 17px; } #timer { font-size: 26px; min-width: 110px; } }
+  @media (max-height: 900px) { .screen { padding: 12px 16px; } h1 { font-size: clamp(34px, 9vh, 70px); } .sub { font-size: 15px; margin: 6px 0 10px; } .grp { margin: 8px 0; } button { font-size: 15px; padding: 9px 20px; } button.big { font-size: 22px; padding: 11px 34px; } button.modec { padding: 8px 12px; } button.modec span { font-size: 11.5px; } }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div class="hud" id="hud">
+  <div id="fade"></div>
+  <div id="stage"><div id="stageT"></div><div id="stageN"></div><div id="prog"><div id="progF"></div></div></div>
+  <div id="timerBox"><div id="timer">0:00.0</div><div id="bestT"></div></div>
+  <div id="fps">-- FPS</div><div id="deaths"></div>
+  <div id="toast"><div id="toastA"></div><div id="toastB"></div></div>
+  <div id="hint"><kbd>WASD</kbd> move &nbsp; <kbd>Space</kbd> jump (hold for higher) &nbsp; <kbd>Shift</kbd> run faster &nbsp; <kbd>R</kbd> back to checkpoint</div>
+  <div id="lockhint" class="hide">Click anywhere to lock your mouse and start climbing</div>
+</div>
+
+<div class="screen" id="menu">
+  <a class="back" href="../../">&larr; All games</a>
+  <div class="box">
+    <h1>SKY<br>TOWER</h1>
+    <p class="sub">Climb the tower. Don't touch the goo. Hold on tight!</p>
+    <div id="menuPickers"></div>
+    <div class="stick"><div class="row"><button class="alt big hide" id="cont">CONTINUE</button><button class="big" id="play">CLIMB!</button></div></div>
+    <details><summary>Controls</summary>
+    <div class="keys">
+      <div><b>WASD</b> run (relative to the camera)</div><div><b>Space</b> jump (hold it for a higher jump)</div>
+      <div><b>Mouse</b> turn the camera &nbsp; <b>Wheel</b> zoom</div><div><b>Arrow keys</b> turn the camera (good on a trackpad)</div>
+      <div><b>Shift</b> run faster for longer jumps</div><div><b>R</b> go back to your checkpoint &nbsp; <b>Esc</b> pause</div>
+      <div><b>Tip:</b> the round shadow under you shows where you will land</div><div><b>Tip:</b> crumbling tiles fall soon after you step on them, so keep moving</div>
+    </div></details>
+    <details><summary>Settings</summary>
+      <label>Mouse sensitivity <input type="range" id="sens" min=".3" max="2.5" step=".05"></label>
+      <label>Field of view <input type="range" id="fov" min="60" max="110" step="1"></label>
+      <label>Volume <input type="range" id="vol" min="0" max="1" step=".05"></label>
+    </details>
+    <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
+    <p class="fine">An original 3D obby tower climber.</p>
+  </div>
+</div>
+<div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><p class="sub" id="pauseSeed"></p><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="quit">Quit to menu</button></div></div></div>
+<div class="screen hide" id="win"><div class="box" style="max-width:520px"><h1 id="winT" style="font-size:54px">YOU MADE IT!</h1><p id="winS"></p><div class="row"><button class="big" id="again">CLIMB AGAIN</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
+<script type="module" src="game.js?v=6"></script>
+</body>
+</html>
