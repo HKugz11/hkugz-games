@@ -5,7 +5,7 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 | Game | Type |
 |---|---|
 | **Tower of Destiny** | Unofficial fan remake (see below) |
-| **Blaster Arena** | Original 3D shooter vs bots (Three.js): 4 maps, 6 modes (incl. player-vs-player Brawl, Battle Royale and a Freeplay practice range), 11 blasters with rarities and ammo, chests, solo or online co-op for up to 4 players |
+| **Blaster Arena** | Original 3D shooter vs bots (Three.js): 4 maps, 6 modes (incl. player-vs-player Brawl, a big-map Battle Royale and a Freeplay practice range), 11 blasters with rarities and ammo, a 5-slot hotbar, chests, solo or online co-op for up to 4 players. Runs on Chromebooks (auto Low-graphics mode, trackpad-friendly aim toggle) |
 | **Block Stack** | Original one-button game |
 | **Cube Flap** | Original one-button game |
 | **Snake** | Classic |

@@ -36,7 +36,7 @@
   #ammo { position: absolute; right: 26px; bottom: 22px; text-align: right; text-shadow: 0 3px 0 rgba(0,0,0,.5); }
   #ammo .wrar { font-size: 12px; font-weight: 900; letter-spacing: .18em; } #ammo .wname { font-size: 20px; font-weight: 800; letter-spacing: .08em; color: var(--y); } #ammo .cnt { font-size: 60px; font-weight: 900; line-height: 1; } #ammo .cnt small { font-size: 24px; opacity: .7; } #ammo .rl { font-size: 15px; font-weight: 700; color: var(--c); height: 18px; }
   #slots { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 8px; }
-  #slots div { width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 4px 5px; text-align: center; background: rgba(10,6,24,.55); border: 3px solid var(--rc, rgba(255,255,255,.2)); border-radius: 12px; font-weight: 800; font-size: 12px; letter-spacing: .04em; opacity: .75; }
+  #slots div { width: 104px; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 4px 5px; text-align: center; background: rgba(10,6,24,.55); border: 3px solid var(--rc, rgba(255,255,255,.2)); border-radius: 12px; font-weight: 800; font-size: 12px; letter-spacing: .04em; opacity: .75; }
   #slots div b { display: block; font-size: 16px; } #slots div.on { opacity: 1; transform: translateY(-6px); background: rgba(40,30,60,.85); box-shadow: 0 0 16px var(--rc); } #slots div.off { opacity: .3; }
   #medal { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 0) scale(1); font-size: 46px; font-weight: 900; color: var(--y); text-shadow: 0 4px 0 #b3400a, 0 0 22px rgba(255,160,40,.7); opacity: 0; letter-spacing: .06em; white-space: nowrap; }
   #medal.on { animation: medal 1.4s ease-out; } @keyframes medal { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.5); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 70% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -26px) scale(1); } }
@@ -75,6 +75,7 @@
   #useBar .lbl { font-weight: 900; letter-spacing: .1em; font-size: 14px; text-shadow: 0 2px 0 rgba(0,0,0,.6); margin-bottom: 4px; } #useBar .trk { height: 14px; border-radius: 8px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.3); overflow: hidden; } #useFill { height: 100%; width: 0; background: linear-gradient(180deg, #ffe98a, #ffb02a); }
   #prompt { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); display: none; align-items: center; gap: 10px; background: rgba(10,6,24,.7); padding: 8px 16px; border-radius: 14px; font-weight: 900; letter-spacing: .05em; border: 2px solid rgba(255,255,255,.22); white-space: nowrap; } #prompt kbd { background: #fff; color: #1a0c00; border-radius: 7px; padding: 2px 10px; font-weight: 900; font-family: inherit; box-shadow: 0 3px 0 #999; }
   .ic-chug { width: 20px; height: 24px; border-radius: 6px 6px 10px 10px; } .ic-slurp { width: 16px; height: 22px; border-radius: 3px 3px 8px 8px; } .ic-soda { width: 14px; height: 22px; border-radius: 4px; }
+  #items { display: none !important; }
   #hint { position: absolute; left: 50%; bottom: 190px; transform: translateX(-50%); font-weight: 900; font-size: 18px; letter-spacing: .08em; text-shadow: 0 2px 0 rgba(0,0,0,.7); opacity: 0; white-space: nowrap; } #hint.on { animation: hintA 1.8s ease-out; } @keyframes hintA { 0% { opacity: 0; transform: translate(-50%, 8px); } 10% { opacity: 1; transform: translate(-50%, 0); } 75% { opacity: 1; } 100% { opacity: 0; } }
   #flashfx { position: absolute; inset: 0; background: #fff; opacity: 0; }
   /* inventory panel (hold I) */
@@ -95,6 +96,17 @@
   /* team panel + boss bar */
   #team { position: absolute; left: 20px; top: 190px; } .tm { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; margin-bottom: 6px; text-shadow: 0 2px 0 rgba(0,0,0,.6); } .tm i { width: 10px; height: 10px; border-radius: 50%; } .tbar { width: 76px; height: 7px; border-radius: 4px; background: rgba(10,6,24,.65); overflow: hidden; } .tbar b { display: block; height: 100%; width: 100%; background: #4aff8a; }
   #boss { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); width: 440px; text-align: center; font-weight: 900; letter-spacing: .25em; font-size: 13px; color: #ff8aa0; text-shadow: 0 2px 0 rgba(0,0,0,.7); } #boss .trk { height: 14px; margin-top: 4px; border-radius: 8px; background: rgba(10,6,24,.65); border: 3px solid rgba(255,255,255,.3); overflow: hidden; } #bossFill { height: 100%; width: 100%; background: linear-gradient(180deg, #ff8aa0, #e0204a); }
+  /* small screens (Chromebooks, 1366x768): keep the action buttons pinned to the bottom, and tighten everything else */
+  .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 18px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.93) 24%); }
+  .stick .row { margin: 6px 0; }
+  @media (max-height: 900px) {
+    .screen { padding: 12px 16px; }
+    h1 { font-size: clamp(34px, 9vh, 70px); } .sub { font-size: 15px; margin: 6px 0 10px; }
+    .grp { margin: 8px 0; } .grp h3 { margin-bottom: 5px; font-size: 12px; } .mdesc { margin-top: 5px; font-size: 13px; min-height: 0; }
+    button { font-size: 15px; padding: 9px 20px; } button.big { font-size: 22px; padding: 11px 34px; } .row input { padding: 9px 12px; }
+    button.mapc { padding: 8px 12px; } button.mapc b { font-size: 15px; } button.mapc span { font-size: 11.5px; line-height: 1.25; }
+    #lobbyCode { font-size: 48px; } .fine { margin: 4px auto 8px; }
+  }
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
 </head>
@@ -128,16 +140,18 @@
     <h1>BLASTER<br>ARENA</h1>
     <p class="sub">Bright, bouncy robot shooter. Play solo or team up online with up to 3 friends.<br>No blood, just confetti.</p>
     <div id="menuPickers"></div>
+    <div class="stick">
     <div class="row"><input id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">PLAY SOLO</button></div>
     <div class="row coop"><button id="hostBtn" class="alt">HOST CO-OP</button><span class="or">or join a friend:</span><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off"><button id="joinBtn" class="alt">JOIN</button></div>
-    <p class="sub" id="netMsg" style="min-height:22px;margin:6px 0"></p>
+    <p class="sub" id="netMsg" style="min-height:22px;margin:4px 0"></p>
+    </div>
     <p class="fine">Online co-op connects you straight to your friends through a free helper service (PeerJS). Only share your room code with people you know, because players can see each other's network address.</p>
     <details class="keys-d"><summary>Controls</summary>
     <div class="keys">
       <div><b>WASD</b> move</div><div><b>Mouse</b> aim</div><div><b>Click</b> shoot</div><div><b>Right click</b> zoom</div>
-      <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div><div><b>Tab</b> sprint (hold + W)</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> switch gun</div>
-      <div><b>G</b> frag</div><div><b>F</b> flashbang</div><div><b>Q</b> smoke</div><div><b>C</b> molotov</div>
-      <div><b>Z</b> bandage</div><div><b>X</b> medkit</div><div><b>V</b> mini shield</div><div><b>B</b> big pot</div><div><b>N</b> chug jug</div><div><b>M</b> slurp juice</div><div><b>J</b> speed soda</div><div><b>E</b> pick up / open</div>
+      <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div><div><b>Tab</b> sprint (hold + W)</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> pick a slot (guns + items)</div>
+      <div><b>F</b> drink / use / throw what is in your hand</div><div><b>Z</b> toggle aim (handy on a trackpad)</div>
+      <div><b>E</b> pick up / open chests</div>
       <div><b>T</b> scoreboard (hold)</div><div><b>I</b> inventory (hold)</div><div><b>Esc</b> pause</div><div><b>Reload</b> uses ammo boxes. Blasters come in 5 rarities!</div>
     </div></details>
     <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
@@ -153,8 +167,10 @@
     <div id="roster"></div>
     <div id="lobbyPickers"></div>
     <p class="sub" id="lobbyWait" style="display:none">Waiting for the host to start the match...</p>
+    <div class="stick">
     <p class="sub" id="lobbyMsg" style="min-height:22px;margin:4px 0"></p>
     <div class="row"><button class="big" id="startBtn">START MATCH</button><button id="leaveLobby" class="alt">Leave</button></div>
+    </div>
   </div>
 </div>
 
