@@ -9,10 +9,11 @@ const rnd = (a, b) => a + Math.random() * (b - a), rint = (a, b) => Math.floor(r
 const load = (k, d) => { try { const v = localStorage.getItem('ba.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem('ba.' + k, JSON.stringify(v)); } catch (e) {} };
 const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7) };
-const CFG = { mode: load('mode', 'tdm'), map: load('map', 'plaza'), diff: load('diff', 'normal') };
+const CFG = { mode: load('mode', 'tdm'), map: load('map', 'plaza'), diff: load('diff', 'normal'), rarity: load('rarity', 2), fp: load('fp', 'dummy') };
 const MODES = {
   tdm:   { name: 'Team Deathmatch', blurb: 'You (and your friends) vs the bots. First team to the target wins.' },
   horde: { name: 'Horde', blurb: 'Survive waves of bots that get tougher each round. A boss shows up every 5 waves.' },
+  free: { name: 'Freeplay', blurb: 'Practice range! Every blaster is free to grab at the rarity you pick, ammo is unlimited, and the targets never stop coming back.' },
   brawl: { name: 'Brawl', blurb: 'Free-for-all! Every player and bot is on their own, so friends can fight each other. First to 15 pops wins.' },
   royale: { name: 'Battle Royale', blurb: 'Loot up, then outlast the shrinking storm. One life. Last one standing wins, and players fight each other and the bots.' },
   blitz: { name: 'Blitz', blurb: 'Five minutes on the clock. Out-pop the bots before time runs out.' },
@@ -61,7 +62,7 @@ for (let i = 0; i < 16; i++) { const g = new THREE.Group(), n = rint(3, 5); for 
 // ------------------------------------------------------------------ maps (data lives in maps.js)
 const world = [];   // static AABBs used for collision + line of sight
 const mapGroup = new THREE.Group(); scene.add(mapGroup);
-const SPAWNS = [], WAYPOINTS = [], LOOT_SPOTS = [], DMG_SPOTS = [];
+const SPAWNS = [], WAYPOINTS = [], LOOT_SPOTS = [], DMG_SPOTS = [], CHEST_SPOTS = [];
 let HALF = 32, curMap = null, snowPts = null;
 function addBox(cx, cy, cz, sx, sy, sz, color, o = {}) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), toon(color)); m.position.set(cx, cy, cz); m.castShadow = true; m.receiveShadow = true; mapGroup.add(m);
@@ -102,6 +103,7 @@ function loadMap(id) {
   SPAWNS.length = 0; for (const [x, z] of def.spawns) if (freeAt(x, z, 1.2)) SPAWNS.push(new V3(x, 0, z));
   WAYPOINTS.length = 0; for (let x = -(HALF - 4); x <= HALF - 4; x += 4) for (let z = -(HALF - 4); z <= HALF - 4; z += 4) if (freeAt(x, z, .9)) WAYPOINTS.push(new V3(x, 0, z));
   LOOT_SPOTS.length = 0; for (const [x, z, y = 0] of def.loot) if (y > 0 || freeAt(x, z, .8)) LOOT_SPOTS.push([x, z, y]);
+  CHEST_SPOTS.length = 0; { const keep = []; LOOT_SPOTS.forEach((sp, i) => { if (sp[2] === 0 && i % 5 === 2) CHEST_SPOTS.push(sp); else keep.push(sp); }); LOOT_SPOTS.length = 0; keep.forEach(sp => LOOT_SPOTS.push(sp)); }   // every 5th spot becomes a chest
   DMG_SPOTS.length = 0; for (const s of def.dmg) DMG_SPOTS.push(s);
   return def;
 }
@@ -151,6 +153,11 @@ Object.assign(SFX, {
   flashbang: v => { noise(.3, .7 * v, 9000); tone(4800, 4300, 1.6, 'sine', .07 * v); }, smokePop: v => { noise(.5, .35 * v, 2200); tone(160, 80, .3, 'sine', .2 * v); }, glass: v => { noise(.2, .45 * v, 7000); tone(2600, 900, .12, 'square', .1 * v); }, sizzle: v => noise(.3, .09 * v, 1400),
 });
 SFX.ar = v => { tone(1100, 240, .08, 'square', .2 * v); tone(300, 120, .05, 'sawtooth', .12 * v); noise(.06, .3 * v, 5500); };
+SFX.rev = v => { tone(500, 90, .16, 'sawtooth', .34 * v); noise(.14, .5 * v, 3200); };
+SFX.tac = v => { tone(240, 70, .16, 'sawtooth', .3 * v); noise(.16, .5 * v, 2800); };
+SFX.burst = v => { tone(1000, 300, .06, 'square', .2 * v); noise(.05, .25 * v, 5000); };
+SFX.glau = v => { tone(200, 60, .22, 'triangle', .35 * v); noise(.16, .4 * v, 1500); tone(900, 300, .1, 'square', .1 * v, .02); };
+SFX.mini = v => { tone(700, 300, .04, 'square', .12 * v); noise(.03, .18 * v, 4500); };
 const sfx = (k, v = 1) => { if (AC && SFX[k]) SFX[k](v); };
 
 
@@ -195,14 +202,24 @@ const GUNS = {
   boom() { const g = new THREE.Group(); gcyl(g, .04, .62, 0xb06bff, -.04, .03, -.15); gcyl(g, .04, .62, 0xb06bff, .04, .03, -.15); gbox(g, .14, .09, .16, 0xffd34e, 0, -.03, -.15); gbox(g, .1, .14, .3, 0xff8a3a, 0, -.05, .22); gbox(g, .08, .15, .09, 0x4a3a2a, 0, -.14, .08, [.3, 0, 0]); gbox(g, .11, .08, .22, 0x6a3a8a, 0, -.03, -.3); return { g, muzzle: new V3(0, .04, -.48) }; },
   zap() { const g = new THREE.Group(); gbox(g, .07, .1, .55, 0x8aff3a, 0, 0, .0); gcyl(g, .018, .5, 0x333a50, 0, .02, -.5); gcyl(g, .045, .26, 0x2a2a3a, 0, .12, -.05); gcyl(g, .04, .01, 0x2ee6ff, 0, .12, -.18, true); gbox(g, .09, .13, .3, 0x4a3a6a, 0, -.02, .38); gbox(g, .06, .16, .07, 0x2a2a3a, 0, -.12, .06, [.25, 0, 0]); gbox(g, .015, .04, .015, 0xff4a4a, 0, .06, -.74); return { g, muzzle: new V3(0, .02, -.78) }; },
   kab() { const g = new THREE.Group(); gcyl(g, .09, .55, 0xff4a4a, 0, .02, -.1); gcyl(g, .125, .14, 0xffd34e, 0, .02, -.4); gcyl(g, .06, .02, 0xff4fe0, 0, .02, -.47, true); gbox(g, .08, .15, .1, 0x2a2a3a, 0, -.14, .06, [.2, 0, 0]); gbox(g, .1, .1, .22, 0x2a2a3a, 0, -.01, .26); gbox(g, .07, .11, .14, 0xffd34e, 0, .12, -.05); return { g, muzzle: new V3(0, .02, -.52) }; },
+  rev() { const g = new THREE.Group(); gbox(g, .07, .1, .26, 0xc8d0dc, 0, 0, .02); gcyl(g, .05, .1, 0x8a96aa, 0, .02, -.02); gcyl(g, .02, .3, 0x6a7488, 0, .035, -.25); gbox(g, .07, .17, .09, 0x8a5a2a, 0, -.12, .12, [.35, 0, 0]); gbox(g, .02, .035, .03, 0xff4a4a, 0, .075, -.38); return { g, muzzle: new V3(0, .035, -.4) }; },
+  tac() { const g = new THREE.Group(); gbox(g, .09, .1, .42, 0x1f9a8a, 0, 0, 0); gcyl(g, .03, .5, 0x1c2a3a, 0, .035, -.42); gcyl(g, .04, .26, 0xffc233, 0, -.045, -.3); gbox(g, .08, .15, .09, 0x1c2a3a, 0, -.12, .08, [.3, 0, 0]); gbox(g, .09, .11, .24, 0x1c2a3a, 0, -.02, .34); return { g, muzzle: new V3(0, .035, -.66) }; },
+  burst() { const g = new THREE.Group(); gbox(g, .07, .1, .5, 0xffc233, 0, 0, 0); gbox(g, .05, .035, .3, 0x23242e, 0, .075, -.04); gcyl(g, .02, .24, 0x23242e, 0, .02, -.36); gbox(g, .02, .04, .02, 0xff4a4a, 0, .115, -.22); gbox(g, .02, .04, .02, 0xff4a4a, 0, .115, .08); gbox(g, .065, .16, .08, 0x23242e, 0, -.125, 0, [.1, 0, 0]); gbox(g, .07, .15, .07, 0x23242e, 0, -.1, .14, [.3, 0, 0]); gbox(g, .075, .1, .2, 0x23242e, 0, -.01, .34); return { g, muzzle: new V3(0, .02, -.5) }; },
+  glau() { const g = new THREE.Group(); gcyl(g, .075, .5, 0x6a8a3a, 0, .03, -.1); gcyl(g, .09, .14, 0x3a4a22, 0, .03, -.38); gcyl(g, .085, .16, 0x2a2a3a, 0, .03, .05); gbox(g, .07, .15, .09, 0x2a2a3a, 0, -.12, .1, [.25, 0, 0]); gbox(g, .09, .1, .2, 0x2a2a3a, 0, -.02, .3); gbox(g, .03, .06, .05, 0xffc233, 0, .115, -.1); return { g, muzzle: new V3(0, .03, -.5) }; },
+  mini() { const g = new THREE.Group(); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; gcyl(g, .018, .5, 0x9aa3b5, Math.cos(a) * .035, .03 + Math.sin(a) * .035, -.34); } gcyl(g, .07, .12, 0x6a7488, 0, .03, -.1); gbox(g, .12, .14, .3, 0xb03a3a, 0, 0, .1); gbox(g, .1, .12, .14, 0x2a2a3a, -.11, -.04, .1); gbox(g, .06, .15, .08, 0x2a2a3a, 0, -.14, .12, [.2, 0, 0]); gbox(g, .1, .1, .16, 0x2a2a3a, 0, -.02, .32); return { g, muzzle: new V3(0, .03, -.6) }; },
 };
 const WDEF = [
-  { id: 'pop', name: 'POP-GUN', mag: 12, dmg: 24, rate: .17, auto: false, spread: .003, reload: 1.1, kick: .06, pellets: 1, hs: 1.7, shake: .004 },
-  { id: 'zip', name: 'ZIP SMG', mag: 32, dmg: 10, rate: .072, auto: true, spread: .02, reload: 1.5, kick: .02, pellets: 1, hs: 1.5, shake: .002 },
-  { id: 'ar', name: 'STORM AR', mag: 30, dmg: 17, rate: .1, auto: true, spread: .012, reload: 1.9, kick: .04, pellets: 1, hs: 1.6, shake: .003, holo: true, adsFov: 56, adsY: -.152, adsZ: -.35 },
-  { id: 'boom', name: 'BOOMER', mag: 6, dmg: 9, rate: .8, auto: false, spread: .05, reload: 2.0, kick: .15, pellets: 9, hs: 1.4, shake: .012 },
-  { id: 'zap', name: 'ZAPPER', mag: 5, dmg: 82, rate: .95, auto: false, spread: .0004, hip: .035, reload: 2.1, kick: .13, pellets: 1, hs: 1.5, zoom: 22, shake: .01 },
-  { id: 'kab', name: 'KABOOM', mag: 4, dmg: 78, rate: .85, auto: false, spread: 0, reload: 2.3, kick: .11, pellets: 1, proj: true, radius: 5.5, hs: 1, shake: .012 },
+  { id: 'pop', at: 'light', name: 'POP-GUN', mag: 12, dmg: 24, rate: .17, auto: false, spread: .003, reload: 1.1, kick: .06, pellets: 1, hs: 1.7, shake: .004 },
+  { id: 'zip', at: 'light', name: 'ZIP SMG', mag: 32, dmg: 10, rate: .072, auto: true, spread: .02, reload: 1.5, kick: .02, pellets: 1, hs: 1.5, shake: .002 },
+  { id: 'ar', at: 'medium', name: 'STORM AR', mag: 30, dmg: 17, rate: .1, auto: true, spread: .012, reload: 1.9, kick: .04, pellets: 1, hs: 1.6, shake: .003, holo: true, adsFov: 56, adsY: -.152, adsZ: -.35 },
+  { id: 'boom', at: 'shells', name: 'BOOMER', mag: 6, dmg: 9, rate: .8, auto: false, spread: .05, reload: 2.0, kick: .15, pellets: 9, hs: 1.4, shake: .012 },
+  { id: 'zap', at: 'heavy', name: 'ZAPPER', mag: 5, dmg: 82, rate: .95, auto: false, spread: .0004, hip: .035, reload: 2.1, kick: .13, pellets: 1, hs: 1.5, zoom: 22, shake: .01 },
+  { id: 'kab', at: 'rockets', name: 'KABOOM', mag: 4, dmg: 78, rate: .85, auto: false, spread: 0, reload: 2.3, kick: .11, pellets: 1, proj: true, radius: 5.5, hs: 1, shake: .012 },
+  { id: 'rev', at: 'light', name: 'HAND CANNON', mag: 6, dmg: 58, rate: .5, auto: false, spread: .002, reload: 2.1, kick: .14, pellets: 1, hs: 1.8, shake: .01 },
+  { id: 'tac', at: 'shells', name: 'TAC-12', mag: 8, dmg: 7, rate: .32, auto: false, spread: .04, reload: 2.4, kick: .1, pellets: 8, hs: 1.4, shake: .01 },
+  { id: 'burst', at: 'medium', name: 'BURST RIFLE', mag: 24, dmg: 19, rate: .5, burst: 3, burstGap: .075, auto: false, spread: .007, reload: 1.9, kick: .05, pellets: 1, hs: 1.6, shake: .004 },
+  { id: 'glau', at: 'rockets', name: 'LAUNCHER', mag: 3, dmg: 90, rate: .9, auto: false, spread: 0, reload: 2.6, kick: .12, pellets: 1, launch: true, hs: 1, shake: .012 },
+  { id: 'mini', at: 'medium', name: 'BUZZSAW', mag: 90, dmg: 7, rate: .045, auto: true, spread: .03, reload: 3.4, kick: .012, pellets: 1, hs: 1.3, heavy: true, shake: .002 },
 ];
 const VMS = .72;
 // rarity tiers: scale damage / magazine / fire rate / reload / spread
@@ -239,6 +256,13 @@ const isHost = () => NET.role !== 'client', isMP = () => NET.role !== 'solo';
 const hex = c => '#' + c.toString(16).padStart(6, '0');
 function disposeObj(o) { o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material && c.material !== INK) { if (c.material.map && c.material.map.isCanvasTexture) c.material.map.dispose(); c.material.dispose(); } }); }
 const cleanName = s => String(s || '').replace(/[^\w \-]/g, '').trim().slice(0, 12);
+const SLOTN = 5, slots = [0, -1, -1, -1, -1];   // weapon inventory: each slot holds a gun type (index into W) or -1
+const AMMO = { light: { name: 'LIGHT', col: 0xffc233, max: 150, box: [30, 60] }, medium: { name: 'MEDIUM', col: 0x4aa8ff, max: 180, box: [30, 60] }, shells: { name: 'SHELLS', col: 0xff6a4a, max: 40, box: [6, 12] }, heavy: { name: 'HEAVY', col: 0x8aff3a, max: 30, box: [5, 10] }, rockets: { name: 'ROCKETS', col: 0xff4fe0, max: 12, box: [2, 4] } };
+const reserve = { light: 0, medium: 0, shells: 0, heavy: 0, rockets: 0 };
+let burstLeft = 0, burstT = 0;
+const FREE = () => !!(M && M.free);
+const slotOf = gi => slots.indexOf(gi);
+function resetReserve() { for (const k in reserve) reserve[k] = 0; reserve.light = 60; for (const w of W) if (w.owned) reserve[w.d.at] = Math.max(reserve[w.d.at], w.s.mag * 2); }
 
 // ------------------------------------------------------------------ items: heals, shields, throwables
 const ITEMS = {
@@ -246,20 +270,30 @@ const ITEMS = {
   medkit:  { name: 'MEDKIT', desc: 'Heal to full · 3.2s',      code: 'KeyX', key: 'X', max: 2, use: 3.2, col: 0xff4a5a, kind: 'heal',   amt: 100, cap: 100, w: 8 },
   mini:    { name: 'MINI SHIELD', desc: '+25 shield (up to 50) · 1.6s', code: 'KeyV', key: 'V', max: 5, use: 1.6, col: 0x4ad0ff, kind: 'shield', amt: 25,  cap: 50,  w: 20 },
   pot:     { name: 'BIG POT', desc: '+50 shield (up to 100) · 3s',     code: 'KeyB', key: 'B', max: 2, use: 3.0, col: 0x3a62ff, kind: 'shield', amt: 50,  cap: 100, w: 8 },
+  chug:    { name: 'CHUG JUG', desc: 'Full health and shield · 5s', code: 'KeyN', key: 'N', max: 1, use: 5, col: 0x9a5aff, kind: 'chug', w: 3 },
+  slurp:   { name: 'SLURP JUICE', desc: '+35 HP and +25 shield · 2.5s', code: 'KeyM', key: 'M', max: 3, use: 2.5, col: 0x4aeaa0, kind: 'slurp', w: 7 },
+  soda:    { name: 'SPEED SODA', desc: 'Run 35% faster for 20s · 1.2s', code: 'KeyJ', key: 'J', max: 3, use: 1.2, col: 0xffa24a, kind: 'buff', w: 7 },
   frag:    { name: 'FRAG', desc: 'Big explosion, 2s fuse',        code: 'KeyG', key: 'G', max: 4, col: 0x58c24a, kind: 'nade', w: 14 },
   flash:   { name: 'FLASH', desc: 'Blinds bots (and you!)',       code: 'KeyF', key: 'F', max: 4, col: 0xfff27a, kind: 'nade', w: 10 },
   smoke:   { name: 'SMOKE', desc: 'Blocks vision for everyone',       code: 'KeyQ', key: 'Q', max: 3, col: 0xc8d0dc, kind: 'nade', w: 8 },
-  molly:   { name: 'MOLLY', desc: 'Burning fire zone',       code: 'KeyE', key: 'E', max: 3, col: 0xff8a1a, kind: 'nade', w: 10 },
+  molly:   { name: 'MOLLY', desc: 'Burning fire zone',       code: 'KeyC', key: 'C', max: 3, col: 0xff8a1a, kind: 'nade', w: 10 },
 };
 const ITEM_IDS = Object.keys(ITEMS), BY_CODE = {}; for (const id of ITEM_IDS) BY_CODE[ITEMS[id].code] = id;
 const inv = {};
 function resetInv() { for (const id of ITEM_IDS) inv[id] = 0; inv.bandage = 1; inv.frag = 1; inv.flash = 1; }
 resetInv();
 const LOOT_TOTAL = ITEM_IDS.reduce((s, id) => s + ITEMS[id].w, 0);
-const GUN_W = [10, 24, 22, 18, 16, 12], GUN_TOTAL = GUN_W.reduce((a, b) => a + b, 0), RAR_TOTAL = RARITY.reduce((a, r) => a + r.w, 0);
+const GUN_W = [8, 20, 18, 12, 12, 8, 12, 14, 14, 8, 6], GUN_TOTAL = GUN_W.reduce((a, b) => a + b, 0), RAR_TOTAL = RARITY.reduce((a, r) => a + r.w, 0);
 function rollRarity() { let r = Math.random() * RAR_TOTAL; for (let i = 0; i < RARITY.length; i++) { r -= RARITY[i].w; if (r <= 0) return i; } return 0; }
 function rollGun(gi) { if (gi === undefined) { let r = Math.random() * GUN_TOTAL; gi = 0; for (let i = 0; i < GUN_W.length; i++) { r -= GUN_W[i]; if (r <= 0) { gi = i; break; } } } return { id: 'gun', qty: 1, gi, rar: rollRarity() }; }
-function rollLoot() { if (Math.random() < (M && M.mode === 'royale' ? .34 : .22)) return rollGun(); let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return { id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }; } return { id: 'bandage', qty: 1 }; }
+function rollAmmo() {
+  const own = {}; for (const w of W) if (w.owned) own[w.d.at] = (own[w.d.at] || 0) + 3; const types = Object.keys(AMMO), ws = types.map(t => 1 + (own[t] || 0)); let r = Math.random() * ws.reduce((a, b) => a + b, 0), at = types[0];
+  for (let i = 0; i < types.length; i++) { r -= ws[i]; if (r <= 0) { at = types[i]; break; } } const b = AMMO[at].box; return { id: 'ammo', at, qty: rint(b[0], b[1]) };
+}
+function rollLoot() {
+  const p = M && M.mode === 'royale' ? .3 : .2, q = Math.random(); if (q < p) return rollGun(); if (q < p + .2) return rollAmmo();
+  let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return { id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }; } return { id: 'bandage', qty: 1 };
+}
 
 function itemModel(id) {
   const g = new THREE.Group();
@@ -274,8 +308,20 @@ function itemModel(id) {
     case 'flash': add(C(.15, .15, .42), 0xfff27a); add(C(.16, .16, .06), 0x2a2a3a, 0, .22, 0); add(C(.16, .16, .06), 0x2a2a3a, 0, -.22, 0); add(C(.155, .155, .05), 0x2a2a3a); break;
     case 'smoke': add(C(.17, .17, .5), 0xc8d0dc); add(C(.12, .17, .08), 0x2a2a3a, 0, .29, 0); add(C(.175, .175, .1), 0x7a869a, 0, -.05, 0); break;
     case 'molly': add(C(.17, .21, .34), 0xff8a1a); add(C(.06, .1, .2), 0xffb04a, 0, .26, 0); add(B(.06, .16, .02), 0xffffff, .02, .42, 0); add(Sp(.08), 0xffd34e, 0, .54, 0, true); break;
+    case 'chug': add(C(.2, .22, .46), 0x9a5aff); add(C(.1, .12, .1), 0x9a5aff, 0, .28, 0); add(C(.11, .11, .06), 0xb87a3a, 0, .36, 0); add(new THREE.TorusGeometry(.1, .025, 6, 12), 0xffd34e, .22, .05, 0, false, [0, 0, 0]); add(B(.18, .02, .02), 0xffffff, 0, .06, .22, true); break;
+    case 'slurp': add(C(.14, .1, .36), 0x4aeaa0); add(C(.15, .15, .05), 0xffffff, 0, .21, 0); add(C(.015, .015, .26), 0xff4a8a, .03, .3, 0, false, [0, 0, -.2]); add(Sp(.07), 0xffd34e, 0, .1, .12, true); break;
+    case 'soda': add(C(.11, .11, .34), 0xffa24a); add(C(.1, .11, .04), 0xdfe6ee, 0, .19, 0); add(C(.112, .112, .1), 0xffffff, 0, 0, 0); add(B(.1, .02, .02), 0xff4a4a, 0, .02, .115, true); break;
+    case 'shell': add(C(.07, .07, .22), 0xff8a3a); add(Sp(.07), 0xffd34e, 0, .11, 0); add(C(.075, .075, .05), 0x2a2a3a, 0, -.12, 0); break;
     default: { const m = new THREE.Mesh(new THREE.OctahedronGeometry(.42), toon(0xff4fe0, { emissive: 0xff4fe0, emissiveIntensity: .5 })); outline(m, 1.12); g.add(m); }
   }
+  return g;
+}
+function ammoModel(at) {
+  const g = new THREE.Group(), col = AMMO[at].col;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(.6, .34, .4), toon(0x4a4f63)); outline(box, 1.08); g.add(box);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(.62, .06, .42), toon(0x2f3345)); lid.position.y = .2; g.add(lid);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(.16, .36, .42), new THREE.MeshBasicMaterial({ color: col })); g.add(band);
+  for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .2, 8), new THREE.MeshBasicMaterial({ color: col })); b.position.set(-.18 + i * .18, .34, .0); g.add(b); }
   return g;
 }
 
@@ -288,28 +334,36 @@ function addPickup(loot, x, y, z, o = {}) {
   const ring = new THREE.Mesh(new THREE.RingGeometry(.7, .85, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .55, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = -.55; g.add(ring);
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, 6, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .25, depthWrite: false, side: THREE.DoubleSide })); beam.position.y = 1.9; beam.visible = false; g.add(beam);
   g.position.set(x, y + 1.05, z); scene.add(g);
-  const pk = { g, core, ring, beam, nid: o.nid || nextPk++, id: null, qty: 0, gi: 0, rar: 0, x, y, z, t: 0, on: true, fixed: o.fixed || null, temp: !!o.temp, ttl: o.ttl || 0, col: 0xffffff, css: '#fff', claimT: -9 };
+  const pk = { g, core, ring, beam, nid: o.nid || nextPk++, id: null, qty: 0, gi: 0, rar: 0, x, y, z, t: 0, on: true, fixed: o.fixed || null, fixedLoot: o.fixedLoot || null, rt: o.rt || 0, temp: !!o.temp, ttl: o.ttl || 0, col: 0xffffff, css: '#fff', claimT: -9 };
   setPickup(pk, loot); pickups.push(pk); pkById.set(pk.nid, pk); return pk;
 }
 function setPickup(pk, loot) {
   while (pk.core.children.length) { const c = pk.core.children[0]; pk.core.remove(c); disposeObj(c); }
-  pk.id = loot.id; pk.qty = loot.qty || 1; pk.gi = loot.gi || 0; pk.rar = loot.rar || 0;
+  pk.id = loot.id; pk.qty = loot.qty || 1; pk.gi = loot.gi || 0; pk.rar = loot.rar || 0; pk.at = loot.at || null;
   if (pk.id === 'gun') { pk.col = RARITY[pk.rar].col; const m = GUNS[WDEF[pk.gi].id]().g; m.scale.setScalar(1.7); pk.core.add(m); pk.beam.visible = true; pk.beam.material.color.setHex(pk.col); pk.beam.material.opacity = .14 + pk.rar * .06; }
+  else if (pk.id === 'ammo') { pk.col = AMMO[pk.at].col; const m = ammoModel(pk.at); m.scale.setScalar(1.5); pk.core.add(m); pk.beam.visible = false; }
   else { pk.col = pk.id === 'dmg' ? 0xff4fe0 : ITEMS[pk.id].col; const m = itemModel(pk.id); m.scale.setScalar(1.6); pk.core.add(m); pk.beam.visible = false; }
   pk.css = hex(pk.col); pk.ring.material.color.setHex(pk.col); pk.on = true; pk.g.visible = true; pk.claimT = -9;
 }
-const lootOf = pk => pk.id === 'gun' ? { id: 'gun', qty: 1, gi: pk.gi, rar: pk.rar } : { id: pk.id, qty: pk.qty };
-const wirePk = pk => ({ n: pk.nid, id: pk.id, q: pk.qty, gi: pk.gi, ra: pk.rar, x: pk.x, y: pk.y, z: pk.z, f: pk.fixed ? 1 : 0, tmp: pk.temp ? 1 : 0, on: pk.on ? 1 : 0 });
-const lootFromWire = w => ({ id: w.id, qty: w.q, gi: w.gi, rar: w.ra });
-function clearPickups() { for (const pk of pickups) { scene.remove(pk.g); disposeObj(pk.g); } pickups.length = 0; pkById.clear(); }
+const lootOf = pk => pk.id === 'gun' ? { id: 'gun', qty: 1, gi: pk.gi, rar: pk.rar } : pk.id === 'ammo' ? { id: 'ammo', at: pk.at, qty: pk.qty } : { id: pk.id, qty: pk.qty };
+const wirePk = pk => ({ n: pk.nid, id: pk.id, q: pk.qty, gi: pk.gi, ra: pk.rar, at: pk.at, x: pk.x, y: pk.y, z: pk.z, f: pk.fixed ? 1 : 0, tmp: pk.temp ? 1 : 0, on: pk.on ? 1 : 0 });
+const lootFromWire = w => ({ id: w.id, qty: w.q, gi: w.gi, rar: w.ra, at: w.at });
+function clearPickups() { for (const pk of pickups) { scene.remove(pk.g); disposeObj(pk.g); } pickups.length = 0; pkById.clear(); for (const c of chests) { scene.remove(c.g); disposeObj(c.g); } chests.length = 0; chestById.clear(); }
 function buildPickupsFromWire(list) { clearPickups(); for (const w of list) { const pk = addPickup(lootFromWire(w), w.x, w.y, w.z, { nid: w.n, fixed: w.f ? w.id : null, temp: !!w.tmp, ttl: 999 }); if (w.on === 0) { pk.on = false; pk.g.visible = false; } } }
 // host: roll a brand new set of loot for the whole map (a few guns are guaranteed so nobody is stuck with just the pistol)
+function freeplayLoot() {
+  // an armory: every gun at the chosen rarity plus ammo, restocking within seconds
+  const spots = LOOT_SPOTS.concat(CHEST_SPOTS); let k = 0;
+  for (let gi = 0; gi < WDEF.length && k < spots.length; gi++, k++) { const [x, z, y] = spots[k], l = { id: 'gun', qty: 1, gi, rar: M.rarity }; addPickup(l, x, y, z, { fixedLoot: l, rt: 2.5 }); }
+  for (const at of Object.keys(AMMO)) { if (k >= spots.length) break; const [x, z, y] = spots[k++], l = { id: 'ammo', at, qty: AMMO[at].box[1] }; addPickup(l, x, y, z, { fixedLoot: l, rt: 3 }); }
+  return pickups.map(wirePk);
+}
 function hostRollPickups(np) {
-  clearPickups(); let forced = 0; const nForce = 5 + (np - 1);
+  clearPickups(); if (M && M.free) return freeplayLoot(); let forced = 0; const nForce = 5 + (np - 1);
   for (const [x, z, y] of LOOT_SPOTS) addPickup(forced < nForce ? rollGun(1 + (forced++ % (WDEF.length - 1))) : rollLoot(), x, y, z);
   for (const [x, y, z] of DMG_SPOTS) addPickup({ id: 'dmg' }, x, y, z, { fixed: 'dmg' });
   if (M && M.mode === 'royale') for (let i = 0; i < 30 + 8 * np; i++) { const w = pick(WAYPOINTS); addPickup(rollLoot(), w.x, 0, w.z); }
-  return pickups.map(wirePk);
+  buildChests(); return pickups.map(wirePk);
 }
 function dropLoot(pos) {
   if (!isHost() || Math.random() > .6 || pickups.filter(p => p.temp).length >= 12) return;
@@ -321,19 +375,72 @@ function updatePickups(dt) {
     const pk = pickups[i]; pk.core.rotation.y += dt * 2; pk.g.position.y = pk.y + 1.05 + Math.sin(time * 3 + pk.x) * .12;
     if (!isHost()) continue;
     if (pk.temp) { pk.ttl -= dt; if (pk.ttl <= 0 || !pk.on) { if (isMP()) NET.net.hostBroadcast({ t: 'pkx', n: pk.nid }); removePickup(pk); } continue; }
-    if (!pk.on) { if (M && M.mode === 'royale') continue; pk.t -= dt; if (pk.t <= 0) { setPickup(pk, pk.fixed ? { id: pk.fixed } : rollLoot()); if (isMP()) NET.net.hostBroadcast({ t: 'pks', w: wirePk(pk) }); } }
+    if (!pk.on) { if (M && M.mode === 'royale') continue; pk.t -= dt; if (pk.t <= 0) { setPickup(pk, pk.fixedLoot ? pk.fixedLoot : pk.fixed ? { id: pk.fixed } : rollLoot()); if (isMP()) NET.net.hostBroadcast({ t: 'pks', w: wirePk(pk) }); } }
   }
 }
 // could the local player make use of this loot right now?
 function lootUseful(l) {
   if (l.id === 'gun') { const w = W[l.gi]; return !(w.owned && l.rar <= w.rar); }
   if (l.id === 'dmg') return true;
+  if (l.id === 'ammo') return !FREE() && reserve[l.at] < AMMO[l.at].max;
   return inv[l.id] < ITEMS[l.id].max;
 }
 function whyNot(l) {
   if (time - fullHintT < 1.2) return; fullHintT = time;
-  if (l.id === 'gun') hint('YOU HAVE A BETTER ' + WDEF[l.gi].name, '#ffd34e'); else hint(ITEMS[l.id].name + ' FULL', '#ffd34e');
+  if (l.id === 'gun') hint('YOU HAVE A BETTER ' + WDEF[l.gi].name, '#ffd34e'); else if (l.id === 'ammo') hint(FREE() ? 'AMMO IS UNLIMITED HERE' : AMMO[l.at].name + ' AMMO FULL', '#ffd34e'); else hint(ITEMS[l.id].name + ' FULL', '#ffd34e');
 }
+function lootLabel(l) {
+  if (l.id === 'gun') return RARITY[l.rar].name + ' ' + WDEF[l.gi].name; if (l.id === 'ammo') return '+' + l.qty + ' ' + AMMO[l.at].name + ' AMMO'; if (l.id === 'dmg') return 'DOUBLE DAMAGE';
+  return (l.qty > 1 ? '+' + l.qty + ' ' : '') + ITEMS[l.id].name;
+}
+const chests = [], chestById = new Map();
+let nextCh = 1;
+function makeChest() {
+  const g = new THREE.Group(), wood = toon(0x8a5a2a), woodL = toon(0xa06a34), gold = toon(0xffd34e);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, .62, .8), wood); body.position.y = .31; outline(body, 1.05); g.add(body);
+  for (const x of [-.42, .42]) { const b = new THREE.Mesh(new THREE.BoxGeometry(.1, .64, .82), gold); b.position.set(x, .31, 0); g.add(b); }
+  const lock = new THREE.Mesh(new THREE.BoxGeometry(.18, .2, .06), gold); lock.position.set(0, .5, .42); g.add(lock);
+  const pivot = new THREE.Group(); pivot.position.set(0, .62, -.4); g.add(pivot);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(1.3, .22, .8), woodL); lid.position.set(0, .11, .4); outline(lid, 1.05); pivot.add(lid);
+  for (const x of [-.42, .42]) { const b = new THREE.Mesh(new THREE.BoxGeometry(.1, .24, .82), gold); b.position.set(x, .11, .4); pivot.add(b); }
+  const glow = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, 5, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd34e, transparent: true, opacity: .13, depthWrite: false, side: THREE.DoubleSide })); glow.position.y = 2.6; g.add(glow);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.95, 1.15, 28), new THREE.MeshBasicMaterial({ color: 0xffd34e, transparent: true, opacity: .55, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = .03; g.add(ring);
+  return { g, pivot, glow, ring };
+}
+function addChest(x, z, nid, open) {
+  const m = makeChest(); m.g.position.set(x, 0, z); m.g.rotation.y = Math.atan2(-x, -z); scene.add(m.g);
+  const ch = Object.assign({ nid, x, z, open: !!open, respT: 0, a: open ? 1 : 0 }, m); chests.push(ch); chestById.set(nid, ch); m.pivot.rotation.x = -ch.a * 1.25; return ch;
+}
+const chestWire = () => chests.map(c => [c.nid, c.x, c.z, c.open ? 1 : 0]);
+function buildChestsFromWire(list) { for (const c of chests) { scene.remove(c.g); disposeObj(c.g); } chests.length = 0; chestById.clear(); for (const [n, x, z, o] of list || []) addChest(x, z, n, o); }
+function buildChests() { for (const [x, z] of CHEST_SPOTS) addChest(x, z, nextCh++, false); }
+function rollConsumable() { let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return { id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }; } return { id: 'bandage', qty: 1 }; }
+function chestLoot() { const gun = rollGun(); gun.rar = Math.min(4, rollRarity() + (Math.random() < .55 ? 1 : 0)); return [gun, rollAmmo(), rollConsumable(), Math.random() < .5 ? rollConsumable() : rollAmmo()]; }
+function openChestFx(ch) { ch.open = true; const c = new V3(ch.x, .8, ch.z); burst(c, 0xffd34e, 22, 6, .16, .9, 8, 4); burst(c, 0xffffff, 10, 5, .1, .6, 8, 3); sfxAt('medal', c); }
+function hostOpenChest(ch) {
+  if (ch.open) return; ch.respT = 75; openChestFx(ch); if (isMP()) NET.net.hostBroadcast({ t: 'cho', n: ch.nid });
+  const loots = chestLoot(); loots.forEach((l, i) => { const ang = i / loots.length * 6.283 + .6, px = ch.x + Math.cos(ang) * 1.8, pz = ch.z + Math.sin(ang) * 1.8, pk = addPickup(l, px, groundY(px, pz, 2), pz, { temp: true, ttl: 45 }); if (isMP()) NET.net.hostBroadcast({ t: 'pka', w: wirePk(pk) }); });
+}
+function openChest(ch) { if (ch.open) return; if (isHost()) hostOpenChest(ch); else if (time - (ch.reqT || -9) > .6) { ch.reqT = time; NET.net.clientSend({ t: 'pl', p: myStateArr() }); NET.net.clientSend({ t: 'copen', n: ch.nid }); } }
+function updateChests(dt) {
+  for (const ch of chests) {
+    ch.a += ((ch.open ? 1 : 0) - ch.a) * Math.min(1, dt * 7); ch.pivot.rotation.x = -ch.a * 1.25; const vis = !ch.open; ch.glow.visible = vis; ch.ring.visible = vis; if (vis) ch.ring.rotation.z += dt;
+    if (isHost() && M && !M.over && ch.open && M.mode !== 'royale' && !M.free) { ch.respT -= dt; if (ch.respT <= 0) { ch.open = false; if (isMP()) NET.net.hostBroadcast({ t: 'chc', n: ch.nid }); } }
+  }
+}
+// what you'd press E on right now (nearest pickup, or a chest when one is closer)
+function nearestInteract() {
+  let best = null, bd = 2.6;
+  for (const pk of pickups) { if (!pk.on) continue; const d = Math.hypot(P.pos.x - pk.x, P.pos.z - pk.z); if (d < bd && Math.abs(P.pos.y - pk.y) < 1.9) { bd = d; best = { k: 'pk', o: pk, col: hex(pk.col) }; } }
+  for (const ch of chests) { if (ch.open) continue; const d = Math.hypot(P.pos.x - ch.x, P.pos.z - ch.z) - .4; if (d < Math.min(bd, 2.6)) { bd = d; best = { k: 'ch', o: ch, col: '#ffd34e' }; } }
+  return best;
+}
+function promptText(t) {
+  if (t.k === 'ch') return 'Open chest';
+  const l = lootOf(t.o), lab = lootLabel(l); if (!lootUseful(l)) return lab + '  (cannot carry more)';
+  return (l.id === 'gun' && !W[l.gi].owned && slots.indexOf(-1) < 0 ? 'Swap for ' : l.id === 'gun' && W[l.gi].owned ? 'Upgrade to ' : 'Pick up ') + lab;
+}
+function interact() { const t = nearestInteract(); if (!t || !P.alive) return; if (t.k === 'pk') tryCollect(t.o); else openChest(t.o); }
 function tryCollect(pk) {
   const loot = lootOf(pk); if (!lootUseful(loot)) { whyNot(loot); return; }
   if (isHost()) hostGrant(pk, 0);
@@ -341,18 +448,31 @@ function tryCollect(pk) {
 }
 // host: hand a pickup to a player (pid 0 = the host itself)
 function hostGrant(pk, pid) {
-  if (!pk.on) return; const loot = lootOf(pk); takePickupFx(pk); pk.on = false; pk.t = pk.fixed ? 35 : 24;
+  if (!pk.on) return; const loot = lootOf(pk); takePickupFx(pk); pk.on = false; pk.t = pk.rt || (pk.fixed ? 35 : 24);
   if (isMP()) NET.net.hostBroadcast({ t: 'pkt', n: pk.nid });
   if (pid === 0) applyLoot(loot); else NET.net.hostSend(pid, { t: 'grant', l: loot });
 }
 function takePickupFx(pk) { pk.g.visible = false; burst(new V3(pk.x, pk.y + 1, pk.z), pk.col, 14, 5, .12, .7, 8, 2); sfxAt('pick', new V3(pk.x, pk.y, pk.z)); }
+function giveGun(gi, rar) {
+  const w = W[gi];
+  if (w.owned) { if (rar <= w.rar) return null; w.rar = rar; applyRarity(w); w.ammo = w.s.mag; return 'up'; }
+  let si = slots.indexOf(-1);
+  if (si < 0) { si = Math.max(0, slotOf(cur)); const old = W[slots[si]]; dropGunAt(slots[si], old.rar, P.pos); old.owned = false; }   // inventory full: the gun in your hand drops
+  slots[si] = gi; w.owned = true; w.rar = rar; applyRarity(w); w.ammo = w.s.mag; w.cd = 0;
+  if (!FREE()) reserve[w.d.at] = Math.min(AMMO[w.d.at].max, reserve[w.d.at] + w.s.mag);
+  return 'new';
+}
+function dropGunAt(gi, rar, pos) {
+  const loot = { id: 'gun', qty: 1, gi, rar };
+  if (isHost()) { const pk = addPickup(loot, pos.x, pos.y, pos.z, { temp: true, ttl: 40 }); if (isMP()) NET.net.hostBroadcast({ t: 'pka', w: wirePk(pk) }); } else NET.net.clientSend({ t: 'drop', gi, rar });
+}
 function applyLoot(l) {
   if (l.id === 'gun') {
-    const w = W[l.gi], R = RARITY[l.rar], nm = WDEF[l.gi].name, up = w.owned;
-    w.owned = true; w.rar = l.rar; applyRarity(w); w.ammo = w.s.mag; w.cd = 0;
-    feed(`<b style="color:${hex(R.col)}">${up ? 'UPGRADED' : '+'} ${R.name} ${nm}</b>`); if (l.rar >= 3) { showCenter(`${R.name} ${nm}!`, hex(R.col)); sfx('medal'); }
-    if (!up) selectWeapon(l.gi); refreshSlots(); refreshAmmo();
-  } else if (l.id === 'dmg') { P.buffT = 12; feed('<b style="color:#ff8aff">DOUBLE DAMAGE!</b>'); showCenter('DOUBLE DAMAGE!', '#ff8aff'); }
+    const R = RARITY[l.rar], nm = WDEF[l.gi].name, r = giveGun(l.gi, l.rar); if (!r) return;
+    feed(`<b style="color:${hex(R.col)}">${r === 'up' ? 'UPGRADED' : '+'} ${R.name} ${nm}</b>`); if (l.rar >= 3) { showCenter(`${R.name} ${nm}!`, hex(R.col)); sfx('medal'); }
+    if (r === 'new') { if (!W[cur].owned) selectWeapon(l.gi, true); else selectWeapon(l.gi); } refreshSlots(); refreshAmmo();
+  } else if (l.id === 'ammo') { const A = AMMO[l.at], n = Math.min(A.max - reserve[l.at], l.qty); reserve[l.at] += n; feed(`<b style="color:${hex(A.col)}">+${n} ${A.name} AMMO</b>`); refreshAmmo(); }
+  else if (l.id === 'dmg') { P.buffT = 12; feed('<b style="color:#ff8aff">DOUBLE DAMAGE!</b>'); showCenter('DOUBLE DAMAGE!', '#ff8aff'); }
   else { const it = ITEMS[l.id], n = Math.min(it.max - inv[l.id], l.qty); inv[l.id] += n; feed(`<b style="color:${hex(it.col)}">+${n} ${it.name}</b>`); refreshItems(); }
 }
 
@@ -432,6 +552,7 @@ function updateNades(dt) {
     if (impact > 3 && n.age > .05) sfxAt('clink', n.pos);
     let boom = n.fuse <= 0;
     if (n.id === 'molly' && impact > 2.5 && n.age > .08) boom = true;
+    if (n.id === 'shell' && impact > 1.5 && n.age > .06) boom = true;
     if (n.id === 'smoke' && n.age > .5 && rolling && Math.hypot(n.vel.x, n.vel.z) < .8) boom = true;
     if (boom) { const p = n.pos.clone(); scene.remove(n.m); disposeObj(n.m); nades.splice(i, 1); detonate(n.id, p, n.owner); }
   }
@@ -440,6 +561,7 @@ function detonate(id, p, owner) {
   if (id === 'frag') explodeAt(p, 6.5, 100, 75, owner);
   else if (id === 'flash') flashAt(p, owner);
   else if (id === 'smoke') deploySmoke(p);
+  else if (id === 'shell') explodeAt(p, 4.8, 90, 40, owner);
   else ignite(p, owner);
 }
 // tell everyone else about something I did (clients -> host -> everyone else; the host -> everyone)
@@ -563,7 +685,7 @@ function botDeathFx(b) {
 }
 class Bot {
   constructor(id, idx, o = {}) {
-    this.id = id; this.idx = idx; this.i = id; this.name = o.boss ? 'BOSS' : BOT_NAMES[idx % 6]; this.color = BOT_COLORS[idx % 6]; this.boss = !!o.boss; this.sc = this.boss ? 1.7 : 1; this.puppet = !!o.puppet;
+    this.id = id; this.idx = idx; this.i = id; this.name = o.boss ? 'BOSS' : o.dummy ? 'DUMMY' : BOT_NAMES[idx % 6]; this.dummy = !!o.dummy; this.color = BOT_COLORS[idx % 6]; this.boss = !!o.boss; this.sc = this.boss ? 1.7 : 1; this.puppet = !!o.puppet;
     this.D = o.D || DIFF[CFG.diff]; this.m = makeBotModel(this.color, { boss: this.boss, scale: this.sc }); scene.add(this.m.g);
     this.pos = new V3(); this.tpos = new V3(); this.vel = new V3(); this.r = .38 * this.sc; this.h = 1.75 * this.sc; this.headY = 1.62 * this.sc; this.onGround = true; this.kills = 0; this.deaths = 0; this.tyaw = 0;
     this.yaw = rnd(0, 6.28); this.wp = null; this.alertT = 0; this.lastSeen = new V3(); this.saw = false; this.reactT = 0; this.cd = 0; this.burst = 0; this.pause = 0; this.strafe = Math.random() < .5 ? 1 : -1; this.strafeT = 0; this.stuckT = 0; this.lastP = new V3(); this.flashT = 0; this.barT = 0; this.invT = 0; this.alive = false; this.respT = rnd(.2, 1.5); this.m.g.visible = false;
@@ -574,7 +696,7 @@ class Bot {
   remove() { scene.remove(this.m.g); disposeObj(this.m.g); botById.delete(this.id); }
   respawn() {
     const D = this.D, tg = frameTargets.length ? frameTargets : [P]; let best = null, bd = -1;
-    for (let k = 0; k < 4; k++) { const s = pick(M && M.mode === 'royale' ? WAYPOINTS : SPAWNS); let md = 1e9; for (const t of tg) md = Math.min(md, s.distanceTo(t.pos)); const d = md + rnd(0, 12); if (d > bd) { bd = d; best = s; } }
+    for (let k = 0; k < 4; k++) { const s = pick(M && (M.mode === 'royale' || (M.free && this.dummy)) ? WAYPOINTS : SPAWNS); let md = 1e9; for (const t of tg) md = Math.min(md, s.distanceTo(t.pos)); const d = md + rnd(0, 12); if (d > bd) { bd = d; best = s; } }
     this.pos.copy(best); this.vel.set(0, 0, 0); this.hp = this.maxHp = D.hp; this.alive = true; this.everAlive = true; this.m.g.visible = true; this.invT = 1.2; this.alertT = 0; this.saw = false; this.wp = null; this.blindT = 0; this.nadeT = rnd(5, D.nade); this.m.bar.visible = false;
   }
   hurt(dmg, head, byPid) {
@@ -671,10 +793,11 @@ const okVec = a => Array.isArray(a) && a.length >= 3 && a.every(n => Number.isFi
 const myName = () => cleanName($('pname') ? $('pname').value : load('name', '')) || 'Player';
 const nameOf = pid => { const r = NET.roster.find(r => r.pid === pid); return r ? r.name : 'Player'; };
 const colorOf = pid => PLAYER_COLORS[(pid | 0) % 4];
-const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.some(m => c && m.id === c.map) ? c.map : 'plaza', diff: DIFF[c && c.diff] ? c.diff : 'normal' });
+const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.some(m => c && m.id === c.map) ? c.map : 'plaza', diff: DIFF[c && c.diff] ? c.diff : 'normal', rarity: clamp((c && c.rarity) | 0, 0, 4), fp: c && c.fp === 'bots' ? 'bots' : 'dummy' });
+const wireCfg = () => ({ mode: CFG.mode, map: CFG.map, diff: CFG.diff, rarity: CFG.rarity, fp: CFG.fp });
 const botsAlive = () => bots.filter(b => b.alive).length;
 function newMatch(cfg, np) {
-  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: cfg.mode === 'brawl' || cfg.mode === 'royale', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'tdm' ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
+  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: cfg.mode === 'brawl' || cfg.mode === 'royale', free: cfg.mode === 'free', rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'tdm' ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
     wave: 0, phase: '', phaseT: 0, toSpawn: 0, spawnT: 0, maxAlive: 8, lives: 0, left: 0, nextBotId: 1 };
 }
 function feedText(text, color = '#fff') { const f = $('feed'), d = document.createElement('div'); d.textContent = text; d.style.color = color; f.appendChild(d); setTimeout(() => d.remove(), 4500); while (f.children.length > 5) f.firstChild.remove(); }
@@ -718,16 +841,18 @@ function hostOnMsg(pid, m) {
     case 'hello': {
       NET.roster = NET.roster.filter(r => r.pid !== pid); NET.roster.push({ pid, name: cleanName(m.name) || 'Player', color: colorOf(pid) }); NET.roster.sort((a, b) => a.pid - b.pid); syncRemotes();
       NET.net.hostSend(pid, { t: 'welcome', pid, cfg: CFG, roster: rosterWire() }); NET.net.hostBroadcast({ t: 'lobby', roster: rosterWire() }, pid); renderLobby();
-      if (M && !M.over) { M.np = NET.roster.length; NET.net.hostSend(pid, { t: 'start', cfg: { mode: CFG.mode, map: CFG.map, diff: CFG.diff }, pk: pickups.map(wirePk), np: M.np, tg: M.target, late: 1 }); announce(nameOf(pid) + ' joined the match', hex(colorOf(pid))); }
+      if (M && !M.over) { M.np = NET.roster.length; NET.net.hostSend(pid, { t: 'start', cfg: wireCfg(), pk: pickups.map(wirePk), ch: chestWire(), np: M.np, tg: M.target, late: 1 }); announce(nameOf(pid) + ' joined the match', hex(colorOf(pid))); }
       break;
     }
     case 'pl': if (rp && Array.isArray(m.p) && m.p.length >= 12 && m.p.every(n => Number.isFinite(n))) rp.setState(m.p); break;
     case 'hit': { const b = botById.get(m.b | 0); if (b && b.alive && rp && rp.alive && Number.isFinite(m.d)) b.hurt(clamp(m.d, 0, 200), !!m.h, pid); break; }
-    case 'th': if (rp && okVec(m.p) && okVec(m.v) && ITEMS[m.id] && ITEMS[m.id].kind === 'nade') { spawnNade(m.id, v3(m.p), v3(m.v), rp); NET.net.hostBroadcast({ t: 'th', id: m.id, p: m.p, v: m.v, o: pid }, pid); } break;
+    case 'th': if (rp && okVec(m.p) && okVec(m.v) && (m.id === 'shell' || (ITEMS[m.id] && ITEMS[m.id].kind === 'nade'))) { spawnNade(m.id, v3(m.p), v3(m.v), rp); NET.net.hostBroadcast({ t: 'th', id: m.id, p: m.p, v: m.v, o: pid }, pid); } break;
     case 'rk': if (rp && okVec(m.p) && okVec(m.v) && Number.isFinite(m.d)) { spawnRocket(v3(m.p), v3(m.v), clamp(m.d, 0, 200), rp); NET.net.hostBroadcast({ t: 'rk', p: m.p, v: m.v, d: m.d, o: pid }, pid); } break;
     case 'sh': if (rp && okVec(m.a) && okVec(m.b)) { shotFx(m, rp); NET.net.hostBroadcast({ t: 'sh', a: m.a, b: m.b, w: m.w, r: m.r, o: pid }, pid); } break;
     case 'claim': { const pk = pkById.get(m.n | 0); if (pk && pk.on && rp && Math.hypot(rp.tpos.x - pk.x, rp.tpos.z - pk.z) < 6) hostGrant(pk, pid); break; }
     case 'pd': if (M && !M.over) hostPlayerDied(pid, m.by | 0, m.tm | 0, !!m.self, !!m.env); break;
+    case 'copen': { const ch = chestById.get(m.n | 0); if (ch && !ch.open && rp && Math.hypot(rp.tpos.x - ch.x, rp.tpos.z - ch.z) < 6) hostOpenChest(ch); break; }
+    case 'drop': { const gi = m.gi | 0, rar = clamp(m.rar | 0, 0, 4); if (rp && WDEF[gi] && pickups.filter(p => p.temp).length < 30) { const pk = addPickup({ id: 'gun', qty: 1, gi, rar }, rp.tpos.x, rp.tpos.y, rp.tpos.z, { temp: true, ttl: 40 }); NET.net.hostBroadcast({ t: 'pka', w: wirePk(pk) }); } break; }
     case 'phit': if (Number.isFinite(m.d)) hostPlayerHit(pid, m.v | 0, m.d, !!m.h); break;
   }
 }
@@ -741,7 +866,7 @@ function hostPlayerDied(pid, botId, teammate, self, env) {
   else if (self) { if (!M.pvp) score.me = Math.max(0, score.me - 1); announce(nm + ' popped themselves', col); }
   else if (teammate >= 0) { if (M.pvp) creditPvpKill(teammate, pid); else announce(`${nameOf(teammate)} popped ${nm} (oops!)`, col); }
   else { score.bots++; if (b) b.kills++; announce(`${b ? b.name : 'A bot'} popped ${nm}`, col); }
-  let delay = 3; if (M.mode === 'horde') { if (M.lives > 0) { M.lives--; delay = 5; } else delay = -1; } if (M.mode === 'royale') delay = -1;
+  let delay = M.free ? 1 : 3; if (M.mode === 'horde') { if (M.lives > 0) { M.lives--; delay = 5; } else delay = -1; } if (M.mode === 'royale') delay = -1;
   if (pid === 0) setLocalRespawn(delay); else NET.net.hostSend(pid, { t: 'rs', d: delay });
   const rp = remotes.get(pid); if (rp) { rp.alive = false; playerDeathFx(rp); } if (isMP()) NET.net.hostBroadcast({ t: 'pdx', pid }, pid);
   updScore(); checkEnd();
@@ -786,14 +911,16 @@ function clientOnMsg(_, m) {
     case 'pk': onMyKill({ color: m.c | 0, name: cleanName(m.n) || 'Player' }); showHit('kill'); break;
     case 'rs': setLocalRespawn(+m.d); break;
     case 'pdx': { const rp = remotes.get(m.pid | 0); if (rp) playerDeathFx(rp); break; }
-    case 'th': if (okVec(m.p) && okVec(m.v) && ITEMS[m.id] && ITEMS[m.id].kind === 'nade') spawnNade(m.id, v3(m.p), v3(m.v), m.ob !== undefined ? (botById.get(m.ob) || remotes.get(0)) : (remotes.get(m.o | 0) || remotes.get(0))); break;
+    case 'th': if (okVec(m.p) && okVec(m.v) && (m.id === 'shell' || (ITEMS[m.id] && ITEMS[m.id].kind === 'nade'))) spawnNade(m.id, v3(m.p), v3(m.v), m.ob !== undefined ? (botById.get(m.ob) || remotes.get(0)) : (remotes.get(m.o | 0) || remotes.get(0))); break;
     case 'rk': if (okVec(m.p) && okVec(m.v)) spawnRocket(v3(m.p), v3(m.v), +m.d || 0, remotes.get(m.o | 0) || remotes.get(0)); break;
     case 'sh': if (okVec(m.a) && okVec(m.b)) shotFx(m, remotes.get(m.o | 0)); break;
     case 'pkt': { const pk = pkById.get(m.n | 0); if (pk && pk.on) { takePickupFx(pk); pk.on = false; } break; }
     case 'pks': { const w = m.w; if (w) { const pk = pkById.get(w.n); if (pk) setPickup(pk, lootFromWire(w)); else addPickup(lootFromWire(w), w.x, w.y, w.z, { nid: w.n, fixed: w.f ? w.id : null }); } break; }
     case 'pka': { const w = m.w; if (w && !pkById.has(w.n)) addPickup(lootFromWire(w), w.x, w.y, w.z, { nid: w.n, temp: true, ttl: 999 }); break; }
     case 'pkx': { const pk = pkById.get(m.n | 0); if (pk) removePickup(pk); break; }
-    case 'pkall': if (Array.isArray(m.pk)) buildPickupsFromWire(m.pk); break;
+    case 'pkall': if (Array.isArray(m.pk)) { buildPickupsFromWire(m.pk); buildChestsFromWire(m.ch); } break;
+    case 'cho': { const ch = chestById.get(m.n | 0); if (ch && !ch.open) openChestFx(ch); break; }
+    case 'chc': { const ch = chestById.get(m.n | 0); if (ch) ch.open = false; break; }
     case 'grant': if (m.l && lootUseful(m.l)) applyLoot(m.l); else if (m.l && m.l.id !== 'gun' && m.l.id !== 'dmg') { /* inventory filled up meanwhile: drop it */ } break;
     case 'ann': feedText(String(m.a).slice(0, 80), typeof m.c === 'string' && /^#[0-9a-f]{3,8}$/i.test(m.c) ? m.c : '#fff'); break;
     case 'wv': if (M) { M.wave = m.n | 0; } bannerWave(m.n | 0, !!m.boss); break;
@@ -803,7 +930,7 @@ function clientOnMsg(_, m) {
 }
 function clientStart(m) {
   if (state === 'over') $('over').classList.add('hide');
-  Object.assign(CFG, safeCfg(m.cfg)); M = newMatch(CFG, Math.max(1, m.np | 0)); M.target = m.tg | 0; loadMap(CFG.map); buildPickupsFromWire(m.pk || []); beginLocal();
+  Object.assign(CFG, safeCfg(m.cfg)); M = newMatch(CFG, Math.max(1, m.np | 0)); M.target = m.tg | 0; loadMap(CFG.map); buildPickupsFromWire(m.pk || []); buildChestsFromWire(m.ch); beginLocal();
   if (m.late && M.mode === 'royale') { P.alive = false; P.hp = 0; setLocalRespawn(-1); }
   state = 'pause'; $('lobby').classList.add('hide'); $('menu').classList.add('hide'); $('pause').classList.remove('hide'); $('pauseT').textContent = 'MATCH STARTED!'; $('resume').textContent = 'JUMP IN';
 }
@@ -845,7 +972,7 @@ function netTick(dt) {
 // ---- starting / ending matches
 function beginLocal() {
   for (const b of bots) b.remove(); bots.length = 0; botById.clear(); for (const p of projs) { scene.remove(p.m); } projs.length = 0; clearHazards();
-  for (const w of W) { w.owned = w.d.id === 'pop'; w.rar = 0; applyRarity(w); }
+  for (const w of W) { w.owned = w.d.id === 'pop'; w.rar = 0; applyRarity(w); } slots.fill(-1); slots[0] = 0;
   score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = 0; wantSwap = -1; swapT = 0; selectWeapon(0, true);
   clearStormVis(); specI = 0; $('team').style.display = M.pvp ? 'none' : ''; for (const rp of remotes.values()) rp.tag.material.depthTest = !!M.pvp;
   if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME';
@@ -853,6 +980,7 @@ function beginLocal() {
 function hostSetupMode() {
   const D = DIFF[M.diff];
   if (M.mode === 'horde') { M.phase = 'break'; M.phaseT = 6; M.wave = 0; M.lives = 4 + 2 * M.np; showCenter('GET READY!', '#7cecff'); }
+  else if (M.mode === 'free') { const bots4 = M.fp === 'bots', n = bots4 ? 4 : 6 + 2 * (M.np - 1), FD = bots4 ? D : Object.assign({}, D, { hp: 120, speed: 0, fire: 99, react: 99, nade: 99999, aim: 1 }); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D: FD, dummy: !bots4 }); b.respT = .1 + i * .15; bots.push(b); } showCenter('FREEPLAY - grab any blaster!', '#7cecff'); }
   else if (M.mode === 'royale') { stormInit(); const n = Math.min(16, 9 + 2 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .05 + i * .02; bots.push(b); } showCenter('DROP IN!  Find loot, stay out of the storm', '#c58aff'); }
   else if (M.mode === 'brawl') { const n = Math.max(2, 6 - M.np); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter('BRAWL! Everyone is an enemy', '#ff9a4a'); }
   else { const n = Math.min(10, D.bots + 2 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } }
@@ -860,7 +988,7 @@ function hostSetupMode() {
 function startSolo() { NET.role = 'solo'; NET.me = 0; NET.roster = [{ pid: 0, name: myName(), color: PLAYER_COLORS[0] }]; syncRemotes(); M = newMatch(CFG, 1); loadMap(CFG.map); hostRollPickups(1); beginLocal(); }
 function hostStart() {
   if (NET.role !== 'host') return; const np = NET.roster.length; M = newMatch(CFG, np); loadMap(CFG.map); const pk = hostRollPickups(np);
-  NET.net.hostBroadcast({ t: 'start', cfg: { mode: CFG.mode, map: CFG.map, diff: CFG.diff }, pk, np, tg: M.target }); beginLocal();
+  NET.net.hostBroadcast({ t: 'start', cfg: wireCfg(), pk, ch: chestWire(), np, tg: M.target }); beginLocal();
 }
 function hostTick(dt) {
   if (!M || M.over) return;
@@ -988,7 +1116,7 @@ function hordeClear() {
   M.phase = 'break'; M.phaseT = 9; announce(`Wave ${M.wave} cleared!`, '#7cecff'); showCenter('WAVE CLEARED!', '#7cecff'); sfx('medal');
   if (M.wave >= 15) { endHost(true, 'HORDE DEFEATED!', `You cleared all 15 waves with ${score.me} pops!`); return; }
   if (M.wave % 3 === 0) { M.lives++; announce('+1 team life', '#4aff8a'); }
-  const pk = hostRollPickups(M.np); if (isMP()) NET.net.hostBroadcast({ t: 'pkall', pk });
+  const pk = hostRollPickups(M.np); if (isMP()) NET.net.hostBroadcast({ t: 'pkall', pk, ch: chestWire() });
   if (P.alive) P.hp = Math.min(100, P.hp + 30); if (isMP()) NET.net.hostBroadcast({ t: 'heal', d: 30 });
 }
 
@@ -1022,7 +1150,7 @@ function spawnPlayer(initial) {
   if (initial && M && M.mode === 'royale') best = WAYPOINTS[(NET.me * 53 + 7) % WAYPOINTS.length]; else if (initial) best = SPAWNS[(NET.me * 3) % SPAWNS.length];
   else { let bd = -1; for (const s of SPAWNS) { let md = 1e9; for (const b of bots) if (b.alive) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
   P.pos.copy(best); P.vel.set(0, 0, 0); P.hp = 100; P.shield = 0; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
-  for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) { cur = 0; W.forEach((w, k) => w.g.visible = k === 0); } reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); resetInv(); if (M && M.mode === 'royale') for (const id of ITEM_IDS) inv[id] = 0; P.protT = 1.5; refreshItems(); refreshAmmo();
+  for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) { cur = 0; W.forEach((w, k) => w.g.visible = k === 0); } reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); resetInv(); if (M && M.mode === 'royale') for (const id of ITEM_IDS) inv[id] = 0; if (FREE()) for (const id of ITEM_IDS) inv[id] = ITEMS[id].max; resetReserve(); P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo();
 }
 function clearHazards() {
   for (const n of nades) { scene.remove(n.m); disposeObj(n.m); } nades.length = 0;
@@ -1031,26 +1159,32 @@ function clearHazards() {
 }
 
 // ---- weapons
-function selectWeapon(i, instant) { if (!W[i] || !W[i].owned) return; if (i === cur && !instant) return; endUse(); if (!instant) { wantSwap = i; swapT = .22; sfx('swap'); } else { cur = i; W.forEach((w, k) => w.g.visible = k === i); } reloadT = 0; refreshAmmo(); refreshSlots(); }
-function cycleWeapon(dir) { const n = W.length; for (let k = 1; k <= n; k++) { const i = (cur + dir * k + n * 10) % n; if (W[i].owned) { selectWeapon(i); return; } } }
+function selectWeapon(i, instant) { if (!W[i] || !W[i].owned) return; if (i === cur && !instant) return; endUse(); burstLeft = 0; if (!instant) { wantSwap = i; swapT = .22; sfx('swap'); } else { cur = i; wantSwap = -1; swapT = 0; W.forEach((w, k) => w.g.visible = k === i); } reloadT = 0; refreshAmmo(); refreshSlots(); }
+function selectSlot(n) { if (n >= 0 && n < SLOTN && slots[n] >= 0) selectWeapon(slots[n]); }
+function cycleWeapon(dir) { const have = slots.filter(g => g >= 0); if (have.length < 2) return; const i = have.indexOf(wantSwap >= 0 ? wantSwap : cur); selectWeapon(have[(i + dir + have.length * 4) % have.length]); }
 function refreshSlots() {
-  const s = $('slots'); while (s.children.length < W.length) s.appendChild(document.createElement('div')); const act = wantSwap >= 0 ? wantSwap : cur;
-  [...s.children].forEach((e, i) => { const w = W[i]; e.innerHTML = w.owned ? `<b>${i + 1}</b>${WDEF[i].name}` : `<b>${i + 1}</b>&mdash;`; e.className = (w.owned ? '' : 'off ') + (i === act ? 'on' : ''); e.style.setProperty('--rc', w.owned ? hex(RARITY[w.rar].col) : '#555'); });
+  const s = $('slots'); while (s.children.length < SLOTN) s.appendChild(document.createElement('div')); const act = wantSwap >= 0 ? wantSwap : cur;
+  [...s.children].forEach((e, i) => { const gi = slots[i], w = gi >= 0 ? W[gi] : null; e.innerHTML = w ? `<b>${i + 1}</b>${WDEF[gi].name}` : `<b>${i + 1}</b>&mdash;`; e.className = (w ? '' : 'off ') + (w && gi === act ? 'on' : ''); e.style.setProperty('--rc', w ? hex(RARITY[w.rar].col) : '#555'); });
 }
 function refreshAmmo() {
   const w = W[wantSwap >= 0 ? wantSwap : cur], R = RARITY[w.rar], c = hex(R.col);
-  $('wName').textContent = w.d.name; $('wName').style.color = c; $('wRar').textContent = R.name; $('wRar').style.color = c; $('aMag').textContent = w.ammo; $('rl').textContent = reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? 'PRESS R' : '');
+  $('wName').textContent = w.d.name; $('wName').style.color = c; $('wRar').textContent = R.name; $('wRar').style.color = c; $('aMag').textContent = w.ammo; $('aRes').textContent = FREE() ? '\u221e' : reserve[w.d.at]; $('rl').textContent = reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : '');
 }
-function startReload() { const w = W[cur]; if (use || reloadT > 0 || w.ammo >= w.s.mag || swapT > 0) return; reloadT = w.s.reload; sfx('reload'); refreshAmmo(); }
+function startReload() {
+  const w = W[cur]; if (use || reloadT > 0 || w.ammo >= w.s.mag || swapT > 0) return;
+  if (!FREE() && reserve[w.d.at] <= 0) { hint('NO ' + AMMO[w.d.at].name + ' AMMO - find an ammo box', '#ff8a8a'); sfx('empty'); return; }
+  reloadT = w.s.reload; sfx('reload'); refreshAmmo();
+}
 function aimDir(spread) { const d = new V3(0, 0, -1); const e = new THREE.Euler(P.pitch, P.yaw, 0, 'YXZ'); d.applyEuler(e); if (spread) { const r = new V3(1, 0, 0).applyEuler(e), u = new V3(0, 1, 0).applyEuler(e); const a = rnd(0, 6.283), m = Math.sqrt(Math.random()) * spread; d.addScaledVector(r, Math.cos(a) * m).addScaledVector(u, Math.sin(a) * m).normalize(); } return d; }
 function muzzleWorld() { const w = W[cur], p = new V3(w.muzzle.x, w.muzzle.y, w.muzzle.z).add(vmBase); p.applyEuler(camera.rotation); return p.add(camera.position); }
 let vmBase = new V3(.27, -.25, -.5);
-function fire() {
-  const w = W[cur], d = w.d, st = w.s; w.ammo--; w.cd = st.rate; vmKick = d.kick * 4; flash.material.opacity = 1; flashLight.intensity = 6; setTimeout(() => flashLight.intensity = 0, 50); sfx(d.id); refreshAmmo();
+function fire(follow = false) {
+  const w = W[cur], d = w.d, st = w.s; w.ammo--; if (!follow) { w.cd = st.rate; if (d.burst) { burstLeft = d.burst - 1; burstT = d.burstGap || .075; } } vmKick = d.kick * 4; flash.material.opacity = 1; flashLight.intensity = 6; setTimeout(() => flashLight.intensity = 0, 50); sfx(d.id); refreshAmmo();
   const dmgMul = P.buffT > 0 ? 2 : 1; const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
   recP += rnd(.5, 1) * d.kick * .3 * (adsK > .5 ? .6 : 1); recY += rnd(-.5, .5) * d.kick * .12; P.shakeT = Math.max(P.shakeT, .08);
   if (isHost()) for (const b of bots) if (b.alive && b.pos.distanceTo(P.pos) < 38) { b.alertT = Math.max(b.alertT, 3); b.lastSeen.copy(P.pos); }
   const mz = muzzleWorld();
+  if (d.launch) { const dir = aimDir(0), vel = dir.multiplyScalar(26); vel.y += 2.4; spawnNade('shell', mz, vel, null); netEvent({ t: 'th', id: 'shell', p: v3a(mz), v: v3a(vel) }); return; }
   if (d.proj) { const dir = aimDir(0), vel = dir.multiplyScalar(30); spawnRocket(mz, vel, st.dmg, null); netEvent({ t: 'rk', p: v3a(mz), v: v3a(vel), d: r1(st.dmg) }); return; }
   let shotEnd = null;
   for (let i = 0; i < d.pellets; i++) {
@@ -1072,17 +1206,19 @@ function showHit(kind) { const h = $('hit'); h.className = 'on ' + kind; clearTi
 // ---- inventory panel (hold I)
 const ITEM_DESC_ORDER = ITEM_IDS;
 function invHTML() {
-  let o = '<h2>BLASTERS</h2><div class="invg">';
-  W.forEach((w, i) => { if (w.owned) { const R = RARITY[w.rar]; o += `<div class="ig" style="--rc:${hex(R.col)}"><b>${i + 1}</b><span class="nm">${w.d.name}</span><span class="rr">${R.name}</span><span class="st">DMG ${Math.round(w.s.dmg)}${w.d.pellets > 1 ? '×' + w.d.pellets : ''} · MAG ${w.s.mag} · RELOAD ${w.s.reload.toFixed(1)}s</span></div>`; } else o += `<div class="ig off"><b>${i + 1}</b><span class="nm">— not found yet —</span></div>`; });
+  let o = '<h2>BLASTERS (5 slots)</h2><div class="invg">';
+  slots.forEach((gi, i) => { if (gi >= 0) { const w = W[gi], R = RARITY[w.rar]; o += `<div class="ig" style="--rc:${hex(R.col)}"><b>${i + 1}</b><span class="nm">${w.d.name}</span><span class="rr">${R.name}</span><span class="st">DMG ${Math.round(w.s.dmg)}${w.d.pellets > 1 ? '\u00d7' + w.d.pellets : ''} \u00b7 MAG ${w.s.mag} \u00b7 RELOAD ${w.s.reload.toFixed(1)}s \u00b7 ${AMMO[w.d.at].name}</span></div>`; } else o += `<div class="ig off"><b>${i + 1}</b><span class="nm">\u2014 empty slot \u2014</span></div>`; });
+  o += '</div><h2>AMMO</h2><div class="invi">';
+  for (const k in AMMO) o += `<div class="ii${reserve[k] || FREE() ? '' : ' off'}"><i class="ic" style="--c:${hex(AMMO[k].col)};width:16px;height:16px;border-radius:3px"></i><span class="nm">${AMMO[k].name}</span><span class="ct">${FREE() ? '\u221e' : reserve[k] + '/' + AMMO[k].max}</span><span class="kk"> </span><span class="ds">for ${WDEF.filter(d => d.at === k).map(d => d.name).join(', ')}</span></div>`;
   o += '</div><h2>ITEMS</h2><div class="invi">';
   for (const id of ITEM_DESC_ORDER) { const it = ITEMS[id]; o += `<div class="ii${inv[id] ? '' : ' off'}"><i class="ic ic-${id}" style="--c:${hex(it.col)}"></i><span class="nm">${it.name}</span><span class="ct">${inv[id]}/${it.max}</span><span class="kk">${it.key}</span><span class="ds">${it.desc}</span></div>`; }
-  return o + '</div><p class="hintline">Walk over loot to pick it up · blasters come in 5 rarities</p>';
+  return o + '</div><p class="hintline">Press E on loot to pick it up \u00b7 a full inventory swaps the gun in your hand</p>';
 }
 
 // ---- consumables (heals + shields)
 function buildItems() {
   const t = $('items'); t.innerHTML = '';
-  ITEM_IDS.forEach((id, i) => { const it = ITEMS[id], c = document.createElement('div'); c.className = 'it' + (i === 4 ? ' gap' : ''); c.id = 'it_' + id; c.title = it.name; c.innerHTML = `<span class="k">${it.key}</span><i class="ic ic-${id}" style="--c:${hex(it.col)}"></i><span class="n" id="n_${id}">0</span>`; t.appendChild(c); });
+  ITEM_IDS.forEach((id, i) => { const it = ITEMS[id], c = document.createElement('div'); c.className = 'it' + (it.kind === 'nade' && (i === 0 || ITEMS[ITEM_IDS[i - 1]].kind !== 'nade') ? ' gap' : ''); c.id = 'it_' + id; c.title = it.name; c.innerHTML = `<span class="k">${it.key}</span><i class="ic ic-${id}" style="--c:${hex(it.col)}"></i><span class="n" id="n_${id}">0</span>`; t.appendChild(c); });
 }
 function refreshItems() { for (const id of ITEM_IDS) { const el = $('it_' + id); if (!el) return; $('n_' + id).textContent = inv[id]; el.classList.toggle('empty', inv[id] <= 0); el.classList.toggle('using', !!use && use.id === id); } }
 function startUse(id) {
@@ -1091,6 +1227,7 @@ function startUse(id) {
   if (inv[id] <= 0) { hint('NO ' + it.name, '#ff8a8a'); sfx('empty'); return; }
   if (it.kind === 'heal' && P.hp >= it.cap) { hint(P.hp >= 100 ? 'HEALTH FULL' : 'BANDAGES STOP AT 75 - USE A MEDKIT', '#ffd34e'); return; }
   if (it.kind === 'shield' && P.shield >= it.cap) { hint(P.shield >= 100 ? 'SHIELD FULL' : 'MINIS STOP AT 50 - USE A BIG POT', '#ffd34e'); return; }
+  if ((it.kind === 'chug' || it.kind === 'slurp') && P.hp >= 100 && P.shield >= 100) { hint('HEALTH AND SHIELD ARE FULL', '#ffd34e'); return; }
   use = { id, t: 0, dur: it.use, tick: .1, pct: -1 }; reloadT = 0; refreshAmmo();
   held = itemModel(id); held.scale.setScalar(.6); vmScene.add(held);
   $('useLbl').textContent = 'USING ' + it.name; $('useFill').style.width = '0%'; $('useBar').classList.remove('hide'); refreshItems();
@@ -1099,8 +1236,11 @@ function endUse() { use = null; if (held) { vmScene.remove(held); disposeObj(hel
 function finishUse() {
   const id = use.id, it = ITEMS[id]; inv[id]--;
   if (it.kind === 'heal') { P.hp = Math.max(P.hp, Math.min(it.cap, P.hp + it.amt)); sfx('heal'); feed(`<b style="color:#4aff8a">${it.name} used</b>`); }
-  else { P.shield = Math.max(P.shield, Math.min(it.cap, P.shield + it.amt)); sfx('shieldUp'); feed(`<b style="color:#6ad0ff">${it.name} used</b>`); }
-  const v = $('vig'); v.classList.add(it.kind === 'heal' ? 'heal' : 'shup'); setTimeout(() => v.classList.remove('heal', 'shup'), 260);
+  else if (it.kind === 'shield') { P.shield = Math.max(P.shield, Math.min(it.cap, P.shield + it.amt)); sfx('shieldUp'); feed(`<b style="color:#6ad0ff">${it.name} used</b>`); }
+  else if (it.kind === 'chug') { P.hp = 100; P.shield = 100; sfx('heal'); sfx('shieldUp'); feed(`<b style="color:#c8a0ff">${it.name}: fully healed!</b>`); }
+  else if (it.kind === 'slurp') { P.hp = Math.min(100, P.hp + 35); P.shield = Math.min(100, P.shield + 25); sfx('heal'); feed(`<b style="color:#4aeaa0">${it.name} used</b>`); }
+  else if (it.kind === 'buff') { P.speedT = 20; sfx('shieldUp'); feed(`<b style="color:#ffa24a">SPEED SODA: gotta go fast!</b>`); }
+  const v = $('vig'); v.classList.add(it.kind === 'heal' || it.kind === 'slurp' || it.kind === 'chug' ? 'heal' : 'shup'); setTimeout(() => v.classList.remove('heal', 'shup'), 260);
   burst(new V3(P.pos.x, P.pos.y + 1, P.pos.z), it.col, 12, 4, .1, .6, 4, 2); endUse();
 }
 
@@ -1115,16 +1255,16 @@ function updatePlayer(dt) {
   const fwd = new V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), right = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)), wish = new V3();
   if (keys.KeyW) wish.add(fwd); if (keys.KeyS) wish.sub(fwd); if (keys.KeyD) wish.add(right); if (keys.KeyA) wish.sub(right); if (wish.lengthSq() > 0) wish.normalize();
   const sprint = keys.Tab && keys.KeyW && P.crouchK < .3 && !use;   // sprint = Tab (hold) + W
-  const spd = (sprint ? 10.5 : 7.2) * (adsK > .5 ? .65 : 1) * (1 - .5 * P.crouchK) * (use ? .6 : 1), ctl = P.onGround ? 14 : 2.8;
+  const spd = (sprint ? 10.5 : 7.2) * (adsK > .5 ? .65 : 1) * (1 - .5 * P.crouchK) * (use ? .6 : 1) * (P.speedT > 0 ? 1.35 : 1) * (W[cur].d.heavy && mouseL ? .55 : 1), ctl = P.onGround ? 14 : 2.8;
   P.vel.x += (wish.x * spd - P.vel.x) * clamp(ctl * dt, 0, 1); P.vel.z += (wish.z * spd - P.vel.z) * clamp(ctl * dt, 0, 1);
   if (keys.Space && P.onGround && P.crouchK < .6) { P.vel.y = 7.6; P.onGround = false; }
   moveEntity(P, dt);
-  P.buffT = Math.max(0, P.buffT - dt); P.protT = Math.max(0, (P.protT || 0) - dt); throwCD = Math.max(0, throwCD - dt); throwAnim = Math.max(0, throwAnim - dt);
-  for (const pk of pickups) { if (pk.on && Math.hypot(P.pos.x - pk.x, P.pos.z - pk.z) < 1.25 && Math.abs(P.pos.y - pk.y) < 1.8) tryCollect(pk); }
+  P.buffT = Math.max(0, P.buffT - dt); P.speedT = Math.max(0, (P.speedT || 0) - dt); P.protT = Math.max(0, (P.protT || 0) - dt); throwCD = Math.max(0, throwCD - dt); throwAnim = Math.max(0, throwAnim - dt);
   // weapon state
   const w = W[cur]; if (w.cd > 0) w.cd -= dt;
   if (swapT > 0) { swapT -= dt; if (swapT <= .11 && wantSwap >= 0) { cur = wantSwap; wantSwap = -1; W.forEach((x, k) => x.g.visible = k === cur); refreshAmmo(); refreshSlots(); } if (swapT <= 0) swapT = 0; }
-  if (reloadT > 0) { reloadT -= dt; if (reloadT <= 0) { w.ammo = w.s.mag; reloadT = 0; refreshAmmo(); } }
+  if (reloadT > 0) { reloadT -= dt; if (reloadT <= 0) { const need = w.s.mag - w.ammo, take = FREE() ? need : Math.min(need, reserve[w.d.at]); w.ammo += take; if (!FREE()) reserve[w.d.at] -= take; reloadT = 0; refreshAmmo(); } }
+  if (burstLeft > 0) { burstT -= dt; if (burstT <= 0) { if (w.ammo > 0 && w.d.burst && swapT <= 0 && reloadT <= 0 && !use) { fire(true); burstT = w.d.burstGap || .075; burstLeft--; } else burstLeft = 0; } }
   if (use) { use.t += dt; use.tick -= dt; if (use.tick <= 0) { use.tick = .3; sfx('tick'); } const pct = Math.min(100, Math.floor(use.t / use.dur * 100)); if (pct !== use.pct) { use.pct = pct; $('useFill').style.width = pct + '%'; } if (use.t >= use.dur) finishUse(); }
   if (mouseL && !use && swapT <= 0 && reloadT <= 0 && w.cd <= 0) { if (w.ammo > 0) { if (w.d.auto || !firedThis) { fire(); firedThis = true; } } else if (!firedThis) { sfx('empty'); startReload(); firedThis = true; } }
   if (!mouseL) firedThis = false;
@@ -1161,6 +1301,7 @@ function updateTopBar() {
   setTxt('lMe', M.mode === 'horde' ? 'POPS' : solo ? 'YOU' : 'TEAM'); setTxt('sMe', score.me);
   if (M.mode === 'tdm') { setTxt('lMid', 'FIRST TO'); setTxt('sMid', M.target); setTxt('lBots', 'BOTS'); setTxt('sBots', score.bots); }
   else if (M.mode === 'blitz') { const t = Math.max(0, Math.ceil(M.timeLeft)); setTxt('lMid', 'TIME'); setTxt('sMid', Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0')); setTxt('lBots', 'BOTS'); setTxt('sBots', score.bots); }
+  else if (M.mode === 'free') { setTxt('lMe', 'POPS'); setTxt('sMe', P.kills); setTxt('lMid', 'FREEPLAY'); setTxt('sMid', '\u221e'); setTxt('lBots', 'ARMORY'); setTxt('sBots', RARITY[M.rarity].name); }
   else if (M.mode === 'brawl') {
     let best = P.kills, bn = 'YOU'; for (const rp of remotes.values()) if (rp.kills > best) { best = rp.kills; bn = rp.name.slice(0, 8); }
     setTxt('lMe', 'YOU'); setTxt('sMe', P.kills); setTxt('lMid', 'FIRST TO'); setTxt('sMid', M.target); setTxt('lBots', 'LEADER'); setTxt('sBots', bn + ' ' + best);
@@ -1179,8 +1320,9 @@ function updateHUD(dt) {
   updateTopBar();
   setTxt('hpNum', Math.ceil(P.hp)); setSty('hpFill', 'width', P.hp + '%'); $('hpFill').classList.toggle('low', P.hp < 35); $('vig').classList.toggle('low', P.hp < 35 && P.alive);
   setTxt('shNum', P.shield > 0 ? '+' + Math.ceil(P.shield) : ''); setSty('shFill', 'width', P.shield + '%');
-  const w = W[cur]; setTxt('aMag', w.ammo); setTxt('rl', reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? 'PRESS R' : ''));
-  setTxt('buff', !P.alive ? (P.respT < 1e8 ? `RESPAWNING IN ${Math.max(0, Math.ceil(P.respT))}` : M && M.mode === 'royale' ? (specName ? 'SPECTATING ' + specName + ' (click to switch)' : 'ELIMINATED') : 'OUT OF LIVES') : P.buffT > 0 ? `DOUBLE DAMAGE ${Math.ceil(P.buffT)}s` : '');
+  const w = W[cur]; setTxt('aMag', w.ammo); setTxt('aRes', FREE() ? '\u221e' : reserve[w.d.at]);
+  { const nt = P.alive ? nearestInteract() : null, pt = nt ? promptText(nt) : ''; setTxt('promptT', pt); setSty('prompt', 'display', pt ? 'flex' : 'none'); if (nt) setSty('promptT', 'color', nt.col); } setTxt('rl', reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? 'PRESS R' : ''));
+  setTxt('buff', !P.alive ? (P.respT < 1e8 ? `RESPAWNING IN ${Math.max(0, Math.ceil(P.respT))}` : M && M.mode === 'royale' ? (specName ? 'SPECTATING ' + specName + ' (click to switch)' : 'ELIMINATED') : 'OUT OF LIVES') : P.buffT > 0 ? `DOUBLE DAMAGE ${Math.ceil(P.buffT)}s` : P.speedT > 0 ? `SPEED SODA ${Math.ceil(P.speedT)}s` : '');
   const spread = (8 + Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8) * 10 + (P.onGround ? 0 : 8) + w.s.spread * 500) * (1 - P.crouchK * .35) * (adsK > .5 ? .5 : 1), c = $('cross');
   const T = { t: [0, -spread], b: [0, spread], l: [-spread, 0], r: [spread, 0] };
   for (const key in T) setSty('cross_' + key, 'transform', `translate(${T[key][0].toFixed(1)}px,${T[key][1].toFixed(1)}px)`);
@@ -1195,6 +1337,7 @@ function updateHUD(dt) {
   const rr = 40, sc = (R - 10) / rr, cs = Math.cos(P.yaw), sn = Math.sin(P.yaw);
   const dot = (wx, wz, col, rad) => { const dx = wx - P.pos.x, dz = wz - P.pos.z, rx = dx * cs - dz * sn, rz = dx * sn + dz * cs; let px = rx * sc, py = rz * sc; const m = Math.hypot(px, py), lim = R - 10; if (m > lim) { px *= lim / m; py *= lim / m; } x.fillStyle = col; x.beginPath(); x.arc(px, py, rad, 0, 7); x.fill(); };
   if (M && M.storm) { const S = M.storm, dx = S.cx - P.pos.x, dz = S.cz - P.pos.z, rx = dx * cs - dz * sn, rz = dx * sn + dz * cs; x.save(); x.beginPath(); x.arc(0, 0, R - 4, 0, 7); x.clip(); x.strokeStyle = 'rgba(200,130,255,.95)'; x.lineWidth = 3; x.beginPath(); x.arc(rx * sc, rz * sc, S.r * sc, 0, 7); x.stroke(); x.restore(); }
+  for (const ch of chests) if (!ch.open) dot(ch.x, ch.z, '#ffc233', 6);
   for (const pk of pickups) if (pk.on) dot(pk.x, pk.z, pk.css, pk.id === 'gun' ? 5 : 4);
   for (const f of fires) dot(f.pos.x, f.pos.z, 'rgba(255,120,30,.8)', 7);
   for (const s of smokes) dot(s.c.x, s.c.z, 'rgba(230,236,246,.8)', 8);
@@ -1219,7 +1362,7 @@ const simOn = () => !!M && !M.over && (state === 'play' || (isMP() && state === 
 function step(dt) {
   time += dt; P.blindT = Math.max(0, P.blindT - dt);
   for (const c of clouds) { c.position.x += c.userData.sp * dt; if (c.position.x > 260) c.position.x = -260; } for (const [i, b] of balloons.entries()) b.position.y += Math.sin(time * 1.2 + i) * .004; updateSnow(dt);
-  updatePickups(dt);
+  updatePickups(dt); updateChests(dt);
   if (simOn()) {
     updatePlayer(dt);
     if (isHost()) hostTick(dt); else for (const b of bots) b.update(dt);
@@ -1247,7 +1390,7 @@ function buildPickupsPreview() { if (!M) hostRollPickups(1); }
 function setCfg(k, v) {
   if (NET.role === 'client') return; CFG[k] = v; save(k, v);
   if (k === 'map') { loadMap(v); if (!M) hostRollPickups(1); }
-  renderPickers(); if (NET.role === 'host') NET.net.hostBroadcast({ t: 'cfg', cfg: { mode: CFG.mode, map: CFG.map, diff: CFG.diff } });
+  renderPickers(); if (NET.role === 'host') NET.net.hostBroadcast({ t: 'cfg', cfg: wireCfg() });
 }
 function renderPickers() {
   for (const [root, editable] of [[$('menuPickers'), true], [$('lobbyPickers'), NET.role !== 'client']]) {
@@ -1261,6 +1404,12 @@ function renderPickers() {
     const gd = mk('div', 'grp'); gd.appendChild(mk('h3', '', 'BOTS')); const rd = mk('div', 'row');
     for (const [id, nm] of [['easy', 'Chill bots'], ['normal', 'Normal bots'], ['hard', 'Sweaty bots']]) { const b = mk('button', id === CFG.diff ? 'sel' : '', nm); b.disabled = !editable; b.onclick = () => setCfg('diff', id); rd.appendChild(b); }
     gd.appendChild(rd); root.appendChild(gd);
+    if (CFG.mode === 'free') {
+      const gr = mk('div', 'grp'); gr.appendChild(mk('h3', '', 'ARMORY RARITY')); const rr = mk('div', 'row');
+      RARITY.forEach((R, i) => { const b = mk('button', i === CFG.rarity ? 'sel' : '', R.name); b.disabled = !editable; b.style.background = hex(R.col); b.onclick = () => setCfg('rarity', i); rr.appendChild(b); }); gr.appendChild(rr); root.appendChild(gr);
+      const gt = mk('div', 'grp'); gt.appendChild(mk('h3', '', 'TARGETS')); const rt = mk('div', 'row');
+      for (const [id, nm] of [['dummy', 'Training dummies'], ['bots', 'Bots that fight back']]) { const b = mk('button', id === CFG.fp ? 'sel' : '', nm); b.disabled = !editable; b.onclick = () => setCfg('fp', id); rt.appendChild(b); } gt.appendChild(rt); root.appendChild(gt);
+    }
   }
 }
 function showLobby() {
@@ -1302,7 +1451,8 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (state !== 'play') return;
   if (e.code === 'KeyR') startReload();
-  if (e.code.startsWith('Digit')) { const n = +e.code.slice(5) - 1; if (n >= 0 && n < W.length) selectWeapon(n); }
+  if (e.code.startsWith('Digit')) { const n = +e.code.slice(5) - 1; selectSlot(n); }
+  if (e.code === 'KeyE' && !e.repeat) interact();
   if (e.code === 'KeyT') { $('board2').innerHTML = boardHTML(); $('board-screen').classList.remove('hide'); }
   if (e.code === 'Space') e.preventDefault();
   if (e.code === 'KeyI') { $('invpanel').innerHTML = '<div class="box">' + invHTML() + '</div>'; $('invpanel').classList.remove('hide'); }
@@ -1331,5 +1481,5 @@ for (const key of ['t', 'b', 'l', 'r']) $('cross').querySelector('.' + key).id =
 buildItems(); refreshItems(); refreshSlots(); refreshAmmo();
 loadMap(CFG.map); hostRollPickups(1); renderPickers();
 window.__ba = { P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
-  get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer };
+  get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer };
 requestAnimationFrame(loop);
