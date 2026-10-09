@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fort Fight</title>
+<meta name="description" content="Build walls, ramps and floors, edit them, and fight bots in a toon 3D building shooter. Free, runs in your browser and on Chromebooks.">
+<style>
+  :root { --y: #ffd34e; --c: #2ee6ff; --p: #ff4fa8; }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0720; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hide { display: none !important; }
+  .hud { position: fixed; inset: 0; pointer-events: none; }
+  .hud > * { position: absolute; }
+  #fps { top: 8px; right: 14px; font: 700 12px/1 ui-monospace, Consolas, monospace; color: #fff; opacity: .85; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+  #feed { top: 30px; right: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  #feed div { background: rgba(10,6,24,.6); padding: 5px 12px; border-radius: 10px; font-weight: 700; font-size: 15px; animation: slide .25s ease-out; } #feed .me { color: var(--y); } #feed .bad { color: #ff9a9a; }
+  @keyframes slide { from { transform: translateX(30px); opacity: 0; } }
+  #top { top: 12px; left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #topA { font-size: 34px; font-weight: 900; letter-spacing: .06em; background: rgba(10,6,24,.5); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 2px 22px; display: inline-block; min-width: 110px; }
+  #topB { font-size: 13px; font-weight: 700; opacity: .9; margin-top: 4px; }
+  #cross { left: 50%; top: 50%; width: 0; height: 0; } #cross i { position: absolute; background: #fff; box-shadow: 0 0 0 1.5px rgba(0,0,0,.55); } #cross .t { left: -1.5px; top: -14px; width: 3px; height: 8px; } #cross .b { left: -1.5px; top: 6px; width: 3px; height: 8px; } #cross .l { top: -1.5px; left: -14px; height: 3px; width: 8px; } #cross .r { top: -1.5px; left: 6px; height: 3px; width: 8px; } #cross.ads i { opacity: .6; transform: scale(.8); }
+  #hit { left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; opacity: 0; } #hit:before, #hit:after { content: ""; position: absolute; left: 13px; top: -2px; width: 4px; height: 34px; background: #fff; transform: rotate(45deg); } #hit:after { transform: rotate(-45deg); }
+  #hit.on { opacity: 1; } #hit.head:before, #hit.head:after, #hit.kill:before, #hit.kill:after { background: #ff4a4a; } #hit.shield:before, #hit.shield:after { background: #4aa8ff; }
+  #scope { inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 24%, #000 24.4%); } #scope:before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(0,0,0,.7); } #scope:after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(0,0,0,.7); }
+  #vig { inset: 0; box-shadow: inset 0 0 140px 30px rgba(255,40,70,0); transition: box-shadow .25s; } #vig.on { box-shadow: inset 0 0 140px 40px rgba(255,40,70,.6); transition: none; }
+  #hpbox { left: 22px; bottom: 22px; width: 280px; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  .bar { height: 16px; border-radius: 9px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.3); overflow: hidden; margin-top: 6px; position: relative; } .bar div { height: 100%; width: 100%; transition: width .12s; }
+  #shfill { background: linear-gradient(180deg, #a6ecff, #2a8cff); } #hpfill { background: linear-gradient(180deg, #8affb0, #1fc454); }
+  .nums { display: flex; gap: 14px; font-size: 22px; font-weight: 900; } .nums .s { color: #7cc8ff; } .nums .h { color: #7dff9e; }
+  #bottom { left: 50%; bottom: 18px; transform: translateX(-50%); text-align: center; }
+  #slots { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+  .slot { position: relative; width: 84px; height: 54px; border-radius: 12px; background: rgba(10,6,24,.55); border: 3px solid rgba(255,255,255,.2); padding: 4px 4px 0; font-size: 11px; font-weight: 800; opacity: .8; }
+  .slot i { position: absolute; left: 6px; top: 2px; font-style: normal; font-size: 11px; opacity: .9; } .slot b { display: block; margin-top: 12px; font-size: 11px; white-space: nowrap; overflow: hidden; } .slot span { position: absolute; right: 6px; bottom: 2px; font-size: 13px; font-weight: 900; }
+  .slot.on { opacity: 1; border-color: var(--y); transform: translateY(-6px); background: rgba(50,36,80,.85); box-shadow: 0 0 16px rgba(255,211,78,.45); }
+  #buildbar { display: flex; gap: 6px; justify-content: center; } .bp { position: relative; width: 70px; height: 34px; border-radius: 10px; background: rgba(10,6,24,.5); border: 3px solid rgba(255,255,255,.18); font-size: 12px; font-weight: 800; padding-top: 6px; opacity: .75; } .bp i { position: absolute; left: 5px; top: 1px; font-style: normal; font-size: 10px; opacity: .8; } .bp b { margin-left: 6px; } .bp.on { opacity: 1; border-color: var(--c); box-shadow: 0 0 14px rgba(46,230,255,.5); background: rgba(20,60,90,.8); }
+  #right { right: 22px; bottom: 22px; text-align: right; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  .mat { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-weight: 900; font-size: 18px; margin-top: 4px; opacity: .6; padding: 3px 10px; border-radius: 10px; border: 2px solid transparent; } .mat b { font-size: 12px; letter-spacing: .1em; opacity: .85; } .mat span { min-width: 38px; text-align: right; } .mat.on { opacity: 1; background: rgba(10,6,24,.55); border-color: rgba(255,255,255,.3); }
+  .mat i { width: 16px; height: 16px; border-radius: 4px; border: 2px solid rgba(0,0,0,.5); } #m_wood i { background: #e3a759; } #m_stone i { background: #b3a99e; } #m_metal i { background: #86c0f4; }
+  #ammo { font-size: 44px; font-weight: 900; line-height: 1; margin-bottom: 4px; } #wname { font-size: 13px; letter-spacing: .12em; opacity: .85; font-weight: 800; }
+  #toast { left: 50%; top: 22%; transform: translate(-50%, 0); text-align: center; opacity: 0; text-shadow: 0 4px 0 rgba(0,0,0,.55); } #toast.on { animation: toastA 1.9s ease-out forwards; }
+  #toastA { font-size: 44px; font-weight: 900; color: var(--y); letter-spacing: .06em; } #toastB { font-size: 17px; font-weight: 800; opacity: .95; }
+  @keyframes toastA { 0% { opacity: 0; transform: translate(-50%, 16px) scale(.6); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -20px); } }
+  #edithud { left: 50%; top: 58%; transform: translateX(-50%); background: rgba(10,6,24,.7); border: 2px solid var(--c); border-radius: 14px; padding: 8px 18px; font-weight: 800; font-size: 15px; text-align: center; }
+  #respawn { left: 50%; top: 60%; transform: translateX(-50%); font-size: 24px; font-weight: 900; text-shadow: 0 3px 0 rgba(0,0,0,.6); }
+  #board { left: 50%; top: 20%; transform: translateX(-50%); background: rgba(10,6,24,.82); border: 2px solid rgba(255,255,255,.2); border-radius: 16px; padding: 14px 22px; min-width: 300px; } #board h3 { margin: 0 0 8px; letter-spacing: .2em; font-size: 14px; opacity: .7; text-align: center; } #board div { display: flex; gap: 14px; padding: 4px 0; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,.12); } #board span { flex: 1; } #board b { color: var(--y); } #board em { font-style: normal; opacity: .6; width: 30px; text-align: right; } #board .me { color: var(--c); }
+  .dn { position: absolute; left: 0; top: 0; font-weight: 900; font-size: 22px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.7), 0 0 8px rgba(0,0,0,.5); display: none; } .dn.head { color: #ffd34e; font-size: 30px; } .dn.sh { color: #7cc8ff; }
+  /* screens */
+  .screen { position: fixed; inset: 0; display: grid; place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.82), rgba(8,4,20,.96)); z-index: 5; text-align: center; padding: 20px; }
+  #pause, #over { background: rgba(8,4,20,.82); place-items: center; }
+  .screen .box { max-width: 900px; width: 100%; margin: auto; }
+  h1 { font-size: clamp(40px, 9vw, 92px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff6b0, #ffb02a 55%, #ff5a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(120,30,0,.7)) drop-shadow(0 0 28px rgba(255,140,40,.5)); }
+  .sub { opacity: .85; font-size: 17px; margin: 10px 0 18px; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+  button { font: inherit; font-weight: 800; font-size: 17px; color: #1a0c00; background: linear-gradient(180deg, #ffd34e, #ff9a1a); border: 0; border-radius: 14px; padding: 11px 24px; cursor: pointer; box-shadow: 0 5px 0 #a24a00; }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #a24a00; } button.alt { background: linear-gradient(180deg, #7cecff, #20b8e8); box-shadow: 0 5px 0 #0a6a88; color: #04202a; } button.sel { outline: 4px solid #fff; } button.big { font-size: 26px; padding: 14px 42px; }
+  .grp { margin: 14px 0; } .grp h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .22em; opacity: .65; } .mdesc { margin: 8px 0 0; font-size: 14px; opacity: .8; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  button.modec { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; font-weight: 700; font-size: 13px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.65); box-shadow: 0 4px 0 rgba(0,0,0,.45); border: 3px solid transparent; background: linear-gradient(160deg, #3a2f78, #6a3a9a); } button.modec b { font-size: 18px; } button.modec span { font-weight: 600; opacity: .92; font-size: 12.5px; line-height: 1.3; } button.modec.sel { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.3), 0 4px 0 rgba(0,0,0,.45); }
+  input[type=text] { font: inherit; font-weight: 800; padding: 11px 14px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.6); color: #fff; width: 190px; text-align: center; user-select: text; -webkit-user-select: text; }
+  .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 22px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.97) 32%); } .stick .row { margin: 6px 0; }
+  details { margin: 10px 0; } details summary { cursor: pointer; opacity: .75; font-weight: 700; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin: 14px 0; font-size: 14px; text-align: left; } .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
+  label { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 6px 0; font-weight: 700; } input[type=range] { width: 200px; }
+  .fine { font-size: 12px; opacity: .55; max-width: 620px; margin: 6px auto 12px; line-height: 1.5; }
+  a.back { position: fixed; left: 18px; top: 150px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; } .hud a.back { display: none; }
+  @media (max-width: 700px) { .stick { position: static; margin: 0; padding: 0; background: none; } }
+  @media (max-height: 900px) { .screen { padding: 12px 16px; } h1 { font-size: clamp(34px, 9vh, 70px); } .sub { font-size: 15px; margin: 6px 0 10px; } .grp { margin: 8px 0; } button { font-size: 15px; padding: 9px 20px; } button.big { font-size: 22px; padding: 11px 34px; } button.modec { padding: 8px 12px; } button.modec span { font-size: 11.5px; } }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div class="hud" id="hud">
+  <div id="vig"></div><div id="scope" class="hide"></div>
+  <div id="cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
+  <div id="hit"></div>
+  <div id="top"><div id="topA"></div><div id="topB"></div></div>
+  <div id="fps">-- FPS</div>
+  <div id="feed"></div>
+  <div id="toast"><div id="toastA"></div><div id="toastB"></div></div>
+  <div id="edithud" class="hide">EDIT: click a tile to cut or restore it &nbsp;·&nbsp; <b>G</b> confirm &nbsp;·&nbsp; <b>R</b> reset &nbsp;·&nbsp; right click cancel</div>
+  <div id="respawn" class="hide"><span id="respT"></span></div>
+  <div id="hpbox"><div class="nums"><span class="s" id="shnum">100</span><span class="h" id="hpnum">100</span></div><div class="bar"><div id="shfill"></div></div><div class="bar"><div id="hpfill"></div></div></div>
+  <div id="bottom"><div id="buildbar"></div><div id="slots"></div></div>
+  <div id="right"><div id="ammo"></div><div id="wname"></div>
+    <div class="mat" id="m_wood"><i></i><b>WOOD</b><span>0</span></div><div class="mat" id="m_stone"><i></i><b>STONE</b><span>0</span></div><div class="mat" id="m_metal"><i></i><b>METAL</b><span>0</span></div></div>
+  <div id="board" class="hide"></div>
+</div>
+
+<div class="screen" id="menu">
+  <a class="back" href="../../">&larr; All games</a>
+  <div class="box">
+    <h1>FORT<br>FIGHT</h1>
+    <p class="sub">Build walls, ramps and floors, edit them, and out-build the bots. No blood, just confetti.</p>
+    <div id="menuPickers"></div>
+    <div class="stick">
+      <div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">PLAY</button></div>
+    </div>
+    <details><summary>Controls</summary>
+    <div class="keys">
+      <div><b>WASD</b> move &nbsp; <b>Space</b> jump &nbsp; <b>Shift</b> crouch</div><div><b>Mouse</b> aim &nbsp; <b>Click</b> shoot / place &nbsp; <b>Right click</b> zoom</div>
+      <div><b>1-5</b> pickaxe, AR, shotgun, SMG, sniper &nbsp; <b>Wheel</b> switch</div><div><b>Q</b> build mode &nbsp; <b>Z</b> wall &nbsp; <b>X</b> floor &nbsp; <b>C</b> stairs &nbsp; <b>V</b> roof</div>
+      <div><b>G</b> edit the piece you aim at (click tiles, G again to confirm)</div><div><b>B</b> wood / stone / metal &nbsp; <b>R</b> reload, or rotate stairs</div>
+      <div><b>T</b> toggle zoom (good on a trackpad) &nbsp; <b>Tab</b> scoreboard &nbsp; <b>Esc</b> pause</div><div><b>Pickaxe</b> hits trees, rocks, crates and builds to gather materials</div>
+      <div><b>Range:</b> <b>U</b> reset builds, <b>K</b> sparring bot</div><div><b>Tip:</b> jump and place a floor under you, then stairs, to ramp up</div>
+    </div></details>
+    <details><summary>Settings</summary>
+      <label>Mouse sensitivity <input type="range" id="sens" min=".3" max="2.5" step=".05"></label>
+      <label>Field of view <input type="range" id="fov" min="70" max="110" step="1"></label>
+      <label>Volume <input type="range" id="vol" min="0" max="1" step=".05"></label>
+    </details>
+    <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
+    <p class="fine">An original building shooter inspired by popular build-and-battle games. Not affiliated with any game company.</p>
+  </div>
+</div>
+<div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="quit">Quit to menu</button></div><p class="fine">Click Resume (or press Esc) to get back in.</p></div></div>
+<div class="screen hide" id="over"><div class="box" style="max-width:480px"><h1 id="overT" style="font-size:60px">GAME OVER</h1><p class="sub" id="overS"></p><div class="row"><button class="big" id="again">PLAY AGAIN</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
+<script type="module" src="game.js?v=1"></script>
+</body>
+</html>

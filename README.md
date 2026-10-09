@@ -6,6 +6,7 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 |---|---|
 | **Tower of Destiny** | Unofficial fan remake (see below) |
 | **Blaster Arena** | Original 3D shooter vs bots (Three.js): 8 maps (4 classic + 4 huge Battle Royale maps: Candy Canyon, Jungle Temple, Skyline City, Moonbase Alpha), 6 modes (incl. player-vs-player Brawl, Battle Royale and a Freeplay practice range), 11 blasters with rarities and ammo, a 5-slot hotbar, chests, solo or online co-op for up to 4 players. Runs on Chromebooks (auto Low-graphics mode, trackpad-friendly aim toggle) |
+| **Fort Fight** | Original third-person building shooter (Three.js): walls, floors, stairs and roofs on a grid with materials and HP, editing (cut doors and windows), a build range with a sky-ring ramp challenge, box fights (first to 5 rounds) and a 6-player island free-for-all against bots. Auto Low-graphics mode for Chromebooks |
 | **Block Stack** | Original one-button game |
 | **Cube Flap** | Original one-button game |
 | **Snake** | Classic |
