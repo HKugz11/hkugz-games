@@ -1,7 +1,7 @@
 // FORT FIGHT - characters (the player, bots and dummies), weapons and combat.
-import { THREE, V3, scene, toon, outline, INK, QL, GFX, burst, tracer, ring, sfx, sfxAt, rnd, clamp, pick, W, TAU, hex, disposeObj, camera } from './core.js?v=1';
-import { world, moveEntity, unstuck, rayActor, rayBoxT } from './physics.js?v=1';
-import { MATS, MAT_IDS, COST, placePiece, slotFromPose, canPlace, damagePiece, pieces, slotPose } from './pieces.js?v=1';
+import { THREE, V3, scene, toon, outline, INK, QL, GFX, burst, tracer, ring, sfx, sfxAt, rnd, clamp, pick, W, TAU, hex, disposeObj, camera, angDiff } from './core.js?v=8';
+import { world, moveEntity, unstuck, rayActor, rayBoxT } from './physics.js?v=8';
+import { MATS, MAT_IDS, COST, placePiece, slotFromPose, canPlace, damagePiece, pieces, slotPose } from './pieces.js?v=8';
 
 export const WEAPONS = [
   { id: 'pick', name: 'Pickaxe', melee: true, dmg: 22, sdmg: 55, rate: .5, reach: 3.3 },
@@ -66,6 +66,7 @@ export function makeRig(color, opts = {}) {
 const BAR_BG = new THREE.MeshBasicMaterial({ color: 0x120a24, depthTest: false, transparent: true }), BAR_HP = new THREE.MeshBasicMaterial({ color: 0x4aff8a, depthTest: false }), BAR_SH = new THREE.MeshBasicMaterial({ color: 0x4aa8ff, depthTest: false });
 const BLOB_GEO = new THREE.CircleGeometry(.5, 14), BLOB_MAT = new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .3, depthWrite: false });
 for (const m of [BAR_BG, BAR_HP, BAR_SH, BLOB_MAT]) m.userData.shared = true; BLOB_GEO.userData.shared = true;
+export function gunGeo(id) { return rigGeos().gun[id]; }
 export function setHeld(rig, id) { for (const k in rig.held) rig.held[k].visible = k === id; rig.arm.visible = true; }
 
 // ---------------------------------------------------------------- actor
@@ -78,6 +79,7 @@ export class Actor {
     this.kills = 0; this.deaths = 0; this.streak = 0; this.wi = 1; this.ammo = WEAPONS.map(w => ({ mag: w.mag || 0 })); this.cd = 0; this.reloadT = 0; this.bloom = 0; this.swapT = 0; this.pickT = 0; this.lastHurt = -99; this.lastHitBy = null;
     this.mats = { wood: 0, stone: 0, metal: 0 }; this.matSel = 'wood'; this.infinite = true; this.buildCD = 0; this.mode = 'gun'; this.buildType = 'w'; this.rot = 0; this.ads = false;
     this.rig = makeRig(this.color, { tag: this.isDummy || o.noTag ? null : this.name, eye: this.isBot ? 0xff6a8a : 0x4aff8a }); this.rig.g.visible = false; scene.add(this.rig.g);
+    this.remote = false; this.tpos = new V3(); this.tyaw = 0; this.tpitch = 0; this.tcr = 0; this.tground = true; this.hideSelf = false;
     this.rig.bar.visible = this.isBot || this.isDummy; setHeld(this.rig, 'ar'); this.walkPh = 0; this.landT = 0; this.shotT = 0; this.ai = null;
   }
   get eyeY() { return this.pos.y + this.h - .2; }
@@ -103,6 +105,14 @@ export class Actor {
     this.cd -= dt; this.bloom = Math.max(0, this.bloom - dt * .06); this.shotT = Math.max(0, this.shotT - dt);
     if (this.reloadT > 0) { this.reloadT -= dt; if (this.reloadT <= 0) { this.ammo[this.wi].mag = this.weapon.mag; this.reloadT = 0; } }
   }
+  // a remote player: ease towards the last position we were sent
+  netStep(dt) {
+    if (!this.alive) return; const k = 1 - Math.exp(-dt * 14), px = this.pos.x, pz = this.pos.z, py = this.pos.y;
+    if (this.pos.distanceTo(this.tpos) > 7) this.pos.copy(this.tpos); else this.pos.lerp(this.tpos, k);
+    this.vel.set((this.pos.x - px) / Math.max(dt, .001), (this.pos.y - py) / Math.max(dt, .001), (this.pos.z - pz) / Math.max(dt, .001));
+    this.yaw += angDiff(this.tyaw, this.yaw) * k; this.pitch += (this.tpitch - this.pitch) * k; this.crouchK += (this.tcr - this.crouchK) * k; this.h = 1.8 - .55 * this.crouchK; this.onGround = this.tground;
+    this.shotT = Math.max(0, this.shotT - dt); this.landT = Math.max(0, this.landT - dt);
+  }
   // spend materials; the player and bots in the box fight have unlimited
   canAfford() { return this.infinite || this.mats[this.matSel] >= COST; }
   build(type, rot = 0) {
@@ -113,7 +123,7 @@ export class Actor {
   }
   // draw the character (called every frame)
   animate(dt, cam) {
-    const g = this.rig.g; g.visible = this.alive; if (!this.alive) return; const rg = this.rig;
+    const g = this.rig.g; g.visible = this.alive && !this.hideSelf; if (!this.alive) return; const rg = this.rig;
     g.position.copy(this.pos); const sp = Math.hypot(this.vel.x, this.vel.z), mv = clamp(sp / 6, 0, 1); this.walkPh += dt * (6 + sp * 1.3);
     let ry = this.yaw; if (this.isBot || this.isDummy) ry = this.yaw; rg.body.rotation.y = ry; rg.body.scale.y = 1 - .26 * this.crouchK;
     // move the legs against the facing direction
@@ -129,6 +139,10 @@ export class Actor {
 // ---------------------------------------------------------------- combat
 const tmpO = new V3(), tmpD = new V3();
 export function damageActor(v, dmg, attacker, head, via) {
+  if (v.remote) {   // online: the player being hit is the one who applies the damage, we just show our hit
+    if (!v.alive || dmg <= 0) return 0; const sh = Math.min(v.shield, dmg); v.shield -= sh; v.hp = Math.max(1, v.hp - (dmg - sh));
+    if (hooks.dmgNumber) hooks.dmgNumber(new V3(v.pos.x, v.pos.y + v.h + .3, v.pos.z), Math.round(dmg), head, sh > 0 && dmg - sh <= 0, attacker); if (hooks.sendHit) hooks.sendHit(v, dmg, head, via); return dmg;
+  }
   if (!v.alive || v.spawnProt > 0 || dmg <= 0) return 0;
   let rem = dmg, sh = 0; if (v.shield > 0) { sh = Math.min(v.shield, rem); v.shield -= sh; rem -= sh; } v.hp -= rem; v.lastHurt = W.time; v.lastHitBy = attacker || null;
   if (hooks.dmgNumber) hooks.dmgNumber(new V3(v.pos.x, v.pos.y + v.h + .3, v.pos.z), Math.round(dmg), head, sh > 0 && rem <= 0, attacker);
@@ -154,11 +168,11 @@ export function fireGun(a, origin, dir, muzzle) {
   const w = a.weapon; if (w.melee || a.cd > 0 || a.reloadT > 0 || !a.alive || a.mode !== 'gun' || a.swapT > 0) return false;
   const am = a.ammo[a.wi]; if (am.mag <= 0) { a.startReload(); if (a === W.me) sfx('empty'); return false; }
   am.mag--; a.cd = w.rate; a.shotT = .12; const spreadK = (a.ads ? (w.scope ? 0 : .5) : 1) * (a.crouchK > .5 ? .75 : 1) * (a.onGround ? 1 : 1.5), sp = (w.spread + a.bloom) * spreadK; a.bloom = Math.min(w.maxBloom, a.bloom + w.bloom);
-  const mz = muzzle || origin; const n = w.pellets || 1, hits = [];
+  const mz = muzzle || origin; const n = w.pellets || 1, hits = [], ends = [];
   for (let i = 0; i < n; i++) {
     tmpD.copy(dir); if (sp > 0) { tmpD.x += rnd(-sp, sp); tmpD.y += rnd(-sp, sp); tmpD.z += rnd(-sp, sp); tmpD.normalize(); }
     const hit = nearestHit(origin, tmpD, a, 300, v => v.team === a.team); const hp = new V3().copy(origin).addScaledVector(tmpD, hit.t);
-    if (i < (n > 3 ? 4 : n)) tracer(mz, hp, w.tracer, .08);
+    if (i < (n > 3 ? 4 : n)) { tracer(mz, hp, w.tracer, .08); ends.push(hp); }
     if (hit.kind === 'actor') { let dm = w.dmg * (hit.head ? w.head : 1); if (w.falloff) { const t = clamp((hit.t - w.falloff[0]) / (w.falloff[1] - w.falloff[0]), 0, 1); dm *= 1 - .7 * t; } hits.push([hit.who, dm * (a.dmgMul || 1), hit.head]); }
     else if (hit.kind === 'box') { const b = hit.box; if (b.kind === 'piece') { damagePiece(b.piece, w.sdmg * (a.isBot ? .8 : 1), a); burst(hp, MATS[b.piece.mat].color, 3, 3, .1, .35, 14, 1); } else if (b.prop && b.prop.onHit) { b.prop.onHit(w.sdmg * .4, a, hp); } else burst(hp, 0xffffff, 3, 3, .08, .3, 14, 1); }
     else if (hit.kind === 'ground') burst(hp, 0xd8e8c8, 3, 3, .08, .3, 14, 1);
@@ -167,12 +181,12 @@ export function fireGun(a, origin, dir, muzzle) {
   const by = new Map(); for (const [v, dm, hd] of hits) { const e = by.get(v) || { dm: 0, head: false }; e.dm += dm; e.head = e.head || hd; by.set(v, e); }
   for (const [v, e] of by) damageActor(v, e.dm, a, e.head, w.id);
   if (a === W.me) sfx(w.sfx); else sfxAt(w.sfx, a.pos);
-  if (hooks.onFire) hooks.onFire(a, w, by);
+  if (hooks.onFire) hooks.onFire(a, w, by, mz, ends);
   if (am.mag <= 0 && !w.scope && w.mag > 1) a.startReload();
   return true;
 }
 export function swingPickaxe(a, origin, dir) {
-  const w = WEAPONS[0]; if (a.cd > 0 || !a.alive || a.swapT > 0) return false; a.cd = w.rate; a.shotT = .25; sfx(a === W.me ? 'swing' : 'swing', .5);
+  const w = WEAPONS[0]; if (a.cd > 0 || !a.alive || a.swapT > 0) return false; a.cd = w.rate; a.shotT = .25; sfx('swing', .5); if (hooks.onSwing) hooks.onSwing(a);
   const hit = nearestHit(origin, dir, a, w.reach + .8, v => v.team === a.team); if (hit.t > w.reach + (hit.kind === 'actor' ? .6 : 0)) return true;
   const hp = new V3().copy(origin).addScaledVector(dir, hit.t);
   if (hit.kind === 'actor') { damageActor(hit.who, w.dmg * (hit.head ? 1.5 : 1), a, hit.head, 'pick'); sfxAt('pickhit', hp); burst(hp, 0xffffff, 4, 3, .1, .3, 12, 1); }

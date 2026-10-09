@@ -10,7 +10,7 @@ export const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= TAU; 
 export const hex = c => '#' + c.toString(16).padStart(6, '0');
 export const load = (k, d) => { try { const v = localStorage.getItem('ff.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
 export const save = (k, v) => { try { localStorage.setItem('ff.' + k, JSON.stringify(v)); } catch (e) {} };
-export const S = { sens: load('sens', 1), fov: load('fov', 90), vol: load('vol', .7) };
+export const S = { sens: load('sens', 1), fov: load('fov', 90), vol: load('vol', .7), view: load('view', 'fp') };
 
 // ------------------------------------------------------------------ graphics quality (Chromebooks are detected and get lighter settings)
 export const IS_CROS = /CrOS/.test(navigator.userAgent || '');
@@ -26,7 +26,7 @@ export const canvas = $('view');
 export const renderer = new THREE.WebGLRenderer({ canvas, antialias: QL.aa, powerPreference: 'high-performance', preserveDrawingBuffer: DEBUG });
 const BASE_PR = Math.min(devicePixelRatio, QL.pr);
 export const R = { scale: QL.start, ceil: 1 };
-renderer.setPixelRatio(BASE_PR); renderer.shadowMap.enabled = QL.shadow > 0; renderer.shadowMap.type = THREE.PCFShadowMap; if (QL.skip) renderer.shadowMap.autoUpdate = false;
+renderer.autoClear = false; renderer.setPixelRatio(BASE_PR); renderer.shadowMap.enabled = QL.shadow > 0; renderer.shadowMap.type = THREE.PCFShadowMap; if (QL.skip) renderer.shadowMap.autoUpdate = false;
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
 export const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0xbfe9ff, 60, 220);
 export const camera = new THREE.PerspectiveCamera(S.fov, 1, .1, 700); camera.rotation.order = 'YXZ'; scene.add(camera);

@@ -1,17 +1,21 @@
 // FORT FIGHT - the building system: walls, floors, stairs and roofs on a grid, with HP, build-up time and editing.
-import { THREE, V3, scene, QL, burst, ring, sfxAt, sfx, rnd, clamp, W, toon, INK } from './core.js?v=1';
-import { world, boxOverlapsAny } from './physics.js?v=1';
+import { THREE, V3, scene, QL, burst, ring, sfxAt, sfx, rnd, clamp, W, toon, INK } from './core.js?v=8';
+import { world, boxOverlapsAny } from './physics.js?v=8';
 
 export const CELL = 4, H = 3, WT = .25, FT = .3, STEP_H = H / 5, LEV_BIAS = 1.2, BUILD_T = 2.4, COST = 10, MAX_LEV = 36;
 export const MATS = { wood: { name: 'Wood', color: 0xe3a759, hp: 1 }, stone: { name: 'Stone', color: 0xb3a99e, hp: 2 }, metal: { name: 'Metal', color: 0x86c0f4, hp: 3 } };
 export const MAT_IDS = ['wood', 'stone', 'metal'];
 export const TYPES = { w: 'Wall', f: 'Floor', s: 'Stairs', r: 'Roof' };
 const BASE_HP = 150;
+// online play: when NET.on, the host owns piece health and destruction, clients send their damage to the host
+export const NET = { on: false, host: true, onDamage: null, onHp: null, onDestroy: null };
 
 export const pieces = new Map();        // id -> piece
 const occ = new Map();                  // slot key -> piece
 const building = new Set();
 let nextId = 1;
+export function resetIds() { nextId = 1; }
+export function setIdBase(pid) { if (pid > 0) nextId = pid * 1000000 + 1; }   // everybody builds with ids from their own range
 export const sk = {
   w: (o, ix, iz, lev) => `w${o}:${ix},${iz},${lev}`, f: (ix, iz, lev) => `f:${ix},${iz},${lev}`, s: (ix, iz, lev) => `s:${ix},${iz},${lev}`, r: (ix, iz, lev) => `r:${ix},${iz},${lev}`,
 };
@@ -127,7 +131,6 @@ export function placePiece(s, mat, owner, opts = {}) {
   if (pieces.size >= QL.maxPieces) { for (const q of pieces.values()) if (q.owner !== 'map') { destroyPiece(q, null, true); break; } }
   const mask = opts.mask === undefined ? 511 : opts.mask, pose = slotPose(s);
   const p = { id: opts.id || nextId++, type: s.type, ix: s.ix, iz: s.iz, lev: s.lev, o: s.o || 'x', dir: s.dir | 0, mat, mask, owner, age: opts.instant ? BUILD_T : 0, maxHp: pieceMaxHp(s.type, mat), hp: 0, boxes: [], hitT: 0, center: new V3(pose.x, pose.y, pose.z), ry: pose.ry, scale: 1, batch: null, bi: 0 };
-  if (opts.id && opts.id >= nextId) nextId = opts.id + 1;
   p.hp = opts.instant ? p.maxHp : p.maxHp * .34; p.key = slotKey(p); if (!opts.instant) p.scale = .86;
   attach(p); addBoxes(p); pieces.set(p.id, p); occ.set(p.key, p); if (!opts.instant) building.add(p);
   if (!opts.silent) sfxAt('build', p.center);
@@ -135,19 +138,22 @@ export function placePiece(s, mat, owner, opts = {}) {
 }
 function addBoxes(p) { for (const [a, c, d, e, f, g] of worldBoxes(p, p.mask)) { const b = world.add({ minX: a, maxX: c, minY: d, maxY: e, minZ: f, maxZ: g, kind: 'piece', piece: p }); p.boxes.push(b); } }
 function dropBoxes(p) { for (const b of p.boxes) world.remove(b); p.boxes.length = 0; }
-export function destroyPiece(p, attacker, quiet) {
-  if (!pieces.has(p.id)) return; dropBoxes(p); pieces.delete(p.id); occ.delete(p.key); building.delete(p); if (p.batch) p.batch.remove(p);
+export function destroyPiece(p, attacker, quiet, remote) {
+  if (!pieces.has(p.id)) return; if (NET.on && NET.host && !quiet && !remote && NET.onDestroy) NET.onDestroy(p); dropBoxes(p); pieces.delete(p.id); occ.delete(p.key); building.delete(p); if (p.batch) p.batch.remove(p);
   if (W.edit && W.edit.piece === p) W.edit = null;
   if (!quiet) { burst(p.center, MATS[p.mat].color, p.type === 'w' ? 14 : 10, 7, .2, .9, 16, 2); sfxAt('breakp', p.center); }
   if (onDestroy) onDestroy(p, attacker);
 }
 let onDestroy = null; export const hookDestroy = f => { onDestroy = f; };
-export function damagePiece(p, dmg, attacker) {
+export function damagePiece(p, dmg, attacker, fromNet) {
   if (!pieces.has(p.id) || p.owner === 'map-solid') return 0;
+  if (NET.on && !NET.host && !fromNet) { if (NET.onDamage) NET.onDamage(p, dmg); p.hitT = .12; p.scale = .965; refresh(p); return dmg; }
   p.hp -= dmg; p.hitT = .12;
   if (p.hp <= 0) { destroyPiece(p, attacker); return dmg; }
-  restate(p); p.scale = .965; refresh(p); return dmg;
+  restate(p); p.scale = .965; refresh(p); if (NET.on && NET.host && NET.onHp) NET.onHp(p); return dmg;
 }
+export function setPieceHp(p, hp) { p.hp = Math.min(p.maxHp, hp); p.hitT = .12; restate(p); p.scale = .965; refresh(p); }
+export const pieceAtSlot = s => occ.get(slotKey(s));
 export function updatePieces(dt) {
   for (const p of building) {
     p.age += dt; p.hp = Math.min(p.maxHp, p.hp + p.maxHp * .66 / BUILD_T * dt);
@@ -182,11 +188,14 @@ export function slotFromPose(type, pos, yaw, pitch, rot = 0) {
 }
 
 // ---------------------------------------------------------------- ghost preview
-const GHOST_OK = new THREE.MeshBasicMaterial({ color: 0x4aff8a, transparent: true, opacity: .38, depthWrite: false }), GHOST_BAD = new THREE.MeshBasicMaterial({ color: 0xff4a5a, transparent: true, opacity: .3, depthWrite: false });
-let ghost = null;
+const GHOST_OK = new THREE.MeshBasicMaterial({ color: 0x4aff8a, transparent: true, opacity: .2, depthWrite: false }), GHOST_BAD = new THREE.MeshBasicMaterial({ color: 0xff4a5a, transparent: true, opacity: .2, depthWrite: false });
+const LINE_OK = new THREE.LineBasicMaterial({ color: 0x9dffc0 }), LINE_BAD = new THREE.LineBasicMaterial({ color: 0xff8a8a });
+const ghostEdges = new Map(); let ghost = null, ghostLines = null;
 export function showGhost(s, ok) {
-  if (!ghost) { ghost = new THREE.Mesh(geoFor('w'), GHOST_OK); ghost.renderOrder = 5; scene.add(ghost); }
-  const pose = slotPose(s); ghost.geometry = geoFor(s.type); ghost.material = ok ? GHOST_OK : GHOST_BAD; ghost.position.set(pose.x, pose.y, pose.z); ghost.rotation.y = pose.ry; ghost.visible = true;
+  if (!ghost) { ghost = new THREE.Mesh(geoFor('w'), GHOST_OK); ghost.renderOrder = 5; scene.add(ghost); ghostLines = new THREE.LineSegments(new THREE.BufferGeometry(), LINE_OK); ghostLines.renderOrder = 6; ghost.add(ghostLines); }
+  const pose = slotPose(s), g = geoFor(s.type, 511); ghost.geometry = g; ghost.material = ok ? GHOST_OK : GHOST_BAD;
+  let e = ghostEdges.get(g); if (!e) { e = new THREE.EdgesGeometry(g, 20); ghostEdges.set(g, e); } ghostLines.geometry = e; ghostLines.material = ok ? LINE_OK : LINE_BAD;
+  ghost.position.set(pose.x, pose.y, pose.z); ghost.rotation.y = pose.ry; ghost.visible = true;
 }
 export function hideGhost() { if (ghost) ghost.visible = false; }
 
@@ -211,6 +220,11 @@ export function editHover(ox, oy, oz, dx, dy, dz) {
   if (bi !== E.hot) { E.hot = bi; paintEdit(); } return bi;
 }
 export function editToggle() { const E = W.edit; if (!E || E.hot < 0) return false; E.mask ^= (1 << E.hot); paintEdit(); sfx('edit'); return true; }
+export const PRESETS = {
+  w: [['Door', [1, 4]], ['Window', [4]], ['Gate', [1, 4, 7]], ['Half wall', [6, 7, 8]]],
+  f: [['Hole', [4]], ['Half floor', [0, 1, 2]], ['Corner cut', [8]], ['Trench', [3, 4, 5]]],
+};
+export function editPreset(n) { const E = W.edit; if (!E) return null; const pr = (PRESETS[E.piece.type] || [])[n]; if (!pr) return null; let mask = 511; for (const b of pr[1]) mask &= ~(1 << b); E.mask = mask; paintEdit(); sfx('edit'); return pr[0]; }
 export function editReset() { const E = W.edit; if (!E) return; E.mask = 511; paintEdit(); sfx('edit'); }
 export function cancelEdit() { const E = W.edit; if (!E) return; scene.remove(E.group); E.group.traverse(c => { if (c.geometry) c.geometry.dispose(); }); W.edit = null; }
 export function confirmEdit() { const E = W.edit; if (!E) return null; const p = E.piece, mask = E.mask; cancelEdit(); if (mask !== p.mask) setMask(p, mask); sfx('confirm'); return { p, mask }; }

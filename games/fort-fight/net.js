@@ -1,10 +1,10 @@
-// Tiny networking layer for Blaster Arena co-op.
+// Tiny networking layer for Fort Fight online play (same design as Blaster Arena co-op).
 //  - production: PeerJS (WebRTC data channels). PeerJS Cloud is only used to introduce players; game data goes peer-to-peer.
 //  - testing:    ?net=local swaps in a BroadcastChannel loopback so two tabs of the same browser can play together offline.
 // Topology: one host, up to 3 clients (4 players total). Clients only talk to the host.
 
 export const MAX_PLAYERS = 4;
-const PREFIX = 'hkgba-';
+const PREFIX = 'hkgff-';
 export const makeCode = () => { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += a[Math.floor(Math.random() * a.length)]; return s; };
 export const cleanCode = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
 
@@ -15,7 +15,7 @@ class Emitter {
 }
 
 // ---------------------------------------------------------------- local (BroadcastChannel) stand-in with the bits of PeerJS we use
-const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('hkba-local-net') : null;
+const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('hkff-local-net') : null;
 const localPeers = new Map();
 if (bc) bc.onmessage = ev => { const m = ev.data, p = localPeers.get(m.to); if (p) p._recv(m); };
 class LocalConn extends Emitter {

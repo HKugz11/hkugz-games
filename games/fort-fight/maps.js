@@ -1,11 +1,12 @@
 // FORT FIGHT - maps: a build range, a box-fight arena and an island. Everything is generated from a seeded random generator.
-import { THREE, V3, scene, toon, outline, QL, applyTheme, burst, sfxAt, rnd, clamp, W, TAU, disposeObj, gradient } from './core.js?v=1';
-import { world } from './physics.js?v=1';
-import { CELL, H, placePiece, clearPieces, MATS } from './pieces.js?v=1';
-import { addMats } from './actors.js?v=1';
+import { THREE, V3, scene, toon, outline, QL, applyTheme, burst, sfxAt, rnd, clamp, W, TAU, disposeObj, gradient } from './core.js?v=8';
+import { world } from './physics.js?v=8';
+import { CELL, H, placePiece, clearPieces, MATS, resetIds } from './pieces.js?v=8';
+import { addMats } from './actors.js?v=8';
 
 export const mapGroup = new THREE.Group(); scene.add(mapGroup);
 export const props = [];
+export const propNet = { on: false, host: true, send: null, state: null };
 const rng = seed => { let s = seed >>> 0; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); };
 
 // ground texture: 8 m tiles = 2x2 building cells, so the grid is easy to read
@@ -61,19 +62,24 @@ export function makeProp(kind, x, z, s = 1) {
   const cols = PROP_COL[kind]; if (cols.length > 1) b.im.setColorAt(pr.idx, new THREE.Color(cols[Math.floor(rnd(0, cols.length))])); else b.im.setColorAt(pr.idx, new THREE.Color(0xffffff)); if (b.im.instanceColor) b.im.instanceColor.needsUpdate = true;
   putProp(pr);
   pr.box = world.add({ minX: x - w / 2, maxX: x + w / 2, minY: 0, maxY: hgt, minZ: z - w / 2, maxZ: z + w / 2, kind: 'prop', prop: pr });
-  pr.onHit = (dmg, a, pos, melee) => {
-    if (pr.dead > 0) return; pr.hp -= dmg; pr.shake = .28; sfxAt('harvest', PP.set(x, 1, z));
+  pr.i = props.length;
+  pr.onHit = (dmg, a, pos, melee, fromNet) => {
+    if (pr.dead > 0) return; if (propNet.on && !propNet.host && !fromNet) { if (propNet.send) propNet.send(pr.i, dmg); pr.shake = .28; sfxAt('harvest', PP.set(x, 1, z)); if (melee && a && !a.infinite) addMats(a, pr.mat, Math.round(clamp(dmg / 2.75, 6, 20))); return; }
+    pr.hp -= dmg; pr.shake = .28; sfxAt('harvest', PP.set(x, 1, z));
     burst(pos || new V3(x, 1.5, z), kind === 'tree' ? 0x58d070 : kind === 'rock' ? 0xb8c0cc : 0x86c0f4, 4, 4, .12, .4, 14, 1);
     if (melee && a && !a.infinite) addMats(a, pr.mat, Math.round(clamp(dmg / 2.75, 6, 20)));
-    if (pr.hp <= 0) { pr.dead = 35; world.remove(pr.box); burst(new V3(x, 1.5, z), kind === 'tree' ? 0x3fbf5a : kind === 'rock' ? 0xa8b0bc : 0x86c0f4, 18, 7, .25, 1, 16, 3); }
+    if (pr.hp <= 0) { pr.dead = 35; world.remove(pr.box); if (propNet.on && propNet.host && propNet.state) propNet.state(pr.i, 1); burst(new V3(x, 1.5, z), kind === 'tree' ? 0x3fbf5a : kind === 'rock' ? 0xa8b0bc : 0x86c0f4, 18, 7, .25, 1, 16, 3); }
   };
   props.push(pr); return pr;
 }
 export function updateProps(dt) {
   for (const p of props) {
-    if (p.dead > 0) { p.dead -= dt; if (p.dead > 34.6) putProp(p, clamp((p.dead - 34.6) / .4, 0, 1)); else if (p.dead > 0 && p.dead < 34.6 && p.shake !== -1) { p.shake = -1; putProp(p, 0); } if (p.dead <= 0) { p.dead = 0; p.hp = p.maxHp; p.shake = 0; world.add(p.box); putProp(p, 1); } continue; }
+    if (p.dead > 0) { p.dead -= dt; if (p.dead > 34.6) putProp(p, clamp((p.dead - 34.6) / .4, 0, 1)); else if (p.dead > 0 && p.dead < 34.6 && p.shake !== -1) { p.shake = -1; putProp(p, 0); } if (p.dead <= 0) { p.dead = 0; p.hp = p.maxHp; p.shake = 0; world.add(p.box); putProp(p, 1); if (propNet.on && propNet.host && propNet.state) propNet.state(p.i, 0); } continue; }
     if (p.shake > 0) { p.shake -= dt; putProp(p); }
   }
+}
+export function setPropDead(i, dead) {   // from the host
+  const p = props[i]; if (!p) return; if (dead && !(p.dead > 0)) { p.dead = 35; world.remove(p.box); } else if (!dead && p.dead > 0) { p.dead = .0001; }
 }
 export function disposeProps() { for (const k in PK) { PK[k].im.dispose(); delete PK[k]; } }
 
@@ -110,8 +116,9 @@ function scatterProps(R, half, n, kind, avoid, minGap = 6) {
 }
 const marker = (x, y, z, col, h = 14) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, h, 10, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .35, side: THREE.DoubleSide, depthWrite: false })); m.position.set(x, y + h / 2, z); mapGroup.add(m); return m; };
 
-export function buildMap(id) {
-  clearMap(); const def = MAPS[id], T = THEMES[def.theme], half = def.half; applyTheme(T); world.bounds = { minX: -half, maxX: half, minZ: -half, maxZ: half };
+const BOX_CELLS = [[[-4, -1], [3, -1]], [[-5, -5], [4, -5], [-5, 4], [4, 4]]];
+export function buildMap(id, opts = {}) {
+  clearMap(); resetIds(); const def = MAPS[id], T = THEMES[def.theme], half = def.half; applyTheme(T); world.bounds = { minX: -half, maxX: half, minZ: -half, maxZ: half };
   ground(half, def.theme, id === 'island'); const info = { id, half, spawns: [], dummies: [], botSpawns: [], rebuild: null, ringY: 0 };
   if (id === 'range') {
     const R = rng(11); info.spawns = [[0, 4]]; info.dummies = [[-10, -20], [0, -26], [10, -20], [-18, -36], [18, -36], [0, -46]];
@@ -124,11 +131,13 @@ export function buildMap(id) {
     // a few ready-made walls to practice breaking and editing
     info.rebuild = () => { for (const [ix, iz] of [[-6, -3], [-5, -3], [4, -3], [5, -3]]) placePiece({ type: 'w', o: 'x', ix, iz, lev: 0 }, 'wood', 'map', { instant: true, silent: true, force: true }); };
   } else if (id === 'box') {
-    info.spawns = [[-14, -2], [14, -2]]; info.botSpawns = info.spawns;
+    const np = opts.np || 2, cells = np <= 2 ? BOX_CELLS[0] : BOX_CELLS[1];
+    info.boxes = cells.slice(0, Math.max(2, np)).map(([cx, cz]) => { const x = cx * CELL + CELL / 2, z = cz * CELL + CELL / 2; return { cx, cz, x, z, yaw: Math.atan2(x, z) }; });
+    info.spawns = info.boxes.map(b => [b.x, b.z]); info.botSpawns = info.spawns;
     info.rebuild = () => {
-      for (const cx of [-4, 3]) {   // one 1x1 metal room each: walls on every side and a ceiling
+      for (const { cx, cz } of info.boxes) {   // one 1x1 metal room each: walls on every side and a ceiling
         const put = (type, o, ix, iz, lev) => placePiece({ type, o, ix, iz, lev, dir: 0 }, 'metal', 'map', { instant: true, silent: true, force: true });
-        put('w', 'x', cx, -1, 0); put('w', 'x', cx, 0, 0); put('w', 'z', cx, -1, 0); put('w', 'z', cx + 1, -1, 0); put('f', 'x', cx, -1, 1);
+        put('w', 'x', cx, cz, 0); put('w', 'x', cx, cz + 1, 0); put('w', 'z', cx, cz, 0); put('w', 'z', cx + 1, cz, 0); put('f', 'x', cx, cz, 1);
       }
     };
     scatterProps(rng(5), half - 4, 6, 'tree', [[0, 0, 30]], 10);

@@ -23,7 +23,8 @@
   #cross { left: 50%; top: 50%; width: 0; height: 0; } #cross i { position: absolute; background: #fff; box-shadow: 0 0 0 1.5px rgba(0,0,0,.55); } #cross .t { left: -1.5px; top: -14px; width: 3px; height: 8px; } #cross .b { left: -1.5px; top: 6px; width: 3px; height: 8px; } #cross .l { top: -1.5px; left: -14px; height: 3px; width: 8px; } #cross .r { top: -1.5px; left: 6px; height: 3px; width: 8px; } #cross.ads i { opacity: .6; transform: scale(.8); }
   #hit { left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; opacity: 0; } #hit:before, #hit:after { content: ""; position: absolute; left: 13px; top: -2px; width: 4px; height: 34px; background: #fff; transform: rotate(45deg); } #hit:after { transform: rotate(-45deg); }
   #hit.on { opacity: 1; } #hit.head:before, #hit.head:after, #hit.kill:before, #hit.kill:after { background: #ff4a4a; } #hit.shield:before, #hit.shield:after { background: #4aa8ff; }
-  #scope { inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 24%, #000 24.4%); } #scope:before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(0,0,0,.7); } #scope:after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(0,0,0,.7); }
+  #scope { inset: 0; } #scope .lens { position: absolute; left: 50%; top: 50%; width: 94vh; height: 94vh; margin: -47vh 0 0 -47vh; border-radius: 50%; box-shadow: 0 0 0 150vmax rgba(6,4,14,.42), inset 0 0 0 3px rgba(0,0,0,.9), inset 0 0 50px 8px rgba(0,0,0,.45); }
+  #scope i { position: absolute; background: rgba(10,10,24,.85); } #scope .sh { left: calc(50% - 47vh); width: 94vh; top: 50%; height: 1.5px; } #scope .sv { top: calc(50% - 47vh); height: 94vh; left: 50%; width: 1.5px; } #scope .sd { left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #ff3a4a; }
   #vig { inset: 0; box-shadow: inset 0 0 140px 30px rgba(255,40,70,0); transition: box-shadow .25s; } #vig.on { box-shadow: inset 0 0 140px 40px rgba(255,40,70,.6); transition: none; }
   #hpbox { left: 22px; bottom: 22px; width: 280px; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
   .bar { height: 16px; border-radius: 9px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.3); overflow: hidden; margin-top: 6px; position: relative; } .bar div { height: 100%; width: 100%; transition: width .12s; }
@@ -42,7 +43,8 @@
   #toast { left: 50%; top: 22%; transform: translate(-50%, 0); text-align: center; opacity: 0; text-shadow: 0 4px 0 rgba(0,0,0,.55); } #toast.on { animation: toastA 1.9s ease-out forwards; }
   #toastA { font-size: 44px; font-weight: 900; color: var(--y); letter-spacing: .06em; } #toastB { font-size: 17px; font-weight: 800; opacity: .95; }
   @keyframes toastA { 0% { opacity: 0; transform: translate(-50%, 16px) scale(.6); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -20px); } }
-  #edithud { left: 50%; top: 58%; transform: translateX(-50%); background: rgba(10,6,24,.7); border: 2px solid var(--c); border-radius: 14px; padding: 8px 18px; font-weight: 800; font-size: 15px; text-align: center; }
+  #edithud { left: 50%; top: 70%; transform: translateX(-50%); background: rgba(10,6,24,.7); border: 2px solid var(--c); border-radius: 14px; padding: 8px 18px; font-weight: 800; font-size: 15px; text-align: center; }
+  #edithud .shapes { margin-top: 5px; font-size: 13px; opacity: .85; color: var(--c); }
   #respawn { left: 50%; top: 60%; transform: translateX(-50%); font-size: 24px; font-weight: 900; text-shadow: 0 3px 0 rgba(0,0,0,.6); }
   #board { left: 50%; top: 20%; transform: translateX(-50%); background: rgba(10,6,24,.82); border: 2px solid rgba(255,255,255,.2); border-radius: 16px; padding: 14px 22px; min-width: 300px; } #board h3 { margin: 0 0 8px; letter-spacing: .2em; font-size: 14px; opacity: .7; text-align: center; } #board div { display: flex; gap: 14px; padding: 4px 0; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,.12); } #board span { flex: 1; } #board b { color: var(--y); } #board em { font-style: normal; opacity: .6; width: 30px; text-align: right; } #board .me { color: var(--c); }
   .dn { position: absolute; left: 0; top: 0; font-weight: 900; font-size: 22px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.7), 0 0 8px rgba(0,0,0,.5); display: none; } .dn.head { color: #ffd34e; font-size: 30px; } .dn.sh { color: #7cc8ff; }
@@ -59,6 +61,10 @@
   .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
   button.modec { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; font-weight: 700; font-size: 13px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.65); box-shadow: 0 4px 0 rgba(0,0,0,.45); border: 3px solid transparent; background: linear-gradient(160deg, #3a2f78, #6a3a9a); } button.modec b { font-size: 18px; } button.modec span { font-weight: 600; opacity: .92; font-size: 12.5px; line-height: 1.3; } button.modec.sel { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.3), 0 4px 0 rgba(0,0,0,.45); }
   input[type=text] { font: inherit; font-weight: 800; padding: 11px 14px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.6); color: #fff; width: 190px; text-align: center; user-select: text; -webkit-user-select: text; }
+  #lobbyCode { font-size: 64px; font-weight: 900; letter-spacing: .28em; color: var(--y); text-shadow: 0 4px 0 #a24a00, 0 0 24px rgba(255,200,60,.4); padding-left: .28em; } #roster { display: grid; gap: 6px; max-width: 420px; margin: 12px auto; }
+  .rost { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.08); padding: 8px 14px; border-radius: 12px; font-weight: 800; } .rost i { width: 14px; height: 14px; border-radius: 50%; } .rost .rn { flex: 1; text-align: left; } .rost em { font-style: normal; font-size: 11px; letter-spacing: .15em; background: var(--y); color: #1a0c00; padding: 2px 8px; border-radius: 8px; }
+  #joinCode { text-transform: uppercase; letter-spacing: .3em; width: 130px; } .or { opacity: .7; font-weight: 700; } button:disabled { opacity: .55; cursor: default; filter: saturate(.7); }
+  #lockhint { left: 50%; top: 40%; transform: translateX(-50%); background: rgba(10,6,24,.8); border: 2px solid var(--y); border-radius: 14px; padding: 12px 22px; font-weight: 900; font-size: 18px; text-align: center; }
   .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 22px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.97) 32%); } .stick .row { margin: 6px 0; }
   details { margin: 10px 0; } details summary { cursor: pointer; opacity: .75; font-weight: 700; }
   .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin: 14px 0; font-size: 14px; text-align: left; } .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
@@ -72,14 +78,15 @@
 <body>
 <canvas id="view"></canvas>
 <div class="hud" id="hud">
-  <div id="vig"></div><div id="scope" class="hide"></div>
+  <div id="vig"></div><div id="scope" class="hide"><div class="lens"></div><i class="sh"></i><i class="sv"></i><i class="sd"></i></div>
   <div id="cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
   <div id="hit"></div>
   <div id="top"><div id="topA"></div><div id="topB"></div></div>
   <div id="fps">-- FPS</div>
   <div id="feed"></div>
   <div id="toast"><div id="toastA"></div><div id="toastB"></div></div>
-  <div id="edithud" class="hide">EDIT: click a tile to cut or restore it &nbsp;·&nbsp; <b>G</b> confirm &nbsp;·&nbsp; <b>R</b> reset &nbsp;·&nbsp; right click cancel</div>
+  <div id="edithud" class="hide">EDIT: click a tile to cut or restore it &nbsp;·&nbsp; <b>G</b> confirm &nbsp;·&nbsp; <b>R</b> reset &nbsp;·&nbsp; right click cancel<div class="shapes">Quick shapes: <span id="editShapes"></span></div></div>
+  <div id="lockhint" class="hide">Click anywhere to lock your mouse and start playing</div>
   <div id="respawn" class="hide"><span id="respT"></span></div>
   <div id="hpbox"><div class="nums"><span class="s" id="shnum">100</span><span class="h" id="hpnum">100</span></div><div class="bar"><div id="shfill"></div></div><div class="bar"><div id="hpfill"></div></div></div>
   <div id="bottom"><div id="buildbar"></div><div id="slots"></div></div>
@@ -92,30 +99,41 @@
   <a class="back" href="../../">&larr; All games</a>
   <div class="box">
     <h1>FORT<br>FIGHT</h1>
-    <p class="sub">Build walls, ramps and floors, edit them, and out-build the bots. No blood, just confetti.</p>
+    <p class="sub">Build walls, ramps and floors, edit them, and out-build the bots or your friends. No blood, just confetti.</p>
     <div id="menuPickers"></div>
     <div class="stick">
       <div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">PLAY</button></div>
+      <div class="row coop"><button id="hostBtn" class="alt">HOST ONLINE</button><span class="or">or join a friend:</span><input type="text" id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off"><button id="joinBtn" class="alt">JOIN</button></div>
+      <p class="sub" id="netMsg" style="min-height:20px;margin:2px 0"></p>
     </div>
     <details><summary>Controls</summary>
     <div class="keys">
       <div><b>WASD</b> move &nbsp; <b>Space</b> jump &nbsp; <b>Shift</b> crouch</div><div><b>Mouse</b> aim &nbsp; <b>Click</b> shoot / place &nbsp; <b>Right click</b> zoom</div>
       <div><b>1-5</b> pickaxe, AR, shotgun, SMG, sniper &nbsp; <b>Wheel</b> switch</div><div><b>Q</b> build mode &nbsp; <b>Z</b> wall &nbsp; <b>X</b> floor &nbsp; <b>C</b> stairs &nbsp; <b>V</b> roof</div>
-      <div><b>G</b> edit the piece you aim at (click tiles, G again to confirm)</div><div><b>B</b> wood / stone / metal &nbsp; <b>R</b> reload, or rotate stairs</div>
-      <div><b>T</b> toggle zoom (good on a trackpad) &nbsp; <b>Tab</b> scoreboard &nbsp; <b>Esc</b> pause</div><div><b>Pickaxe</b> hits trees, rocks, crates and builds to gather materials</div>
+      <div><b>G</b> edit the wall or floor you look at: click tiles to cut them, <b>1-4</b> quick shapes (door, window...), <b>G</b> again to confirm</div><div><b>B</b> wood / stone / metal &nbsp; <b>R</b> reload, or rotate stairs</div>
+      <div><b>T</b> toggle zoom (good on a trackpad) &nbsp; <b>F</b> first / third person &nbsp; <b>Tab</b> scoreboard &nbsp; <b>Esc</b> pause</div><div><b>Pickaxe</b> hits trees, rocks, crates and builds to gather materials</div>
       <div><b>Range:</b> <b>U</b> reset builds, <b>K</b> sparring bot</div><div><b>Tip:</b> jump and place a floor under you, then stairs, to ramp up</div>
     </div></details>
     <details><summary>Settings</summary>
+      <div class="row"><button id="viewFp">First person</button><button id="viewTp">Third person</button></div>
       <label>Mouse sensitivity <input type="range" id="sens" min=".3" max="2.5" step=".05"></label>
       <label>Field of view <input type="range" id="fov" min="70" max="110" step="1"></label>
       <label>Volume <input type="range" id="vol" min="0" max="1" step=".05"></label>
     </details>
     <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
+    <p class="fine">Online play connects you straight to your friends through a free helper service (PeerJS). Only share your room code with people you know, because players can see each other's network address.</p>
     <p class="fine">An original building shooter inspired by popular build-and-battle games. Not affiliated with any game company.</p>
   </div>
 </div>
+<div class="screen hide" id="lobby"><div class="box" style="max-width:640px">
+  <h1 style="font-size:50px">ONLINE LOBBY</h1><p class="sub" style="margin-bottom:4px">Friends type this code into JOIN on the main menu:</p>
+  <div id="lobbyCode">-----</div><div class="row"><button id="copyCode" class="alt">Copy code</button></div>
+  <div id="roster"></div><div class="grp"><h3>GAME</h3><div class="row" id="lobbyMode"></div><p class="mdesc" id="lobbyDesc"></p></div>
+  <p class="sub" id="lobbyWait" style="display:none">Waiting for the host to start...</p><p class="sub" id="lobbyMsg" style="min-height:22px;margin:4px 0"></p>
+  <div class="stick"><div class="row"><button class="big" id="startBtn">START MATCH</button><button id="leaveLobby" class="alt">Leave</button></div></div></div></div>
 <div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="quit">Quit to menu</button></div><p class="fine">Click Resume (or press Esc) to get back in.</p></div></div>
-<div class="screen hide" id="over"><div class="box" style="max-width:480px"><h1 id="overT" style="font-size:60px">GAME OVER</h1><p class="sub" id="overS"></p><div class="row"><button class="big" id="again">PLAY AGAIN</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
-<script type="module" src="game.js?v=1"></script>
+<div class="screen hide" id="over"><div class="box" style="max-width:480px"><h1 id="overT" style="font-size:60px">GAME OVER</h1><p class="sub" id="overS"></p><div class="row"><button class="big" id="again">PLAY AGAIN</button></div><p class="sub hide" id="overWait">Waiting for the host to start another match...</p><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
+<script src="vendor/peerjs.min.js"></script>
+<script type="module" src="game.js?v=8"></script>
 </body>
 </html>
