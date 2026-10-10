@@ -1,8 +1,10 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=3.2';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js';
+import { MAPS } from './maps.js?v=3.5';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=3.5';
+import { TOUCH, initTouch } from './touch.js?v=3.5';
+const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
 const rnd = (a, b) => a + Math.random() * (b - a), rint = (a, b) => Math.floor(rnd(a, b + 1)), clamp = (v, a, b) => Math.max(a, Math.min(b, v)), pick = a => a[Math.floor(Math.random() * a.length)];
@@ -1246,9 +1248,9 @@ function refreshSlots() {
 }
 function refreshAmmo() {
   const rs = $('aRes').parentElement; if (rs) rs.style.visibility = holdItem ? 'hidden' : 'visible';
-  if (holdItem) { const it = ITEMS[holdItem], c = hex(it.col); $('wName').textContent = it.name; $('wName').style.color = c; $('wRar').textContent = it.kind === 'nade' ? 'THROWABLE' : 'CONSUMABLE'; $('wRar').style.color = c; $('aMag').textContent = inv[holdItem]; $('rl').textContent = it.kind === 'nade' ? 'PRESS F TO THROW' : 'PRESS F TO USE'; return; }
+  if (holdItem) { const it = ITEMS[holdItem], c = hex(it.col); $('wName').textContent = it.name; $('wName').style.color = c; $('wRar').textContent = it.kind === 'nade' ? 'THROWABLE' : 'CONSUMABLE'; $('wRar').style.color = c; $('aMag').textContent = inv[holdItem]; $('rl').textContent = tx(it.kind === 'nade' ? 'PRESS F TO THROW' : 'PRESS F TO USE'); return; }
   const w = W[wantSwap >= 0 ? wantSwap : cur], R = RARITY[w.rar], c = hex(R.col);
-  $('wName').textContent = w.d.name; $('wName').style.color = c; $('wRar').textContent = R.name; $('wRar').style.color = c; $('aMag').textContent = w.ammo; $('aRes').textContent = FREE() ? '\u221e' : reserve[w.d.at]; $('rl').textContent = reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : '');
+  $('wName').textContent = w.d.name; $('wName').style.color = c; $('wRar').textContent = R.name; $('wRar').style.color = c; $('aMag').textContent = w.ammo; $('aRes').textContent = FREE() ? '\u221e' : reserve[w.d.at]; $('rl').textContent = tx(reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : ''));
 }
 function startReload() {
   const w = W[cur]; if (use || reloadT > 0 || w.ammo >= w.s.mag || swapT > 0) return;
@@ -1403,7 +1405,7 @@ function updateHUD(dt) {
   setTxt('hpNum', Math.ceil(P.hp)); setSty('hpFill', 'width', P.hp + '%'); $('hpFill').classList.toggle('low', P.hp < 35); $('vig').classList.toggle('low', P.hp < 35 && P.alive);
   setTxt('shNum', P.shield > 0 ? '+' + Math.ceil(P.shield) : ''); setSty('shFill', 'width', P.shield + '%');
   const w = W[cur]; setTxt('aMag', holdItem ? inv[holdItem] : w.ammo); setTxt('aRes', holdItem ? '' : FREE() ? '\u221e' : reserve[w.d.at]);
-  { const nt = P.alive ? nearestInteract() : null, pt = nt ? promptText(nt) : ''; setTxt('promptT', pt); setSty('prompt', 'display', pt ? 'flex' : 'none'); if (nt) setSty('promptT', 'color', nt.col); } setTxt('rl', holdItem ? (ITEMS[holdItem].kind === 'nade' ? 'PRESS F TO THROW' : 'PRESS F TO USE') : reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : ''));
+  { const nt = P.alive ? nearestInteract() : null, pt = nt ? promptText(nt) : ''; setTxt('promptT', pt); setSty('prompt', 'display', pt ? 'flex' : 'none'); if (nt) setSty('promptT', 'color', nt.col); } setTxt('rl', tx(holdItem ? (ITEMS[holdItem].kind === 'nade' ? 'PRESS F TO THROW' : 'PRESS F TO USE') : reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : '')));
   setTxt('buff', !P.alive ? (P.respT < 1e8 ? `RESPAWNING IN ${Math.max(0, Math.ceil(P.respT))}` : M && M.mode === 'royale' ? (specName ? 'SPECTATING ' + specName + ' (click to switch)' : 'ELIMINATED') : 'OUT OF LIVES') : P.buffT > 0 ? `DOUBLE DAMAGE ${Math.ceil(P.buffT)}s` : P.speedT > 0 ? `SPEED SODA ${Math.ceil(P.speedT)}s` : '');
   const spread = (8 + Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8) * 10 + (P.onGround ? 0 : 8) + w.s.spread * 500) * (1 - P.crouchK * .35) * (adsK > .5 ? .5 : 1), c = $('cross');
   const T = { t: [0, -spread], b: [0, spread], l: [-spread, 0], r: [spread, 0] };
@@ -1518,7 +1520,7 @@ function renderLobby() {
   $('startBtn').textContent = NET.roster.length > 1 ? `START MATCH (${NET.roster.length} players)` : 'START (solo for now)';
 }
 function lockPointer() {
-  if (DEBUG) { onLock(true); return; } audioInit();
+  if (DEBUG || TOUCH) { audioInit(); onLock(true); return; } audioInit();
   try { const p = canvas.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => { try { canvas.requestPointerLock(); } catch (e) {} }); } catch (e) { try { canvas.requestPointerLock(); } catch (e2) {} }
 }
 function onLock(locked) {
@@ -1528,7 +1530,7 @@ function onLock(locked) {
 document.addEventListener('pointerlockchange', () => onLock(document.pointerLockElement === canvas));
 document.addEventListener('pointerlockerror', () => { if (started && state === 'play') { state = 'pause'; $('pause').classList.remove('hide'); } });
 document.addEventListener('mousemove', e => {
-  if (document.pointerLockElement !== canvas && !DEBUG) return; if (state !== 'play' || !P.alive) return;
+  if (document.pointerLockElement !== canvas && !DEBUG && !TOUCH) return; if (state !== 'play' || !P.alive) return;
   if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;   // ignore the occasional bogus spike
   const k = .0022 * S.sens * (adsK > .5 ? (W[cur].d.zoom ? .3 : .7) : 1); P.yaw -= e.movementX * k; P.pitch -= e.movementY * k;
 });
@@ -1567,7 +1569,37 @@ $('toMenu').onclick = () => leaveMatch('');
 $('again').onclick = () => { if (NET.role === 'client') return; if (NET.role === 'host') hostStart(); else startSolo(); lockPointer(); };
 $('restart').onclick = () => { startSolo(); lockPointer(); };
 for (const [id, key, lab] of [['sens', 'sens', 'sensV'], ['fovR', 'fov', 'fovV'], ['vol', 'vol', 'volV']]) { const el = $(id); el.value = S[key]; $(lab).textContent = S[key]; el.oninput = () => { S[key] = +el.value; $(lab).textContent = S[key]; save(key, S[key]); if (key === 'vol' && master) master.gain.value = S.vol; }; }
-if ('ontouchstart' in window && !matchMedia('(any-pointer:fine)').matches) { $('touchWarn').style.display = 'block'; for (const id of ['play', 'hostBtn', 'joinBtn']) $(id).style.display = 'none'; }
+if (TOUCH) {
+  document.querySelector('#prompt kbd').textContent = 'USE'; $('touchWarn').style.display = 'block'; $('touchWarn').textContent = 'Touch controls: left thumb moves (push all the way to sprint), right thumb looks and shoots. Tap a weapon slot to switch.';
+  const sl = '#slots > div', pk = (code, label, o) => Object.assign({ key: code, label, type: 'tap', s: 56, cls: 'small' }, o);
+  initTouch({
+    visible: () => state === 'play', pause: () => onLock(false), lookScale: 2.3,
+    stick: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', sprintKey: 'Tab', sprintAt: .9 },
+    taps: [{ sel: sl, key: (el, i) => 'Digit' + (i + 1) }],
+    buttons: [
+      { label: 'FIRE', cls: 'fire', mouse: 0, look: true, minHold: 90, s: 92, r: 24, b: 64 },
+      { label: 'AIM', type: 'toggle', mouse: 2, isOn: () => mouseR, s: 58, r: 40, b: 168, cls: 'small' },
+      pk('Space', 'JUMP', { type: 'hold', s: 64, r: 128, b: 22 }),
+      pk('KeyR', 'RELOAD', { s: 58, r: 132, b: 100, fs: 10 }),
+      pk('KeyE', 'USE', { s: 58, r: 206, b: 60, glow: () => $('prompt').style.display === 'flex' }),
+      pk('KeyF', 'ITEM', { s: 52, r: 206, b: 130 }),
+      { label: 'CROUCH', type: 'toggle', key: 'ShiftLeft', s: 52, r: 270, b: 22, cls: 'small', fs: 9 },
+      pk('KeyI', 'BAG', { type: 'toggle', s: 40, l: 118, t: 8, fs: 10 }),
+      pk('KeyT', 'SCORE', { type: 'toggle', s: 40, l: 164, t: 8, fs: 8 }),
+      { label: 'II', s: 40, l: 210, t: 8, cls: 'small', type: 'tap', action: () => onLock(false), fs: 14 },
+    ],
+    css: `
+      html.touch #radar { width: 92px; height: 92px; top: 8px; left: 8px; }
+      html.touch #score { top: 6px; font-size: 18px; gap: 8px; } html.touch #score .pill { padding: 2px 10px; min-width: 56px; border-radius: 10px; } html.touch #score small { font-size: 9px; }
+      html.touch #hp { left: 10px; bottom: 8px; width: 170px; } html.touch #hp .num { font-size: 22px; margin-bottom: 2px; } html.touch #hp .bar { height: 14px; border-width: 2px; } html.touch #hp .bar.shb { height: 8px; margin-bottom: 3px; }
+      html.touch #ammo { right: 12px; top: 26px; bottom: auto; } html.touch #ammo .wname { font-size: 14px; } html.touch #ammo .wrar { font-size: 9px; } html.touch #ammo .cnt { font-size: 36px; } html.touch #ammo .cnt small { font-size: 16px; } html.touch #ammo .rl { font-size: 12px; height: 14px; }
+      html.touch #feed { top: 112px; right: 12px; } html.touch #feed div { font-size: 12px; padding: 3px 9px; }
+      html.touch #slots { bottom: 8px; gap: 4px; left: 40%; } html.touch #slots div { width: 62px; font-size: 9px; padding: 3px 2px; border-width: 2px; border-radius: 9px; } html.touch #slots div b { font-size: 12px; }
+      html.touch #useBar { bottom: 70px; } html.touch #hint { bottom: 96px; font-size: 14px; } html.touch #buff { bottom: 120px; font-size: 14px; } html.touch #team { top: 108px; left: 10px; } html.touch #boss { top: 52px; width: 300px; }
+      html.touch #prompt { top: 50%; margin-top: 60px; } html.touch #medal { font-size: 30px; }
+    `,
+  });
+}
 if (NETMODE === 'peerjs' && !window.Peer) { $('hostBtn').disabled = $('joinBtn').disabled = true; setNetMsg('Online co-op needs the PeerJS library, which could not load. Solo still works!'); }
 for (const key of ['t', 'b', 'l', 'r']) $('cross').querySelector('.' + key).id = 'cross_' + key;
 buildItems(); refreshItems(); refreshSlots(); refreshAmmo();

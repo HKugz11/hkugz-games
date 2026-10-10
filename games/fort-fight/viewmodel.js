@@ -1,7 +1,7 @@
 // FORT FIGHT - first-person viewmodel: the weapon (or a build blueprint) in your hands, drawn in its own scene on top of the world.
-import { THREE, V3, toon, S, clamp, lerp, camera, W } from './core.js?v=8';
-import { gunGeo } from './actors.js?v=8';
-import { geoFor } from './pieces.js?v=8';
+import { THREE, V3, toon, S, clamp, lerp, camera, W } from './core.js?v=9';
+import { gunGeo } from './actors.js?v=9';
+import { geoFor } from './pieces.js?v=9';
 
 export const vmScene = new THREE.Scene(), vmCam = new THREE.PerspectiveCamera(62, 1, .01, 10);
 vmScene.add(new THREE.HemisphereLight(0xe4f0ff, 0x8a9a6a, 1.35)); const vsun = new THREE.DirectionalLight(0xffffff, 2.1); vsun.position.set(1, 2, 1.5); vmScene.add(vsun);

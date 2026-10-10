@@ -1,12 +1,14 @@
 // FORT FIGHT - build, edit and battle. First-person (or third-person) building shooter: Build Range, Box Fight and Fort Island, solo vs bots or online with friends.
-import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, IS_CROS, camera, renderer, scene, W, R, rnd, clamp, lerp, pick, angDiff, TAU, load, save, hex, followSun, updateClouds, updateFX, burst, ring, audioInit, setVolume, sfx, sfxAt, listener, adaptRes, resize, FX } from './core.js?v=8';
-import { world, rayBoxT } from './physics.js?v=8';
-import * as PC from './pieces.js?v=8';
-import { Actor, WEAPONS, hooks, fireGun, swingPickaxe, damageActor, killActor, raycastAll } from './actors.js?v=8';
-import { buildMap, MAPS, updateProps, props } from './maps.js?v=8';
-import { makeAI, botUpdate, DIFFS } from './ai.js?v=8';
-import { vmScene, vmCam, updateVM, vmKick, vmSwing } from './viewmodel.js?v=8';
-import * as NET from './online.js?v=8';
+import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, IS_CROS, camera, renderer, scene, W, R, rnd, clamp, lerp, pick, angDiff, TAU, load, save, hex, followSun, updateClouds, updateFX, burst, ring, audioInit, setVolume, sfx, sfxAt, listener, adaptRes, resize, FX } from './core.js?v=9';
+import { world, rayBoxT } from './physics.js?v=9';
+import * as PC from './pieces.js?v=9';
+import { Actor, WEAPONS, hooks, fireGun, swingPickaxe, damageActor, killActor, raycastAll } from './actors.js?v=9';
+import { buildMap, MAPS, updateProps, props } from './maps.js?v=9';
+import { makeAI, botUpdate, DIFFS } from './ai.js?v=9';
+import { vmScene, vmCam, updateVM, vmKick, vmSwing } from './viewmodel.js?v=9';
+import * as NET from './online.js?v=9';
+import { TOUCH, initTouch } from './touch.js?v=9';
+const tx = s => !TOUCH ? s : s.replace('Press Z/X/C/V to build. Q to switch.', 'Tap BUILD to build.').replace('Z/X/C/V to build.', 'tap BUILD to build.').replace('Press G to confirm, or click tiles to change it', 'Tap OK to save, or tap FIRE on tiles').replace('Click tiles to cut them · 1-4 quick shapes · G to confirm', 'Tap FIRE on tiles to cut them · slots 1-4 = quick shapes · OK to save').replace('Look at a wall or floor and press G', 'Look at a wall or floor and tap EDIT');
 
 const CFG = { mode: load('mode', 'range'), diff: load('diff', 'normal'), name: load('name', '') };
 if (!['range', 'box', 'island'].includes(CFG.mode)) CFG.mode = 'range'; if (!DIFFS[CFG.diff]) CFG.diff = 'normal';
@@ -53,7 +55,7 @@ function startMode(mode, ocfg) {
     }
   }
   for (const id of ['menu', 'over', 'pause', 'lobby']) $(id).classList.add('hide'); $('hud').style.visibility = 'visible'; $('again').classList.remove('hide'); $('overWait').classList.add('hide'); sfx('go');
-  if (!(ocfg && mode === 'box')) toast(mode === 'box' ? 'ROUND 1' : mode === 'range' ? 'BUILD RANGE' : 'FORT ISLAND', mode === 'island' ? 'First to ' + M.target + ' knockouts' : mode === 'range' ? (ocfg ? 'Building with friends. Z/X/C/V to build.' : 'Press Z/X/C/V to build. Q to switch.') : 'First to 5 rounds', 2200);
+  if (!(ocfg && mode === 'box')) toast(mode === 'box' ? 'ROUND 1' : mode === 'range' ? 'BUILD RANGE' : 'FORT ISLAND', mode === 'island' ? 'First to ' + M.target + ' knockouts' : mode === 'range' ? (ocfg ? tx('Building with friends. Z/X/C/V to build.') : tx('Press Z/X/C/V to build. Q to switch.')) : 'First to 5 rounds', 2200);
   buildHUDSlots(); hudDirty = true; lastHud = {};
 }
 function spawnPoint(a) {
@@ -94,11 +96,11 @@ function endOnline(w) {
 }
 
 // ================================================================== input
-function lockPointer() { if (DEBUG) { started = true; return; } const el = $('view'); try { const p = el.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => el.requestPointerLock()); } catch (e) { try { el.requestPointerLock(); } catch (e2) {} } }
+function lockPointer() { if (DEBUG || TOUCH) { started = true; return; } const el = $('view'); try { const p = el.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => el.requestPointerLock()); } catch (e) { try { el.requestPointerLock(); } catch (e2) {} } }
 document.addEventListener('pointerlockchange', () => { const on = document.pointerLockElement === $('view'); started = on; if (!on && state === 'play' && !DEBUG) pauseGame(); });
 function pauseGame() { if (state !== 'play') return; state = 'pause'; W.state = 'pause'; PC.cancelEdit(); mouse.l = mouse.r = false; $('pause').classList.remove('hide'); }
 function resumeGame() { if (state !== 'pause') return; state = 'play'; W.state = 'play'; $('pause').classList.add('hide'); audioInit(); lockPointer(); }
-addEventListener('mousemove', e => { if (state !== 'play' || !P || !P.alive || (!started && !DEBUG)) return; if (!DEBUG && document.pointerLockElement !== $('view')) return; const k = .0022 * S.sens * (P.ads ? Math.min(1, P.weapon.ads * 1.4 + .12) : 1); P.yaw -= e.movementX * k; P.pitch = clamp(P.pitch - e.movementY * k, -1.45, 1.45); });
+addEventListener('mousemove', e => { if (state !== 'play' || !P || !P.alive || (!started && !DEBUG)) return; if (!DEBUG && !TOUCH && document.pointerLockElement !== $('view')) return; const k = .0022 * S.sens * (P.ads ? Math.min(1, P.weapon.ads * 1.4 + .12) : 1); P.yaw -= e.movementX * k; P.pitch = clamp(P.pitch - e.movementY * k, -1.45, 1.45); });
 addEventListener('mousedown', e => { if (state !== 'play') return; if (!started && !DEBUG) { lockPointer(); return; } if (e.button === 0) { mouse.l = true; mouse.lp = true; } if (e.button === 2) { mouse.r = true; mouse.rp = true; } e.preventDefault(); });
 addEventListener('mouseup', e => { if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
 addEventListener('contextmenu', e => { if (state === 'play') e.preventDefault(); });
@@ -108,7 +110,7 @@ addEventListener('keydown', e => {
   if (e.repeat || state !== 'play' || !P) { if (e.code === 'Escape' && state === 'pause') resumeGame(); return; }
   if (e.code === 'Escape') { pauseGame(); return; }
   if (!P.alive) return; const c = e.code;
-  if (W.edit && c >= 'Digit1' && c <= 'Digit4') { const nm = PC.editPreset(+c.slice(5) - 1); if (nm) toast(nm.toUpperCase(), 'Press G to confirm, or click tiles to change it', 1100); }
+  if (W.edit && c >= 'Digit1' && c <= 'Digit4') { const nm = PC.editPreset(+c.slice(5) - 1); if (nm) toast(nm.toUpperCase(), tx('Press G to confirm, or click tiles to change it'), 1100); }
   else if (c >= 'Digit1' && c <= 'Digit5') { leaveBuild(); P.selectWeapon(+c.slice(5) - 1); hudDirty = true; }
   else if (c === 'KeyQ') { if (P.mode === 'build') leaveBuild(); else enterBuild(P.buildType); }
   else if (c === 'KeyZ' || c === 'KeyX' || c === 'KeyC' || c === 'KeyV') { const t = { KeyZ: 'w', KeyX: 'f', KeyC: 's', KeyV: 'r' }[c]; if (P.mode === 'build' && P.buildType === t) leaveBuild(); else enterBuild(t); }
@@ -159,7 +161,7 @@ function pickEditPiece() {
   return best;
 }
 function startEditAtCrosshair() {
-  const p = pickEditPiece(); if (p) { PC.startEdit(p); P.ads = false; adsTog = false; sfx('edit'); toast('EDIT ' + PC.TYPES[p.type].toUpperCase(), 'Click tiles to cut them · 1-4 quick shapes · G to confirm', 1800); } else { sfx('empty'); toast('NOTHING TO EDIT', 'Look at a wall or floor and press G', 1200); }
+  const p = pickEditPiece(); if (p) { PC.startEdit(p); P.ads = false; adsTog = false; sfx('edit'); toast('EDIT ' + PC.TYPES[p.type].toUpperCase(), tx('Click tiles to cut them · 1-4 quick shapes · G to confirm'), 1800); } else { sfx('empty'); toast('NOTHING TO EDIT', tx('Look at a wall or floor and press G'), 1200); }
 }
 
 // ================================================================== the player
@@ -329,7 +331,38 @@ NET.bind({
 $('viewFp').onclick = () => setView('fp'); $('viewTp').onclick = () => setView('tp'); setView(S.view);
 const sens = $('sens'), fov = $('fov'), vol = $('vol'); sens.value = S.sens; fov.value = S.fov; vol.value = S.vol;
 sens.oninput = () => { S.sens = +sens.value; save('sens', S.sens); }; fov.oninput = () => { S.fov = +fov.value; save('fov', S.fov); camera.fov = S.fov; camera.updateProjectionMatrix(); }; vol.oninput = () => { setVolume(+vol.value); save('vol', S.vol); };
-if (!('ontouchstart' in window) || navigator.maxTouchPoints === 0) $('touchWarn').style.display = 'none'; else $('touchWarn').style.display = 'block';
+if (TOUCH) {
+  $('touchWarn').style.display = 'block'; $('touchWarn').textContent = 'Touch controls: left thumb moves, right thumb looks. FIRE shoots and places builds. Tap BUILD, then pick Wall, Floor, Stairs or Roof at the bottom.';
+  $('edithud').innerHTML = 'EDIT: aim at a tile and tap FIRE to cut it or bring it back. Tap OK to save.<div class="shapes">Quick shapes (slots 1-4): <span id="editShapes"></span></div>';
+  const gunM = () => !!P && P.mode === 'gun' && !W.edit, bldM = () => !!P && P.mode === 'build' && !W.edit, edM = () => !!W.edit;
+  const bt = (label, key, o) => Object.assign({ label, key, type: 'tap', s: 58, cls: 'small', fs: 10 }, o), BP = { w: 'KeyZ', f: 'KeyX', s: 'KeyC', r: 'KeyV', edit: 'KeyG' };
+  initTouch({
+    visible: () => state === 'play', lookScale: 2.3,
+    stick: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' },
+    taps: [{ sel: '#slots > .slot', key: (el, i) => 'Digit' + (i + 1) }, { sel: '#buildbar > .bp', key: el => BP[el.dataset.t] }],
+    buttons: [
+      { label: 'FIRE', cls: 'fire', mouse: 0, look: true, minHold: 90, s: 92, r: 24, b: 64 },
+      bt('ZOOM', 'KeyT', { isOn: () => adsTog, show: gunM, r: 40, b: 168, fs: 11 }), bt('CANCEL', null, { mouseTap: 2, show: edM, r: 40, b: 168 }),
+      bt('JUMP', 'Space', { type: 'hold', s: 64, r: 128, b: 22, fs: 11 }),
+      bt('RELOAD', 'KeyR', { show: gunM, r: 132, b: 100 }), bt('ROTATE', 'KeyR', { show: bldM, r: 132, b: 100 }), bt('RESET', 'KeyR', { show: edM, r: 132, b: 100 }),
+      bt('BUILD', 'KeyQ', { isOn: () => !!P && P.mode === 'build', show: () => !W.edit, r: 206, b: 60, fs: 11 }),
+      bt('EDIT', 'KeyG', { show: gunM, s: 52, r: 206, b: 130, fs: 11 }), bt('MATS', 'KeyB', { show: bldM, s: 52, r: 206, b: 130, fs: 11 }), bt('OK', 'KeyG', { show: edM, glow: () => true, s: 52, r: 206, b: 130, fs: 13 }),
+      { label: 'CROUCH', type: 'toggle', key: 'ShiftLeft', s: 52, r: 270, b: 22, cls: 'small', fs: 9 },
+      { label: 'SCORE', type: 'toggle', key: 'Tab', s: 40, l: 118, t: 8, cls: 'small', fs: 8 },
+      { label: 'II', type: 'tap', action: pauseGame, s: 40, l: 164, t: 8, cls: 'small', fs: 14 },
+    ],
+    css: `
+      html.touch #top { top: 6px; } html.touch #topA { font-size: 20px; padding: 0 14px; min-width: 70px; border-radius: 10px; } html.touch #topB { font-size: 10px; margin-top: 2px; }
+      html.touch #hpbox { left: 10px; bottom: 8px; width: 150px; } html.touch .nums { font-size: 16px; gap: 10px; } html.touch .bar { height: 10px; margin-top: 3px; border-width: 2px; }
+      html.touch #bottom { left: 40%; bottom: 6px; } html.touch #slots { margin-top: 4px; gap: 4px; } html.touch #buildbar { gap: 4px; }
+      html.touch .slot { width: 56px; height: 40px; padding: 2px; border-width: 2px; border-radius: 9px; } html.touch .slot b { font-size: 9px; margin-top: 10px; } html.touch .slot i { font-size: 9px; left: 4px; top: 1px; } html.touch .slot span { font-size: 10px; right: 4px; }
+      html.touch .bp { width: 54px; height: 28px; font-size: 10px; padding-top: 4px; border-width: 2px; border-radius: 8px; } html.touch .bp i { display: none; } html.touch .bp b { margin-left: 0; }
+      html.touch #right { right: 12px; top: 24px; bottom: auto; } html.touch #ammo { font-size: 30px; margin-bottom: 0; } html.touch #wname { font-size: 10px; } html.touch .mat { font-size: 12px; margin-top: 1px; padding: 1px 6px; } html.touch .mat b { font-size: 9px; } html.touch .mat i { width: 11px; height: 11px; }
+      html.touch #feed { top: 138px; right: 12px; } html.touch #feed div { font-size: 12px; padding: 3px 9px; }
+      html.touch #edithud { top: 52px; font-size: 12px; padding: 5px 12px; } html.touch #toast { top: 18%; } html.touch #toastA { font-size: 28px; } html.touch #toastB { font-size: 13px; } html.touch #respawn { top: 50%; font-size: 18px; }
+    `,
+  });
+} else $('touchWarn').style.display = 'none';
 info = buildMap('range'); renderMenu(); buildHUDSlots(); $('hud').style.visibility = 'hidden';
 requestAnimationFrame(loop);
 

@@ -1,9 +1,9 @@
 // FORT FIGHT - bot brains: they fight, strafe, build walls to hide behind, ramp up to you, shoot through your walls and harvest.
-import { V3, rnd, clamp, angDiff, pick, W, TAU } from './core.js?v=8';
-import { world } from './physics.js?v=8';
-import { WEAPONS, fireGun, swingPickaxe, raycastAll } from './actors.js?v=8';
-import { levelAt, cardinal, pieces } from './pieces.js?v=8';
-import { props } from './maps.js?v=8';
+import { V3, rnd, clamp, angDiff, pick, W, TAU } from './core.js?v=9';
+import { world } from './physics.js?v=9';
+import { WEAPONS, fireGun, swingPickaxe, raycastAll } from './actors.js?v=9';
+import { levelAt, cardinal, pieces } from './pieces.js?v=9';
+import { props } from './maps.js?v=9';
 
 export const DIFFS = {
   chill: { name: 'Chill', react: .8, noise: .075, turn: 3.6, burst: [.5, 1.1], pause: [.7, 1.5], build: .15, ramp: false, box: false, speed: .78, head: .05, view: 55 },
