@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Putt Party</title>
+<meta name="description" content="Toon mini golf with windmills, bumpers, sand, water, boost strips, sliding walls and teleport pipes. Play nine holes against computer golfers. Free, runs in your browser, on Chromebooks and on phones.">
+<style>
+  :root { --y: #ffd34e; --c: #2ee6ff; --p: #ff4fa8; }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0720; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff; overscroll-behavior: none; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hide { display: none !important; }
+  .hud { position: fixed; inset: 0; pointer-events: none; }
+  .hud > * { position: absolute; pointer-events: none; } .hud button { pointer-events: auto; }
+  #topbar { top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 12px; padding: 7px 12px; background: linear-gradient(180deg, rgba(18,10,36,.82), rgba(18,10,36,.45)); text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #holeN { font-size: 12px; font-weight: 900; letter-spacing: .18em; opacity: .8; } #holeName { font-size: 20px; font-weight: 900; color: var(--y); line-height: 1.1; } #par { font-size: 13px; font-weight: 900; letter-spacing: .1em; background: rgba(255,255,255,.15); border-radius: 10px; padding: 3px 10px; }
+  #topbar .sp { flex: 1; } .tbtn { font: inherit; font-weight: 900; font-size: 15px; color: #fff; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.25); border-radius: 12px; padding: 5px 12px; cursor: pointer; pointer-events: auto; }
+  #strokeBox { text-align: center; line-height: 1; } #strokes { font-size: 38px; font-weight: 900; color: #fff; } #strokeLbl { font-size: 10px; font-weight: 900; letter-spacing: .2em; opacity: .75; }
+  #fps { position: fixed; right: 8px; bottom: 6px; font: 700 11px ui-monospace, Consolas, monospace; opacity: .8; }
+  #board { top: 66px; right: 10px; width: 190px; background: rgba(10,6,24,.58); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 6px 8px; } .brow { display: flex; align-items: center; gap: 7px; padding: 3px 2px; font-weight: 800; font-size: 14px; } .brow.me { color: var(--y); } .brow i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(0,0,0,.45); flex: none; } .brow .bn { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .brow .bs { min-width: 26px; text-align: right; opacity: .85; } .brow .bt { min-width: 24px; text-align: right; background: rgba(255,255,255,.14); border-radius: 8px; padding: 0 6px; }
+  #power { left: 50%; bottom: 26px; transform: translateX(-50%); width: min(320px, 70%); height: 20px; border-radius: 12px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.35); overflow: hidden; opacity: 0; transition: opacity .15s; } #powerF { height: 100%; width: 0; }
+  #hint { left: 50%; bottom: 58px; transform: translateX(-50%); font-weight: 900; font-size: 17px; text-shadow: 0 2px 0 rgba(0,0,0,.7); background: rgba(10,6,24,.5); padding: 5px 16px; border-radius: 12px; white-space: nowrap; } #hint:empty { display: none; }
+  #toast { left: 50%; top: 24%; transform: translate(-50%, 0); text-align: center; opacity: 0; text-shadow: 0 4px 0 rgba(0,0,0,.55); white-space: nowrap; } #toast.on { animation: toastA 1.9s ease-out forwards; }
+  #toastA { font-size: 46px; font-weight: 900; color: var(--y); letter-spacing: .05em; } #toastB { font-size: 18px; font-weight: 800; }
+  @keyframes toastA { 0% { opacity: 0; transform: translate(-50%, 16px) scale(.6); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -20px); } }
+  /* the scorecard between holes */
+  #card { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8,4,20,.55); z-index: 4; } #card .box { background: rgba(24,14,50,.94); border: 3px solid rgba(255,255,255,.2); border-radius: 22px; padding: 18px 26px; min-width: 340px; text-align: center; } #cardT { font-size: 24px; font-weight: 900; color: var(--y); } #cardPar { font-size: 13px; letter-spacing: .15em; opacity: .75; margin-bottom: 8px; }
+  #cardTbl { margin: 6px auto 12px; border-collapse: collapse; width: 100%; } #cardTbl td, #cardTbl th { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,.14); font-weight: 800; text-align: left; } #cardTbl th { font-size: 11px; letter-spacing: .14em; opacity: .65; } #cardTbl tr.me { color: var(--y); } #cardTbl i, #resTable i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 2px solid rgba(0,0,0,.4); vertical-align: -1px; } .sc { font-size: 20px; } .under { color: #6aff9a; } .over { color: #ff8a8a; } .nm { font-size: 12px; opacity: .85; }
+  /* screens */
+  .screen { position: fixed; inset: 0; display: grid; place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.5), rgba(8,4,20,.82)); z-index: 5; text-align: center; padding: 20px; }
+  #pause, #results { background: rgba(8,4,20,.82); place-items: center; }
+  .screen .box { max-width: 760px; width: 100%; margin: auto; }
+  h1 { font-size: clamp(40px, 9vw, 92px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff6b0, #ffb02a 55%, #ff5a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(120,30,0,.7)) drop-shadow(0 0 28px rgba(255,140,40,.5)); }
+  .sub { opacity: .85; font-size: 17px; margin: 10px 0 18px; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+  .screen button, #card button { font: inherit; font-weight: 800; font-size: 17px; color: #1a0c00; background: linear-gradient(180deg, #ffd34e, #ff9a1a); border: 0; border-radius: 14px; padding: 11px 24px; cursor: pointer; box-shadow: 0 5px 0 #a24a00; }
+  .screen button:active, #card button:active { transform: translateY(3px); box-shadow: 0 2px 0 #a24a00; } .screen button.alt { background: linear-gradient(180deg, #7cecff, #20b8e8); box-shadow: 0 5px 0 #0a6a88; color: #04202a; } .screen button.sel { outline: 4px solid #fff; } .screen button.big, #card button.big { font-size: 26px; padding: 14px 42px; }
+  .grp { margin: 14px 0; } .grp h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .22em; opacity: .65; } .mdesc { margin: 8px 0 0; font-size: 14px; opacity: .8; }
+  .sw { gap: 10px; } .screen button.swatch { width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); box-shadow: 0 4px 0 rgba(0,0,0,.4); } .screen button.swatch.sel { outline: 4px solid #fff; }
+  input[type=text] { font: inherit; font-weight: 800; padding: 11px 14px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.6); color: #fff; width: 190px; text-align: center; user-select: text; -webkit-user-select: text; }
+  .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 22px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.97) 32%); } .stick .row { margin: 6px 0; }
+  details { margin: 10px 0; } details summary { cursor: pointer; opacity: .75; font-weight: 700; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 14px 0; font-size: 14px; text-align: left; } .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
+  label { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 6px 0; font-weight: 700; } input[type=range] { width: 200px; }
+  .fine { font-size: 12px; opacity: .55; max-width: 620px; margin: 6px auto 12px; line-height: 1.5; }
+  a.back { position: fixed; left: 18px; top: 14px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; }
+  #resS { font-size: 18px; line-height: 1.6; margin: 6px 0; } #resS b { color: var(--y); } .nb { color: #6aff9a; font-weight: 900; }
+  #resTable { margin: 8px auto; border-collapse: collapse; min-width: 340px; } #resTable td, #resTable th { padding: 5px 12px; border-bottom: 1px solid rgba(255,255,255,.15); font-weight: 700; text-align: left; } #resTable th { font-size: 12px; letter-spacing: .15em; opacity: .65; } #resTable tr.me { color: var(--y); }
+  @media (max-width: 760px), (max-height: 520px) { #topbar { padding: 3px 8px; gap: 8px; } #holeName { font-size: 15px; } #strokes { font-size: 26px; } #board { width: 140px; top: 52px; right: 6px; padding: 3px 6px; } .brow { font-size: 12px; padding: 1px 2px; } #hint { font-size: 13px; bottom: 50px; } #toastA { font-size: 32px; } #power { bottom: 16px; } }
+  @media (max-height: 900px) { .screen { padding: 12px 16px; } h1 { font-size: clamp(34px, 9vh, 70px); } .sub { font-size: 15px; margin: 6px 0 10px; } .grp { margin: 8px 0; } .screen button { font-size: 15px; padding: 9px 20px; } .screen button.big { font-size: 22px; padding: 11px 34px; } }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div class="hud" id="hud">
+  <div id="topbar"><div><div id="holeN"></div><div id="holeName"></div></div><div id="par"></div><div class="sp"></div><div id="strokeBox"><div id="strokes">0</div><div id="strokeLbl">STROKES</div></div><div class="sp"></div><button class="tbtn" id="pauseBtn">II</button></div>
+  <div id="board"></div><div id="fps">-- FPS</div>
+  <div id="toast"><div id="toastA"></div><div id="toastB"></div></div>
+  <div id="hint"></div>
+  <div id="power"><div id="powerF"></div></div>
+</div>
+<div id="card" class="hide"><div class="box"><div id="cardT"></div><div id="cardPar"></div><table id="cardTbl"><thead><tr><th>Golfer</th><th>Strokes</th><th></th><th>Total</th></tr></thead><tbody id="cardBody"></tbody></table><button class="big" id="cardNext">NEXT HOLE</button></div></div>
+
+<div class="screen" id="menu">
+  <a class="back" href="../../">&larr; All games</a>
+  <div class="box">
+    <h1>PUTT<br>PARTY</h1>
+    <p class="sub">Toon mini golf with windmills, bumpers, sand and sneaky pipes. Everybody putts at the same time!</p>
+    <div id="menuPickers"></div>
+    <div class="stick"><div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">TEE OFF!</button></div></div>
+    <details><summary>How to play</summary>
+    <div class="keys">
+      <div><b>Mouse or finger:</b> press, drag back away from your ball (like a slingshot), aim the arrow and let go. The further you pull, the harder the putt.</div><div><b>Keyboard:</b> left and right arrows (or A / D) turn the arrow, hold <b>Space</b> to charge and let go to putt.</div>
+      <div>The <b>dotted line</b> shows where the ball goes until it hits something. Walls bounce it, bumpers boing it, sand slows it down.</div><div>Land in <b>water</b> and you get one extra stroke. A ball that is too fast rolls right over the cup!</div>
+      <div><b>Mouse wheel</b> zooms &nbsp; <b>Esc</b> pauses &nbsp; Eight strokes is the limit on a hole.</div><div>The lowest total strokes after the last hole wins.</div>
+    </div></details>
+    <details><summary>Settings</summary><label>Volume <input type="range" id="vol" min="0" max="1" step=".05"></label></details>
+    <p class="sub" id="touchWarn" style="display:none"></p>
+    <p class="fine">An original mini golf game, not affiliated with any game company.</p>
+  </div>
+</div>
+<div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="restart">Restart round</button><button class="alt" id="quit">Quit to menu</button></div></div></div>
+<div class="screen hide" id="results"><div class="box" style="max-width:560px"><h1 id="resT" style="font-size:50px">RESULTS</h1><p id="resS"></p><table id="resTable"></table><div class="row"><button class="big" id="again">PLAY AGAIN</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
+<script type="module" src="game.js?v=8"></script>
+</body>
+</html>
