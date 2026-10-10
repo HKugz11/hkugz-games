@@ -1,9 +1,10 @@
 // SKY TOWER - a 3D tower climber. Jump up a colorful tower of platforms, moving lifts, crumbling tiles and spinning bars.
-import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, IS_CROS, camera, renderer, scene, W, R, rnd, clamp, lerp, TAU, load, save, hex, followSun, updateFX, burst, ring, audioInit, setVolume, sfx, adaptRes, rng } from './core.js?v=6';
-import { world, pushOut } from './physics.js?v=6';
-import { generate, THEMES, JUMP } from './gen.js?v=6';
-import { Tower } from './tower.js?v=6';
-import { Player, cam, updateCamera } from './player.js?v=6';
+import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, IS_CROS, camera, renderer, scene, W, R, rnd, clamp, lerp, TAU, load, save, hex, followSun, updateFX, burst, ring, audioInit, setVolume, sfx, adaptRes, rng } from './core.js?v=7';
+import { world, pushOut } from './physics.js?v=7';
+import { generate, THEMES, JUMP } from './gen.js?v=7';
+import { Tower } from './tower.js?v=7';
+import { Player, cam, updateCamera } from './player.js?v=7';
+import { TOUCH, initTouch } from './touch.js?v=7';
 
 const MODES = {
   classic: { name: 'Classic Tower', blurb: 'The same ten-stage tower every time, with a checkpoint at the top of each stage. Beat your best time!', seed: 20261009, stages: 10, ck: true },
@@ -59,11 +60,11 @@ function win() {
 }
 
 // ================================================================== input
-function lockPointer() { if (DEBUG) { started = true; return; } const el = $('view'); try { const p = el.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => el.requestPointerLock()); } catch (e) { try { el.requestPointerLock(); } catch (e2) {} } }
+function lockPointer() { if (DEBUG || TOUCH) { started = true; return; } const el = $('view'); try { const p = el.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => el.requestPointerLock()); } catch (e) { try { el.requestPointerLock(); } catch (e2) {} } }
 document.addEventListener('pointerlockchange', () => { const on = document.pointerLockElement === $('view'); started = on; if (!on && state === 'play' && !DEBUG) pauseGame(); });
 function pauseGame() { if (state !== 'play') return; state = 'pause'; W.state = 'pause'; $('pause').classList.remove('hide'); $('pauseSeed').textContent = run && MODES[run.mode].rand ? 'Seed ' + run.seed : ''; }
 function resumeGame() { if (state !== 'pause') return; state = 'play'; W.state = 'play'; $('pause').classList.add('hide'); audioInit(); lockPointer(); }
-addEventListener('mousemove', e => { if (state !== 'play' || (!started && !DEBUG)) return; if (!DEBUG && document.pointerLockElement !== $('view')) return; const k = .0024 * S.sens; cam.yaw -= e.movementX * k; cam.pitch = clamp(cam.pitch + e.movementY * k, -.25, 1.35); });
+addEventListener('mousemove', e => { if (state !== 'play' || (!started && !DEBUG)) return; if (!DEBUG && !TOUCH && document.pointerLockElement !== $('view')) return; const k = .0024 * S.sens; cam.yaw -= e.movementX * k; cam.pitch = clamp(cam.pitch + e.movementY * k, -.25, 1.35); });
 addEventListener('mousedown', e => { if (state === 'play' && !started && !DEBUG) lockPointer(); });
 addEventListener('wheel', e => { if (state !== 'play') return; cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * .8, 3.5, 15); });
 addEventListener('keydown', e => {
@@ -164,7 +165,23 @@ $('cont').onclick = () => { audioInit(); const saved = load('run.' + CFG.mode, n
 $('resume').onclick = resumeGame; $('quit').onclick = showMenu; $('again').onclick = () => { audioInit(); const m = MODES[CFG.mode]; if (!m.rand) save('run.' + CFG.mode, null); startRun(run.mode, 0); lockPointer(); }; $('menuBtn').onclick = showMenu;
 const sens = $('sens'), fov = $('fov'), vol = $('vol'); sens.value = S.sens; fov.value = S.fov; vol.value = S.vol;
 sens.oninput = () => { S.sens = +sens.value; save('sens', S.sens); }; fov.oninput = () => { S.fov = +fov.value; save('fov', S.fov); camera.fov = S.fov; camera.updateProjectionMatrix(); }; vol.oninput = () => { setVolume(+vol.value); save('vol', S.vol); };
-$('touchWarn').style.display = ('ontouchstart' in window && navigator.maxTouchPoints > 0) ? 'block' : 'none';
+if (TOUCH) {
+  $('touchWarn').style.display = 'block'; $('touchWarn').textContent = 'Touch controls: left thumb runs (push all the way to run faster), right thumb turns the camera, JUMP is the big button.';
+  initTouch({
+    visible: () => state === 'play', lookScale: 2.1,
+    stick: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', sprintKey: 'ShiftLeft', sprintAt: .9 },
+    buttons: [
+      { label: 'JUMP', cls: 'fire', type: 'hold', key: 'Space', look: true, s: 98, r: 26, b: 56 },
+      { label: 'BACK', type: 'tap', key: 'KeyR', s: 52, r: 140, b: 24, cls: 'small', fs: 11 },
+      { label: 'II', type: 'tap', action: () => pauseGame(), s: 40, r: 12, t: 38, cls: 'small', fs: 14 },
+    ],
+    css: `
+      html.touch #stage { top: 6px; left: 10px; min-width: 150px; padding: 4px 10px 6px; border-radius: 10px; } html.touch #stageT { font-size: 9px; } html.touch #stageN { font-size: 15px; margin: 0 0 4px; } html.touch #prog { height: 7px; }
+      html.touch #timerBox { top: 6px; } html.touch #timer { font-size: 22px; padding: 0 14px; border-radius: 10px; min-width: 100px; } html.touch #bestT { font-size: 10px; }
+      html.touch #deaths { top: 6px; right: 12px; font-size: 12px; padding: 2px 8px; } html.touch #hint, html.touch #lockhint { display: none; } html.touch #toast { top: 18%; } html.touch #toastA { font-size: 30px; } html.touch #toastB { font-size: 15px; }
+    `,
+  });
+} else $('touchWarn').style.display = 'none';
 showMenu(); requestAnimationFrame(loop);
 
 if (DEBUG) window.__st = { get P() { return P; }, get run() { return run; }, get tower() { return tower; }, get state() { return state; }, W, world, keys, inp, cam, step, render, startRun, die, generate, makeSpec, MODES, THEMES, JUMP, camera, renderer, scene, showMenu, simulate, pauseGame, resumeGame, win };

@@ -1,7 +1,7 @@
 // SKY TOWER - the climber: a toon robot with a tight platformer controller, plus the orbit camera.
-import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU } from './core.js?v=6';
-import { world, moveEntity, pushOut } from './physics.js?v=6';
-import { JUMP } from './gen.js?v=6';
+import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU } from './core.js?v=7';
+import { world, moveEntity, pushOut } from './physics.js?v=7';
+import { JUMP } from './gen.js?v=7';
 
 // ---------------------------------------------------------------- the avatar (merged parts with shared geometry)
 const dark = toon(0x2a2140), vcol = toon(0xffffff, { vertexColors: true }); dark.userData.shared = vcol.userData.shared = true;

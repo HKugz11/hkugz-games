@@ -1,6 +1,6 @@
 // SKY TOWER - the tower generator. A seed always gives the same tower, so everybody can climb (and race) the same one.
 // The path winds up around a square ring in stages. Every stage has a theme, a checkpoint and its own mix of obstacles.
-import { rng, lerp, clamp, TAU } from './core.js?v=6';
+import { rng, lerp, clamp, TAU } from './core.js?v=7';
 
 export const JUMP = { speed: 9, v: 11.5, g: 32 };
 export const L = 30, H2 = L / 2, TH = .9;

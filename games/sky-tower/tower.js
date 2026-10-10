@@ -1,8 +1,8 @@
 // SKY TOWER - builds the tower from a generated layout and keeps everything in it moving. Every moving thing is a pure function
 // of the run clock, so two players with the same seed and the same clock see exactly the same tower.
-import { THREE, V3, scene, toon, INK, QL, rng, clamp, lerp, TAU, W, sfx, burst, ring, blendSky } from './core.js?v=6';
-import { world, sphereVsObb } from './physics.js?v=6';
-import { THEMES, TH } from './gen.js?v=6';
+import { THREE, V3, scene, toon, INK, QL, rng, clamp, lerp, TAU, W, sfx, burst, ring, blendSky } from './core.js?v=7';
+import { world, sphereVsObb } from './physics.js?v=7';
+import { THEMES, TH } from './gen.js?v=7';
 
 const YAX = new V3(0, 1, 0);
 const unit = new THREE.BoxGeometry(1, 1, 1); unit.userData.shared = true;

@@ -1,5 +1,5 @@
 // SKY TOWER - collision world: a spatial hash of boxes (some of them moving), character movement with step-up, and ray casts.
-import { V3, THREE } from './core.js?v=6';
+import { V3, THREE } from './core.js?v=7';
 export const STEP = .42;
 const CS = 8;
 const ckey = (ix, iy, iz) => ((ix + 512) * 1024 + (iz + 512)) * 256 + (iy + 8);
