@@ -10,6 +10,7 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 | **Sky Tower** | Original 3D obby tower climber (Three.js): a generated tower of 10 themed stages (moving platforms and lifts, crumbling tiles, ice, bounce pads, conveyor belts, spinning bars, hammers, pistons, zap strips) with checkpoints, best times, a seeded Random Tower and a no-checkpoint Hardcore mode. Auto Low-graphics mode for Chromebooks; touch controls for phones and tablets |
 | **Kart Rush** | Original toon kart racer (Three.js): 3 tracks (Sunny Loop, Neon City, Frosty Peaks with ice patches), 8 karts with 3 kart types, drifting with 3 mini-turbo tiers, boost pads, rocket start, item boxes (turbo, rockets, oil slicks, shield, zap, with rubber-banded item odds), Grand Prix points over all three tracks, single races, time trial with saved best laps, 3 robot difficulties. Auto Low-graphics mode for Chromebooks; touch controls for phones and tablets (steer stick, drift, item, brake, automatic gas) |
 | **Gadget Guard** | Original toon tower defense (Three.js): 3 maps (Meadow Run, Twin Gates with two portals, Frozen Spiral), 6 gadgets with 4 upgrade levels each (Pop Blaster, Boomer, Frost Zapper, Rail Sniper, Tesla Coil, Booster), 7 robot types (armored Tanks, flying Copters, healing Medics, MEGA BOT bosses at waves 10, 20 and 30), 30-wave mode and Endless mode, 3 difficulties with star ratings, targeting modes, airstrike ability, 1x/2x/3x speed and auto-start. Tap-friendly controls for phones and tablets (drag to pan, pinch to zoom); auto Low-graphics mode for Chromebooks |
+| **Wobble Dash** | Original obstacle-race game (Three.js): wobbly beans run, jump (hold for height), sprint and dive through 3 courses (Candy Run, Factory Frenzy, Cloud Rush) full of spinning bars, swinging hammers, sliding gates, side pushers, conveyor belts, ferries, trampolines, narrow beams and crumbling tiles. Showdown mode: 12 racers, then 8, then the final 4 for the crown; Quick Race on any course; 3 bot difficulties; best times saved. Bots follow waypoints, hop gaps, ride ferries and balance on beams. Camera drifts behind you automatically; touch controls for phones and tablets; auto Low-graphics mode for Chromebooks |
 | **Block Stack** | Original one-button game |
 | **Cube Flap** | Original one-button game |
 | **Snake** | Classic |
@@ -32,7 +33,7 @@ It is a plain static site. Serve the folder with any static file server, for exa
 
 ## Third-party code
 
-Blaster Arena, Fort Fight, Sky Tower, Kart Rush and Gadget Guard bundle [Three.js](https://threejs.org/) r160 (MIT license, see `games/blaster-arena/THREE-LICENSE.txt` and `games/fort-fight/THREE-LICENSE.txt`) and [PeerJS](https://peerjs.com/) 1.5.4 (MIT license, see `games/blaster-arena/vendor/PEERJS-LICENSE.txt` and `games/fort-fight/vendor/PEERJS-LICENSE.txt`).
+Blaster Arena, Fort Fight, Sky Tower, Kart Rush, Gadget Guard and Wobble Dash bundle [Three.js](https://threejs.org/) r160 (MIT license, see `games/blaster-arena/THREE-LICENSE.txt` and `games/fort-fight/THREE-LICENSE.txt`) and [PeerJS](https://peerjs.com/) 1.5.4 (MIT license, see `games/blaster-arena/vendor/PEERJS-LICENSE.txt` and `games/fort-fight/vendor/PEERJS-LICENSE.txt`).
 
 ### Blaster Arena online co-op
 

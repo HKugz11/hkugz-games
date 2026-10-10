@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Wobble Dash</title>
+<meta name="description" content="A wobbly bean obstacle race: dodge spinning bars and swinging hammers, dive for the finish and beat the other racers through three courses. Free, runs in your browser, on Chromebooks and on phones.">
+<style>
+  :root { --y: #ffd34e; --c: #2ee6ff; --p: #ff4fa8; }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0720; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff; overscroll-behavior: none; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hide { display: none !important; }
+  .hud { position: fixed; inset: 0; pointer-events: none; }
+  .hud > * { position: absolute; }
+  #fps { top: 8px; right: 14px; font: 700 12px/1 ui-monospace, Consolas, monospace; color: #fff; opacity: .85; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+  #fade { inset: 0; background: #fff; opacity: 0; transition: opacity .35s; } #fade.on { opacity: .8; }
+  #rinfo { top: 14px; left: 16px; text-shadow: 0 2px 0 rgba(0,0,0,.6); background: rgba(10,6,24,.5); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 6px 14px; }
+  #rname { font-size: 17px; font-weight: 900; color: var(--y); letter-spacing: .04em; } #rrule { font-size: 12px; font-weight: 800; letter-spacing: .12em; opacity: .85; }
+  #timerBox { top: 12px; left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #timer { font-size: 32px; font-weight: 900; letter-spacing: .05em; background: rgba(10,6,24,.5); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 2px 22px; display: inline-block; min-width: 130px; }
+  #rank { top: 40px; right: 18px; text-align: right; text-shadow: 0 3px 0 rgba(0,0,0,.6); line-height: 1; } #rank.safe #rankN { color: #6aff9a; } #rank.danger #rankN { color: #ff8a8a; }
+  #rankN { font-size: 64px; font-weight: 900; color: var(--y); letter-spacing: -.03em; } #rankS { font-size: 20px; font-weight: 900; margin-left: 4px; }
+  #progWrap { left: 50%; bottom: 18px; width: 52%; transform: translateX(-50%); height: 26px; } #progWrap:before { content: ""; position: absolute; left: 0; right: 0; top: 10px; height: 8px; border-radius: 6px; background: rgba(10,6,24,.55); border: 2px solid rgba(255,255,255,.3); } #progWrap:after { content: "🏁"; position: absolute; right: -10px; top: -4px; font-size: 20px; }
+  #prog { position: absolute; left: 0; right: 0; top: 0; bottom: 0; } #prog i { position: absolute; top: 9px; width: 11px; height: 11px; margin-left: -5px; border-radius: 50%; border: 2px solid rgba(0,0,0,.55); transition: left .15s linear; } #prog i.me { top: 5px; width: 19px; height: 19px; margin-left: -9px; border: 3px solid #fff; z-index: 2; }
+  #dive { left: 50%; transform: translateX(-50%); bottom: 54px; white-space: nowrap; transition: opacity 1s; font-weight: 800; font-size: 13px; letter-spacing: .08em; background: rgba(10,6,24,.55); border-radius: 10px; padding: 6px 12px; } #dive b { color: var(--y); }
+  #big { left: 50%; top: 22%; transform: translate(-50%, 0); text-align: center; opacity: 0; text-shadow: 0 5px 0 rgba(0,0,0,.55); white-space: nowrap; } #big.on { animation: bigA 2.4s ease-out forwards; }
+  #bigA { font-size: 62px; font-weight: 900; color: var(--y); letter-spacing: .04em; } #bigB { font-size: 20px; font-weight: 800; }
+  @keyframes bigA { 0% { opacity: 0; transform: translate(-50%, 16px) scale(.6); } 8% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -18px); } }
+  #count { left: 50%; top: 42%; transform: translate(-50%, -50%) scale(1); font-size: 130px; font-weight: 900; color: #fff; text-shadow: 0 6px 0 #a24a00, 0 0 30px rgba(255,200,60,.7); opacity: 0; } #count.on { animation: cnt .95s ease-out forwards; } @keyframes cnt { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.8); } }
+  #tags { inset: 0; overflow: hidden; } .tag { position: absolute; left: 0; top: 0; transform: translate3d(-100px,-100px,0); font-size: 12px; font-weight: 900; text-shadow: 0 1px 0 rgba(0,0,0,.8), 0 0 6px rgba(0,0,0,.6); white-space: nowrap; margin-left: -40px; width: 80px; text-align: center; opacity: .92; } .tag.me { color: var(--y); font-size: 14px; opacity: 1; } .tag.me:after { content: "BC"; display: block; font-size: 16px; line-height: 10px; animation: bob .6s ease-in-out infinite alternate; } @keyframes bob { to { transform: translateY(5px); } }
+  #lockhint { left: 50%; top: 52%; transform: translateX(-50%); background: rgba(10,6,24,.8); border: 2px solid var(--y); border-radius: 14px; padding: 12px 22px; font-weight: 900; font-size: 18px; text-align: center; }
+  /* screens */
+  .screen { position: fixed; inset: 0; display: grid; place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.55), rgba(8,4,20,.84)); z-index: 5; text-align: center; padding: 20px; }
+  #pause, #results { background: rgba(8,4,20,.82); place-items: center; }
+  .screen .box { max-width: 900px; width: 100%; margin: auto; }
+  h1 { font-size: clamp(40px, 9vw, 92px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff6b0, #ffb02a 55%, #ff5a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(120,30,0,.7)) drop-shadow(0 0 28px rgba(255,140,40,.5)); }
+  .sub { opacity: .85; font-size: 17px; margin: 10px 0 18px; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+  button { font: inherit; font-weight: 800; font-size: 17px; color: #1a0c00; background: linear-gradient(180deg, #ffd34e, #ff9a1a); border: 0; border-radius: 14px; padding: 11px 24px; cursor: pointer; box-shadow: 0 5px 0 #a24a00; }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #a24a00; } button.alt { background: linear-gradient(180deg, #7cecff, #20b8e8); box-shadow: 0 5px 0 #0a6a88; color: #04202a; }
+  button.sel { outline: 4px solid #fff; } button.big { font-size: 26px; padding: 14px 42px; }
+  .grp { margin: 14px 0; } .grp h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .22em; opacity: .65; } .mdesc { margin: 8px 0 0; font-size: 14px; opacity: .8; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  button.modec { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; font-weight: 700; font-size: 13px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.65); box-shadow: 0 4px 0 rgba(0,0,0,.45); border: 3px solid transparent; background: linear-gradient(160deg, #3a2f78, #6a3a9a); } button.modec b { font-size: 18px; } button.modec span { font-weight: 600; opacity: .92; font-size: 12.5px; line-height: 1.3; } button.modec i { font-style: normal; color: var(--y); font-weight: 800; font-size: 12px; } button.modec.sel { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.3), 0 4px 0 rgba(0,0,0,.45); outline: none; }
+  .sw { gap: 10px; } button.swatch { width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); box-shadow: 0 4px 0 rgba(0,0,0,.4); } button.swatch.sel { outline: 4px solid #fff; }
+  input[type=text] { font: inherit; font-weight: 800; padding: 11px 14px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.6); color: #fff; width: 190px; text-align: center; user-select: text; -webkit-user-select: text; }
+  .stick { position: sticky; bottom: 0; z-index: 3; margin: 0 -14px; padding: 22px 14px 8px; background: linear-gradient(180deg, rgba(8,4,20,0), rgba(8,4,20,.97) 32%); } .stick .row { margin: 6px 0; }
+  details { margin: 10px 0; } details summary { cursor: pointer; opacity: .75; font-weight: 700; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 14px 0; font-size: 14px; text-align: left; } .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
+  label { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 6px 0; font-weight: 700; } input[type=range] { width: 200px; }
+  .fine { font-size: 12px; opacity: .55; max-width: 620px; margin: 6px auto 12px; line-height: 1.5; }
+  a.back { position: fixed; left: 18px; top: 14px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; }
+  #resS { font-size: 18px; line-height: 1.6; margin: 6px 0; } #resS b { color: var(--y); } .nb { color: #6aff9a; font-weight: 900; }
+  #resTable { margin: 8px auto; border-collapse: collapse; min-width: 340px; } #resTable td, #resTable th { padding: 4px 12px; border-bottom: 1px solid rgba(255,255,255,.15); font-weight: 700; text-align: left; } #resTable th { font-size: 12px; letter-spacing: .15em; opacity: .65; } #resTable tr.me { color: var(--y); } #resTable i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 2px solid rgba(0,0,0,.4); vertical-align: -1px; } #resTable .ok { color: #6aff9a; } #resTable .x { color: #ff8a8a; }
+  @media (max-width: 700px) { .stick { position: static; margin: 0; padding: 0; background: none; } #rankN { font-size: 44px; } #timer { font-size: 24px; min-width: 100px; } #bigA { font-size: 40px; } }
+  @media (max-height: 900px) { .screen { padding: 12px 16px; } h1 { font-size: clamp(34px, 9vh, 70px); } .sub { font-size: 15px; margin: 6px 0 10px; } .grp { margin: 8px 0; } button { font-size: 15px; padding: 9px 20px; } button.big { font-size: 22px; padding: 11px 34px; } button.modec { padding: 8px 12px; } button.modec span { font-size: 11.5px; } }
+  @media (max-height: 600px) { #resTable td, #resTable th { padding: 2px 10px; font-size: 13px; } #resT { font-size: 38px !important; } }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div class="hud" id="hud">
+  <div id="fade"></div>
+  <div id="rinfo"><div id="rname"></div><div id="rrule"></div></div>
+  <div id="timerBox"><div id="timer">0.00</div></div>
+  <div id="rank"><span id="rankN"></span><span id="rankS"></span></div>
+  <div id="progWrap"><div id="prog"></div></div>
+  <div id="dive"><b>E</b> / click: dive &nbsp; <b>Space</b>: jump &nbsp; <b>Shift</b>: sprint</div>
+  <div id="tags"></div>
+  <div id="fps">-- FPS</div>
+  <div id="count"></div>
+  <div id="big"><div id="bigA"></div><div id="bigB"></div></div>
+  <div id="lockhint" class="hide">Click anywhere to lock your mouse and start racing</div>
+</div>
+
+<div class="screen" id="menu">
+  <a class="back" href="../../">&larr; All games</a>
+  <div class="box">
+    <h1>WOBBLE<br>DASH</h1>
+    <p class="sub">Run, jump and dive through wobbly obstacle courses. Be one of the fastest beans to stay in the race!</p>
+    <div id="menuPickers"></div>
+    <div class="stick"><div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">DASH!</button></div></div>
+    <details><summary>Controls</summary>
+    <div class="keys">
+      <div><b>WASD</b> run (relative to the camera)</div><div><b>Mouse</b> turn the camera &nbsp; <b>Arrows</b> also turn it &nbsp; <b>Wheel</b> zoom</div>
+      <div><b>Space</b> jump (hold for a higher jump)</div><div><b>Shift</b> sprint &nbsp; <b>E</b> or <b>click</b> dive: a burst of speed, then you slide for a moment</div>
+      <div><b>Esc</b> pause</div><div><b>Tip:</b> falling just puts you back on the last solid ground, it only costs time</div>
+      <div><b>Tip:</b> spinning bars and hammers knock everyone around, the bots too!</div><div><b>Tip:</b> dive across the finish line to squeeze past a rival</div>
+    </div></details>
+    <details><summary>Settings</summary>
+      <label>Mouse sensitivity <input type="range" id="sens" min=".3" max="2.5" step=".05"></label>
+      <label>Field of view <input type="range" id="fov" min="60" max="110" step="1"></label>
+      <label>Volume <input type="range" id="vol" min="0" max="1" step=".05"></label>
+    </details>
+    <p class="sub" id="touchWarn" style="display:none"></p>
+    <p class="fine">An original obstacle-race game, not affiliated with any game company.</p>
+  </div>
+</div>
+<div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="restart">Restart</button><button class="alt" id="quit">Quit to menu</button></div></div></div>
+<div class="screen hide" id="results"><div class="box" style="max-width:560px"><h1 id="resT" style="font-size:48px">RESULTS</h1><p id="resS"></p><table id="resTable"></table><div class="row"><button class="big" id="again">NEXT ROUND</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
+<script type="module" src="game.js?v=12"></script>
+</body>
+</html>
