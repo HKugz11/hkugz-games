@@ -1,5 +1,5 @@
 // FORT FIGHT - collision world: a spatial hash of boxes, character movement with step-up, and ray casts.
-import { V3 } from './core.js?v=9';
+import { V3 } from './core.js?v=10';
 export const G_ACC = 28, STEP = .62;
 const CS = 8;
 const ckey = (ix, iy, iz) => ((ix + 512) * 1024 + (iz + 512)) * 64 + (iy + 4);

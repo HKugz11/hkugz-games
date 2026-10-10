@@ -1,8 +1,8 @@
 // FORT FIGHT - maps: a build range, a box-fight arena and an island. Everything is generated from a seeded random generator.
-import { THREE, V3, scene, toon, outline, QL, applyTheme, burst, sfxAt, rnd, clamp, W, TAU, disposeObj, gradient } from './core.js?v=9';
-import { world } from './physics.js?v=9';
-import { CELL, H, placePiece, clearPieces, MATS, resetIds } from './pieces.js?v=9';
-import { addMats } from './actors.js?v=9';
+import { THREE, V3, scene, toon, outline, QL, applyTheme, burst, sfxAt, rnd, clamp, W, TAU, disposeObj, gradient } from './core.js?v=10';
+import { world } from './physics.js?v=10';
+import { CELL, H, placePiece, clearPieces, MATS, resetIds } from './pieces.js?v=10';
+import { addMats } from './actors.js?v=10';
 
 export const mapGroup = new THREE.Group(); scene.add(mapGroup);
 export const props = [];

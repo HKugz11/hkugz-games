@@ -1,6 +1,6 @@
 // FORT FIGHT - the building system: walls, floors, stairs and roofs on a grid, with HP, build-up time and editing.
-import { THREE, V3, scene, QL, burst, ring, sfxAt, sfx, rnd, clamp, W, toon, INK } from './core.js?v=9';
-import { world, boxOverlapsAny } from './physics.js?v=9';
+import { THREE, V3, scene, QL, burst, ring, sfxAt, sfx, rnd, clamp, W, toon, INK } from './core.js?v=10';
+import { world, boxOverlapsAny } from './physics.js?v=10';
 
 export const CELL = 4, H = 3, WT = .25, FT = .3, STEP_H = H / 5, LEV_BIAS = 1.2, BUILD_T = 2.4, COST = 10, MAX_LEV = 36;
 export const MATS = { wood: { name: 'Wood', color: 0xe3a759, hp: 1 }, stone: { name: 'Stone', color: 0xb3a99e, hp: 2 }, metal: { name: 'Metal', color: 0x86c0f4, hp: 3 } };

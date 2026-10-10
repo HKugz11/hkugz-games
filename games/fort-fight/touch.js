@@ -38,10 +38,10 @@ export function initTouch(cfg) {
   const setKey = (name, code, v) => { if (on[name] !== v) { on[name] = v; if (code) kd(code, v); } };
   const stickUpdate = (x, y) => {
     let dx = x - stickP.x0, dy = y - stickP.y0; const m = Math.hypot(dx, dy), R = 56; if (m > R) { dx = dx / m * R; dy = dy / m * R; }
-    knob.style.left = (stickP.x0 + dx) + 'px'; knob.style.top = (stickP.y0 + dy) + 'px'; const nx = dx / R, ny = dy / R, T = .32;
+    knob.style.left = (stickP.x0 + dx) + 'px'; knob.style.top = (stickP.y0 + dy) + 'px'; const nx = dx / R, ny = dy / R, T = .32; if (cfg.onStick) cfg.onStick(nx, ny);
     setKey('up', S.up, ny < -T); setKey('down', S.down, ny > T); setKey('left', S.left, nx < -T); setKey('right', S.right, nx > T); setKey('sprint', S.sprintKey, S.sprintKey && Math.hypot(nx, ny) > (S.sprintAt || .93));
   };
-  const stickEnd = () => { stickP = null; base.style.display = knob.style.display = 'none'; setKey('up', S.up, false); setKey('down', S.down, false); setKey('left', S.left, false); setKey('right', S.right, false); setKey('sprint', S.sprintKey, false); };
+  const stickEnd = () => { stickP = null; if (cfg.onStick) cfg.onStick(0, 0); base.style.display = knob.style.display = 'none'; setKey('up', S.up, false); setKey('down', S.down, false); setKey('left', S.left, false); setKey('right', S.right, false); setKey('sprint', S.sprintKey, false); };
   const tapAt = e => {   // did we touch something on the HUD (a weapon slot, a build button)? The HUD ignores pointers, so test the rectangles ourselves.
     if (!cfg.taps) return false;
     for (const spec of cfg.taps) {
@@ -90,7 +90,7 @@ export function initTouch(cfg) {
       if (s.b.glow) s.el.classList.toggle('glow', !!s.b.glow());
       if (s.b.show) { const d = s.b.show() ? '' : 'none'; if (s.el.style.display !== d) s.el.style.display = d; }
     }
-    if (v !== shown) { shown = v; root.classList.toggle('on', v); document.documentElement.classList.toggle('tplay', v); if (!v) { stickEnd(); lookP = null; for (const s of btns) { if (s.state && s.b.key) kd(s.b.key, false); if (s.state && s.b.mouse !== undefined) mouse(s.b.mouse, false); s.reset(); } } }
+    if (v !== shown) { shown = v; for (const c of cfg.autoKeys || []) kd(c, v); root.classList.toggle('on', v); document.documentElement.classList.toggle('tplay', v); if (!v) { stickEnd(); lookP = null; for (const s of btns) { if (s.state && s.b.key) kd(s.b.key, false); if (s.state && s.b.mouse !== undefined) mouse(s.b.mouse, false); s.reset(); } } }
   }, 120);
   document.addEventListener('click', function once() { document.removeEventListener('click', once); try { const d = document.documentElement; if (d.requestFullscreen && !document.fullscreenElement) d.requestFullscreen({ navigationUI: 'hide' }).then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }).catch(() => {}); } catch (e) {} });
   return { root, elements: btns };

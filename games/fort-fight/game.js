@@ -1,13 +1,13 @@
 // FORT FIGHT - build, edit and battle. First-person (or third-person) building shooter: Build Range, Box Fight and Fort Island, solo vs bots or online with friends.
-import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, IS_CROS, camera, renderer, scene, W, R, rnd, clamp, lerp, pick, angDiff, TAU, load, save, hex, followSun, updateClouds, updateFX, burst, ring, audioInit, setVolume, sfx, sfxAt, listener, adaptRes, resize, FX } from './core.js?v=9';
-import { world, rayBoxT } from './physics.js?v=9';
-import * as PC from './pieces.js?v=9';
-import { Actor, WEAPONS, hooks, fireGun, swingPickaxe, damageActor, killActor, raycastAll } from './actors.js?v=9';
-import { buildMap, MAPS, updateProps, props } from './maps.js?v=9';
-import { makeAI, botUpdate, DIFFS } from './ai.js?v=9';
-import { vmScene, vmCam, updateVM, vmKick, vmSwing } from './viewmodel.js?v=9';
-import * as NET from './online.js?v=9';
-import { TOUCH, initTouch } from './touch.js?v=9';
+import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, IS_CROS, camera, renderer, scene, W, R, rnd, clamp, lerp, pick, angDiff, TAU, load, save, hex, followSun, updateClouds, updateFX, burst, ring, audioInit, setVolume, sfx, sfxAt, listener, adaptRes, resize, FX } from './core.js?v=10';
+import { world, rayBoxT } from './physics.js?v=10';
+import * as PC from './pieces.js?v=10';
+import { Actor, WEAPONS, hooks, fireGun, swingPickaxe, damageActor, killActor, raycastAll } from './actors.js?v=10';
+import { buildMap, MAPS, updateProps, props } from './maps.js?v=10';
+import { makeAI, botUpdate, DIFFS } from './ai.js?v=10';
+import { vmScene, vmCam, updateVM, vmKick, vmSwing } from './viewmodel.js?v=10';
+import * as NET from './online.js?v=10';
+import { TOUCH, initTouch } from './touch.js?v=10';
 const tx = s => !TOUCH ? s : s.replace('Press Z/X/C/V to build. Q to switch.', 'Tap BUILD to build.').replace('Z/X/C/V to build.', 'tap BUILD to build.').replace('Press G to confirm, or click tiles to change it', 'Tap OK to save, or tap FIRE on tiles').replace('Click tiles to cut them · 1-4 quick shapes · G to confirm', 'Tap FIRE on tiles to cut them · slots 1-4 = quick shapes · OK to save').replace('Look at a wall or floor and press G', 'Look at a wall or floor and tap EDIT');
 
 const CFG = { mode: load('mode', 'range'), diff: load('diff', 'normal'), name: load('name', '') };

@@ -1,11 +1,11 @@
 // FORT FIGHT - online play for 2 to 4 players: a room code, a lobby, and box fights or a shared build range.
 // The host keeps the rules (rounds, building rights, how much health walls have). Every player simulates themselves and
 // takes their own damage: when you shoot somebody your game tells them, and their game applies it and reports a knockout.
-import { V3, NETMODE, W, tracer, burst, sfx, sfxAt, rnd } from './core.js?v=9';
-import { Net, makeCode, cleanCode } from './net.js?v=9';
-import * as PC from './pieces.js?v=9';
-import { hooks, damageActor, killActor, WEAPONS } from './actors.js?v=9';
-import { props, propNet, setPropDead } from './maps.js?v=9';
+import { V3, NETMODE, W, tracer, burst, sfx, sfxAt, rnd } from './core.js?v=10';
+import { Net, makeCode, cleanCode } from './net.js?v=10';
+import * as PC from './pieces.js?v=10';
+import { hooks, damageActor, killActor, WEAPONS } from './actors.js?v=10';
+import { props, propNet, setPropDead } from './maps.js?v=10';
 
 export { cleanCode };
 export const ON = { net: null, role: 'solo', pid: 0, roster: [], code: '', mode: 'box', playing: false };

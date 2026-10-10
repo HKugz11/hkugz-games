@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=3.5';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=3.5';
-import { TOUCH, initTouch } from './touch.js?v=3.5';
+import { MAPS } from './maps.js?v=3.6';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=3.6';
+import { TOUCH, initTouch } from './touch.js?v=3.6';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';

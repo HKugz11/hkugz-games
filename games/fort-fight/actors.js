@@ -1,7 +1,7 @@
 // FORT FIGHT - characters (the player, bots and dummies), weapons and combat.
-import { THREE, V3, scene, toon, outline, INK, QL, GFX, burst, tracer, ring, sfx, sfxAt, rnd, clamp, pick, W, TAU, hex, disposeObj, camera, angDiff } from './core.js?v=9';
-import { world, moveEntity, unstuck, rayActor, rayBoxT } from './physics.js?v=9';
-import { MATS, MAT_IDS, COST, placePiece, slotFromPose, canPlace, damagePiece, pieces, slotPose } from './pieces.js?v=9';
+import { THREE, V3, scene, toon, outline, INK, QL, GFX, burst, tracer, ring, sfx, sfxAt, rnd, clamp, pick, W, TAU, hex, disposeObj, camera, angDiff } from './core.js?v=10';
+import { world, moveEntity, unstuck, rayActor, rayBoxT } from './physics.js?v=10';
+import { MATS, MAT_IDS, COST, placePiece, slotFromPose, canPlace, damagePiece, pieces, slotPose } from './pieces.js?v=10';
 
 export const WEAPONS = [
   { id: 'pick', name: 'Pickaxe', melee: true, dmg: 22, sdmg: 55, rate: .5, reach: 3.3 },
