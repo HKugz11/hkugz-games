@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=4.2';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=4.2';
-import { TOUCH, initTouch } from './touch.js?v=4.2';
+import { MAPS } from './maps.js?v=4.5';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=4.5';
+import { TOUCH, initTouch } from './touch.js?v=4.5';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -24,7 +24,7 @@ const MODES = {
   gungame: { name: 'Gun Game', blurb: 'Free-for-all with a ladder of ten blasters. Every pop upgrades your gun to the next one and the last one is the Pop-Gun. First to finish the ladder wins!' },
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: low gravity and giant jumps, so fights happen in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun, with unlimited ammo and no loot. Pure aim!' },
-  snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high, line it up and hold your breath.' },
+  snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high (jump at a rock or ledge to climb onto it, step on a jump pad to fly up), line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
 const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'snipers';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
@@ -213,6 +213,7 @@ SFX.dmr = v => { tone(900, 150, .12, 'square', .24 * v); noise(.1, .3 * v, 5000)
 SFX.hunt = v => { tone(1800, 70, .4, 'sawtooth', .3 * v); noise(.35, .45 * v, 5500); tone(220, 40, .5, 'sine', .3 * v); };
 SFX.rail = v => { tone(3000, 60, .55, 'sawtooth', .3 * v); tone(200, 30, .7, 'sine', .35 * v); noise(.4, .4 * v, 8000); };
 SFX.vip = v => { tone(1300, 200, .07, 'square', .2 * v); noise(.06, .28 * v, 5500); };
+SFX.mantle = v => noise(.22, .3 * v, 2400);
 SFX.pad = v => { tone(300, 1500, .28, 'sine', .3 * v); tone(600, 2400, .2, 'triangle', .16 * v, .05); noise(.18, .2 * v, 3500); };
 const sfx = (k, v = 1) => { if (AC && SFX[k]) SFX[k](v); };
 
@@ -1102,7 +1103,7 @@ function beginLocal() {
   const st0 = M && M.snipe ? SNIPE_START : 0; for (const w of W) { w.owned = WDEF.indexOf(w.d) === st0; w.rar = 0; applyRarity(w); } slots.fill(null); slots[0] = { gun: st0 }; selSlot = 0; clearHold(); adsTog = false;
   score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = st0; wantSwap = -1; swapT = 0; selectWeapon(st0, true); G = M && M.grav ? 9 : 22; if (M && M.ladder) { M.myTier = -1; applyLoadout(true); }
   clearStormVis(); specI = 0; $('team').style.display = M.pvp ? 'none' : ''; for (const rp of remotes.values()) rp.tag.material.depthTest = !!M.pvp;
-  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME';
+  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT A ROCK OR LEDGE TO CLIMB ON IT · STEP ON A PAD TO FLY UP', '#7cecff');
 }
 function hostSetupMode() {
   const D = DIFF[M.diff];
@@ -1290,7 +1291,7 @@ function spawnPlayer(initial) {
   let best = null; const pool = M && M.team && SPAWNS_A.length ? SPAWNS_A : SPAWNS;   // Sniper's Alley: your team starts at its own end of the map
   if (initial && M && M.mode === 'royale') best = brSpawn(NET.me); else if (initial) best = pool[(NET.me * 3) % pool.length];
   else { let bd = -1; for (const s of pool) { let md = 1e9; for (const b of bots) if (b.alive && !(M && M.team && b.ally)) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
-  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.hp = 100; P.shield = 0; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
+  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.mant = null; P.hp = 100; P.shield = 0; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
   for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) cur = slots.find(e => e && e.gun !== undefined).gun; W.forEach((w, k) => w.g.visible = k === cur); selSlot = slotOf(cur); reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); clearHold(); resetInv(); resetReserve(); adsTog = false; P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo(); if (M && M.ladder) applyLoadout(true);
 }
 function clearHazards() {
@@ -1415,6 +1416,25 @@ function finishUse() {
 }
 
 // ---- per-frame updates
+// mantle: jump at a ledge that is too high to step onto (rocks, walls, boulders...) and you pull yourself up on top of it
+function mantleCheck(wish) {
+  if (P.mant || P.onGround || P.vel.y < -5 || wish.lengthSq() < .01 || !P.alive) return;
+  const rr = P.r + .14; let best = null, bd = 9;
+  for (const b of world) {
+    const dy = b.maxY - P.pos.y; if (dy < STEP + .05 || dy > 2.05 || b.minY > P.pos.y + 1) continue;   // reachable, but more than a step, and it must reach up to body height
+    const nx = Math.max(b.minX, Math.min(P.pos.x, b.maxX)), nz = Math.max(b.minZ, Math.min(P.pos.z, b.maxZ)), dx = nx - P.pos.x, dz = nz - P.pos.z, d = Math.hypot(dx, dz);
+    if (d > rr || d < 1e-4 || d >= bd || (wish.x * dx + wish.z * dz) / d < .4) continue;   // touching it, and pushing toward it
+    const ux = dx / d, uz = dz / d, mn = P.r * .9, tx = clamp(P.pos.x + ux * (d + P.r + .3), b.minX + mn, b.maxX - mn), tz = clamp(P.pos.z + uz * (d + P.r + .3), b.minZ + mn, b.maxZ - mn);
+    const probe = { pos: new V3(tx, b.maxY + .02, tz), r: P.r, h: CROUCH_H }; if (world.some(o => o !== b && overlaps(probe, o))) continue;   // room to stand up there
+    bd = d; best = { b, tx, tz };
+  }
+  if (best) { P.mant = { x0: P.pos.x, y0: P.pos.y, z0: P.pos.z, x1: best.tx, y1: best.b.maxY, z1: best.tz, t: 0 }; P.vel.set(0, 0, 0); sfx('mantle'); }
+}
+function mantleStep(dt) {
+  const m = P.mant, e = u => u * u * (3 - 2 * u); m.t += dt / .32; const k = Math.min(1, m.t), up = Math.min(1, k / .62), fw = Math.max(0, (k - .45) / .55);
+  P.pos.set(m.x0 + (m.x1 - m.x0) * e(fw), m.y0 + (m.y1 - m.y0) * e(up), m.z0 + (m.z1 - m.z0) * e(fw)); P.vel.set(0, 0, 0); P.onGround = false;
+  if (m.t >= 1) { P.pos.set(m.x1, m.y1, m.z1); P.mant = null; P.onGround = true; }
+}
 function updatePlayer(dt) {
   if (!P.alive) { P.respT -= dt; P.shakeT = 0; if (P.respT <= 0) spawnPlayer(); return; }
   if (M && M.ladder) applyLoadout();   // Gun Game: a new blaster after every pop
@@ -1423,13 +1443,15 @@ function updatePlayer(dt) {
   if (!wantC && P.crouchK > .02) { const probe = { pos: P.pos, r: P.r, h: STAND_H }; if (world.some(b => overlaps(probe, b))) wantC = true; }
   P.crouchK += ((wantC ? 1 : 0) - P.crouchK) * clamp(dt * 14, 0, 1); if (!wantC && P.crouchK < .02) P.crouchK = 0;
   P.h = STAND_H - (STAND_H - CROUCH_H) * P.crouchK; P.eyeH = STAND_EYE - (STAND_EYE - CROUCH_EYE) * P.crouchK;
+  if (P.mant) mantleStep(dt); else {
   const fwd = new V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), right = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)), wish = new V3();
   if (keys.KeyW) wish.add(fwd); if (keys.KeyS) wish.sub(fwd); if (keys.KeyD) wish.add(right); if (keys.KeyA) wish.sub(right); if (wish.lengthSq() > 0) wish.normalize();
   const sprint = keys.Tab && keys.KeyW && P.crouchK < .3 && !use;   // sprint = Tab (hold) + W
   const spd = (sprint ? 10.5 : 7.2) * (adsK > .5 ? .65 : 1) * (1 - .5 * P.crouchK) * (use ? .6 : 1) * (P.speedT > 0 ? 1.35 : 1) * (!holdItem && W[cur].d.heavy && mouseL ? .55 : 1), ctl = P.onGround ? 14 : P.padT > 0 ? (wish.lengthSq() > 0 ? .6 : 0) : 2.8;
   P.vel.x += (wish.x * spd - P.vel.x) * clamp(ctl * dt, 0, 1); P.vel.z += (wish.z * spd - P.vel.z) * clamp(ctl * dt, 0, 1);
   if (keys.Space && P.onGround && P.crouchK < .6) { P.vel.y = M && M.grav ? 8.4 : 7.6; P.onGround = false; }
-  moveEntity(P, dt); padCheck(P, dt);
+  moveEntity(P, dt); padCheck(P, dt); mantleCheck(wish);
+  }
   P.buffT = Math.max(0, P.buffT - dt); P.speedT = Math.max(0, (P.speedT || 0) - dt); P.protT = Math.max(0, (P.protT || 0) - dt); throwCD = Math.max(0, throwCD - dt); throwAnim = Math.max(0, throwAnim - dt);
   // weapon state
   const w = W[cur]; if (w.cd > 0) w.cd -= dt;

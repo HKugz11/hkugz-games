@@ -378,7 +378,7 @@ const PK_OCC = (() => {
   const o = [], both = (x, z, r) => o.push([x, z, r], [-x, -z, r]);
   PK_ROCKS.forEach(([x, z, sx, , sz]) => both(x, z, Math.max(sx, sz) / 2 + 2.5));
   PK_WALLS.forEach(([x, z, sx, sz]) => both(x, z, Math.max(sx, sz) / 2 + 2.2));
-  PK_SPIRES.forEach(([x, z]) => both(x, z, 4));
+  PK_SPIRES.forEach(([x, z]) => both(x, z, 5));
   PK_PADS.forEach(([x, z]) => both(x, z, 4.2));
   for (const x of [-20, -10, 0, 10, 20]) both(x, 46, 5.5); both(0, 42, 6); both(-38, 47, 5); both(38, 45, 5);
   return o;
@@ -424,7 +424,7 @@ MAPS.push({
       mesa(b, 0, sg * 31, 30, 8, 3, shades(3, 0x8090b0, 0xdfe8f4), 1.3);                              // long low ridges (top at 1.65)
       mesa(b, sg * 44.5, 0, 9, 46, 6, shades(6, 0x8896b4, 0xd8e2f0), .7);                             // terraces along the edges: long ledges to run along (top at 3.3)
       for (const dx of [-28, 28]) mesa(b, dx, sg * 44, 12, 8, 3, shades(3, 0x8090b0, 0xdfe8f4), 1.3);   // base bunkers
-      for (const [x, z] of PK_SPIRES) { b.box(sg * x, 5, sg * z, 2.2, 10, 2.2, DARK); b.glow(sg * x, 10.2, sg * z, 1.2, .4, 1.2, 0x2ee6ff); }   // tall spires
+      for (const [x, z] of PK_SPIRES) { mesa(b, sg * x, sg * z, 6, 6, 16, shades(16, DARK, 0xb8c6e0), .14); b.glow(sg * x, 8.95, sg * z, 1, .3, 1, 0x2ee6ff); }   // needle spires: a thin staircase you can climb (top at 8.8)
       for (const [x, z, sx, sy, sz] of PK_ROCKS) b.box(sg * x, sy / 2, sg * z, sx, sy, sz, PK_ROCK_COL[0]);   // rocks to stand behind
       for (const [x, z, sx, sz] of PK_WALLS) b.box(sg * x, .6, sg * z, sx, 1.2, sz, 0xa6b2cc);         // low walls to crouch behind
     }
@@ -442,9 +442,9 @@ MAPS.push({
   spawnsA: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [-38, 47], [38, 45]],
   spawnsB: [[18, -46], [9, -46], [0, -46], [-9, -46], [-18, -46], [4, -42], [-4, -42], [38, -47], [-38, -45]],
   spawns: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [18, -46], [9, -46], [0, -46], [-9, -46], [-18, -46], [4, -42], [-4, -42]],
-  perches: [PEAK.center, ...PEAK.flank, ...PEAK.flank.map(turn), ...PEAK.fwd, ...PEAK.fwd.map(turn), ...PEAK.ridge, ...PEAK.ridge.map(turn), ...PEAK.terr, ...PEAK.terr.map(turn), [44.5, 15, 3.3], [-44.5, -15, 3.3], [44.5, -15, 3.3], [-44.5, 15, 3.3], ...PEAK.bunk, ...PEAK.bunk.map(turn)],
+  perches: [PEAK.center, ...PEAK.flank, ...PEAK.flank.map(turn), ...PEAK.fwd, ...PEAK.fwd.map(turn), ...PEAK.ridge, ...PEAK.ridge.map(turn), ...PEAK.terr, ...PEAK.terr.map(turn), [44.5, 15, 3.3], [-44.5, -15, 3.3], [44.5, -15, 3.3], [-44.5, 15, 3.3], ...PEAK.bunk, ...PEAK.bunk.map(turn), ...PK_SPIRES.map(([x, z]) => [x, z, 8.8]), ...PK_SPIRES.map(([x, z]) => [-x, -z, 8.8])],
   pads: [...PK_PADS, ...PK_PADS.map(padTurn)],
-  loot: [[-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42],
+  loot: [[-14, 22, 8.8], [20, 10, 8.8], [14, -22, 8.8], [-20, -10, 8.8], [-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42],
     ...[[-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42]].map(turn),
     [0, 0, 6.6], [-28, 14, 4.4], [28, -14, 4.4], [30, 30, 3.3], [-30, -30, 3.3], [44.5, 0, 3.3], [-44.5, 0, 3.3], [0, 31, 1.65], [0, -31, 1.65]],
   dmg: [[0, 6.6, 1.2], [0, 6.6, -1.2]],
