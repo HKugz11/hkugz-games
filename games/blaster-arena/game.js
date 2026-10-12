@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=3.7';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=3.7';
-import { TOUCH, initTouch } from './touch.js?v=3.7';
+import { MAPS } from './maps.js?v=3.9';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=3.9';
+import { TOUCH, initTouch } from './touch.js?v=3.9';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -12,7 +12,8 @@ const load = (k, d) => { try { const v = localStorage.getItem('ba.' + k); return
 const save = (k, v) => { try { localStorage.setItem('ba.' + k, JSON.stringify(v)); } catch (e) {} };
 const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7) };
 const CFG = { mode: load('mode', 'tdm'), map: load('map', 'plaza'), diff: load('diff', 'normal'), rarity: load('rarity', 2), fp: load('fp', 'dummy') };
-if (CFG.mode !== 'royale' && (MAPS.find(m => m.id === CFG.map) || {}).br) CFG.map = 'plaza';
+const mapOK = (m, mode) => m.br ? mode === 'royale' : m.sn ? mode === 'snipers' : true;   // Battle Royale maps only in Battle Royale, sniper maps only in Sniper's Alley
+{ const cm = MAPS.find(m => m.id === CFG.map); if (!cm || !mapOK(cm, CFG.mode)) CFG.map = 'plaza'; }
 const MODES = {
   tdm:   { name: 'Team Deathmatch', blurb: 'You (and your friends) vs the bots. First team to the target wins.' },
   horde: { name: 'Horde', blurb: 'Survive waves of bots that get tougher each round. A boss shows up every 5 waves.' },
@@ -23,21 +24,22 @@ const MODES = {
   gungame: { name: 'Gun Game', blurb: 'Free-for-all with a ladder of ten blasters. Every pop upgrades your gun to the next one and the last one is the Pop-Gun. First to finish the ladder wins!' },
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: low gravity and giant jumps, so fights happen in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun, with unlimited ammo and no loot. Pure aim!' },
-  snipers: { name: "Sniper's Alley", blurb: 'Team deathmatch with nothing but the Zapper and unlimited ammo. Line it up and hold your breath.' },
+  snipers: { name: "Sniper's Alley", blurb: 'Snipers only, on a mountain map with peaks, ledges and cover. Everyone has just the Zapper with unlimited ammo, and bot snipers fight on your team too. Line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
 const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'snipers';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
 const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], snipers: [4] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
 const DIFF = {
-  easy:   { bots: 4, hp: 70,  aim: 0.085, react: 0.75, dmg: 5,  speed: 3.6, fire: 0.36, turn: 5, nade: 22, nades: ['frag'] },
-  normal: { bots: 5, hp: 100, aim: 0.05,  react: 0.45, dmg: 7,  speed: 4.4, fire: 0.25, turn: 7, nade: 13, nades: ['frag', 'frag', 'molly', 'flash'] },
-  hard:   { bots: 6, hp: 120, aim: 0.026, react: 0.25, dmg: 9,  speed: 5.3, fire: 0.18, turn: 10, nade: 8, nades: ['frag', 'molly', 'flash', 'flash', 'frag'] },
+  easy:   { bots: 4, hp: 70,  aim: 0.085, react: 0.75, dmg: 5,  speed: 3.6, fire: 0.36, turn: 5, nade: 22, nades: ['frag'], sn: { dmg: 42, cd: 2.8, wind: .9, aim: .02 } },
+  normal: { bots: 5, hp: 100, aim: 0.05,  react: 0.45, dmg: 7,  speed: 4.4, fire: 0.25, turn: 7, nade: 13, nades: ['frag', 'frag', 'molly', 'flash'], sn: { dmg: 58, cd: 2.0, wind: .65, aim: .012 } },
+  hard:   { bots: 6, hp: 120, aim: 0.026, react: 0.25, dmg: 9,  speed: 5.3, fire: 0.18, turn: 10, nade: 8, nades: ['frag', 'molly', 'flash', 'flash', 'frag'], sn: { dmg: 74, cd: 1.5, wind: .5, aim: .007 } },
 };
 if (!DIFF[CFG.diff]) CFG.diff = 'normal';
 let G = 22; const STEP = 0.6;   // G is lower in Moon Brawl
 const BOT_COLORS = [0xff7a1a, 0xff4fa8, 0xb06bff, 0xffd31a, 0xff4a4a, 0xa0ff3a];
 const BOT_NAMES = ['Blip', 'Zorp', 'Chomp', 'Bolt', 'Pixel', 'Waffle'];
 const PLAYER_COLORS = [0x2ee6ff, 0x4aa8ff, 0x4affc8, 0xffffff];
+const ALLY_COLORS = [0x2ee6ff, 0x4aa8ff, 0x7a8aff, 0x4affc8], ALLY_NAMES = ['Nova', 'Echo', 'Sage', 'Ranger'];   // bot teammates (Sniper's Alley)
 
 // ------------------------------------------------------------------ renderer / scenes
 const canvas = $('view');
@@ -80,7 +82,8 @@ for (let i = 0; i < QL.clouds; i++) { const g = new THREE.Group(), n = rint(3, 5
 // ------------------------------------------------------------------ maps (data lives in maps.js)
 const world = [];   // static AABBs used for collision + line of sight
 const mapGroup = new THREE.Group(); scene.add(mapGroup);
-const SPAWNS = [], WAYPOINTS = [], LOOT_SPOTS = [], DMG_SPOTS = [], CHEST_SPOTS = [];
+const SPAWNS = [], WAYPOINTS = [], LOOT_SPOTS = [], DMG_SPOTS = [], CHEST_SPOTS = [], SPAWNS_A = [], SPAWNS_B = [], PERCHES = [];   // SPAWNS_A/B: team ends (Sniper's Alley), PERCHES: sniper spots on top of peaks
+let TEAM_SIGN = 1;   // +1 when team A (yours) starts on the +z side of the map
 let HALF = 32, curMap = null, snowPts = null;
 function addBox(cx, cy, cz, sx, sy, sz, color, o = {}) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), toon(color)); m.position.set(cx, cy, cz); m.castShadow = true; m.receiveShadow = true; mapGroup.add(m);
@@ -127,6 +130,7 @@ function loadMap(id, big = false) {
   // spawns / waypoints / loot spots for every copy (candidates inside geometry are dropped)
   const each = (list, fn) => { for (const [ox, oz, mx, mz] of copies) for (const e of list) fn(ox + (mx ? -e[0] : e[0]), oz + (mz ? -e[1] : e[1]), e); };
   SPAWNS.length = 0; each(def.spawns, (x, z) => { if (freeAt(x, z, 1.2)) SPAWNS.push(new V3(x, 0, z)); });
+  SPAWNS_A.length = SPAWNS_B.length = PERCHES.length = 0; each(def.spawnsA || [], (x, z) => { if (freeAt(x, z, 1.2)) SPAWNS_A.push(new V3(x, 0, z)); }); each(def.spawnsB || [], (x, z) => { if (freeAt(x, z, 1.2)) SPAWNS_B.push(new V3(x, 0, z)); }); each(def.perches || [], (x, z, e) => PERCHES.push(new V3(x, e[2] || 0, z))); TEAM_SIGN = SPAWNS_A.length && SPAWNS_A.reduce((s, p) => s + p.z, 0) < 0 ? -1 : 1;
   WAYPOINTS.length = 0; for (let x = -(HALF - 4); x <= HALF - 4; x += 4) for (let z = -(HALF - 4); z <= HALF - 4; z += 4) if (freeAt(x, z, .9)) WAYPOINTS.push(new V3(x, 0, z));
   LOOT_SPOTS.length = 0; each(def.loot, (x, z, e) => { const y = e[2] || 0; if (y > 0 || freeAt(x, z, .8)) LOOT_SPOTS.push([x, z, y]); });
   CHEST_SPOTS.length = 0; { const keep = []; LOOT_SPOTS.forEach((sp, i) => { if (sp[2] === 0 && i % 5 === 2) CHEST_SPOTS.push(sp); else keep.push(sp); }); LOOT_SPOTS.length = 0; keep.forEach(sp => LOOT_SPOTS.push(sp)); }   // every 5th spot becomes a chest
@@ -646,7 +650,7 @@ function spawnRocket(pos, vel, dmg, owner) {
 function updateProjs(dt) {
   for (let i = projs.length - 1; i >= 0; i--) {
     const p = projs[i]; p.life -= dt; const step = p.v.clone().multiplyScalar(dt), len = step.length(), dir = step.clone().normalize(); const tw = worldT(p.m.position, dir, len + .3);
-    let hitB = null; for (const b of bots) if (b.alive && b.invT <= 0) { const h = hitEntity(p.m.position, dir, b, b.headY); if (h && h.t < len + .3) hitB = b; }
+    let hitB = null; for (const b of bots) if (b.alive && b.invT <= 0 && !b.ally) { const h = hitEntity(p.m.position, dir, b, b.headY); if (h && h.t < len + .3) hitB = b; }
     if (tw < len + .3 || hitB || p.life <= 0 || p.m.position.y < .1) { explodeAt(p.m.position.clone().addScaledVector(dir, Math.min(tw, len) * .9), 5.5, p.dmg, 35, p.owner); scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); projs.splice(i, 1); }
     else { p.m.position.add(step); if (Math.random() < .6) burst(p.m.position, 0xff9ad8, 1, 1, .08, .3, 0); }
   }
@@ -657,7 +661,7 @@ function explodeAt(pos, R, botDmg, selfDmg, owner, lethal = 0) {
   if (isHost() && op >= 0) {
     const mul = (owner === null && P.buffT > 0) ? 2 : 1;
     for (const b of bots) {
-      if (!b.alive) continue; const c = new V3(b.pos.x, b.pos.y + b.sc, b.pos.z), d = c.distanceTo(pos);
+      if (!b.alive || b.ally) continue; const c = new V3(b.pos.x, b.pos.y + b.sc, b.pos.z), d = c.distanceTo(pos);
       if (d < R + b.r && worldT(src, c.clone().sub(src).normalize(), d) >= d - .5) {
         let dm = botDmg * mul * (1 - Math.min(1, d / R) * .75); if (lethal && d <= lethal + b.r) dm = Math.max(dm, b.boss ? 450 : 9999); const k = b.hurt(dm, false, op); if (op === NET.me) { showHit(k ? 'kill' : ''); if (!k) sfx('hit'); }
         const push = c.sub(pos).setY(0).normalize().multiplyScalar(6 / b.sc); b.vel.x += push.x; b.vel.z += push.z;
@@ -679,7 +683,7 @@ function flashAt(pos, owner) {
   if (P.alive) { const p = power(eyePos(), aimDir(0)) * (owner instanceof RemotePlayer && !(M && M.pvp) ? .6 : 1); if (p > .05) { P.blindMax = 4.4 * p + .4; P.blindT = Math.max(P.blindT, P.blindMax); } }
   if (isHost() && op >= 0) {
     let n = 0;
-    for (const b of bots) { if (!b.alive) continue; const f = new V3(-Math.sin(b.yaw), 0, -Math.cos(b.yaw)), p = power(b.eye(), f); if (p > .08) { b.blindT = Math.max(b.blindT, 4.2 * p + .5); b.alertT = Math.max(b.alertT, 2); n++; } }
+    for (const b of bots) { if (!b.alive || b.ally) continue; const f = new V3(-Math.sin(b.yaw), 0, -Math.cos(b.yaw)), p = power(b.eye(), f); if (p > .08) { b.blindT = Math.max(b.blindT, 4.2 * p + .5); b.alertT = Math.max(b.alertT, 2); n++; } }
     if (n && op === NET.me) { feed(`<b style="color:#fff27a">Flashed ${n} bot${n > 1 ? 's' : ''}!</b>`); showHit(''); sfx('hit'); }
   }
 }
@@ -723,7 +727,7 @@ function updateFires(dt) {
     f.tick += dt; const op = ownerPid(f.owner);
     while (f.tick >= .25) {
       f.tick -= .25;
-      if (isHost() && op >= 0) for (const b of bots) { if (!b.alive) continue; if (Math.hypot(b.pos.x - f.pos.x, b.pos.z - f.pos.z) < f.R + b.r * .5 && b.pos.y < f.pos.y + 1.4 && b.pos.y > f.pos.y - .8) { const kd = b.hurt(5, false, op); if (op === NET.me) showHit(kd ? 'kill' : ''); } }
+      if (isHost() && op >= 0) for (const b of bots) { if (!b.alive || b.ally) continue; if (Math.hypot(b.pos.x - f.pos.x, b.pos.z - f.pos.z) < f.R + b.r * .5 && b.pos.y < f.pos.y + 1.4 && b.pos.y > f.pos.y - .8) { const kd = b.hurt(5, false, op); if (op === NET.me) showHit(kd ? 'kill' : ''); } }
       if (P.alive && Math.hypot(P.pos.x - f.pos.x, P.pos.z - f.pos.z) < f.R && P.pos.y < f.pos.y + 1.4 && P.pos.y > f.pos.y - .8) damagePlayer(5 * (f.owner instanceof RemotePlayer && !(M && M.pvp) ? .4 : 1), f.owner, f.owner === null);
     }
     if (f.t >= f.life) { scene.remove(f.g); for (const m of f.mats) m.dispose(); fires.splice(i, 1); }
@@ -733,39 +737,41 @@ function updateFires(dt) {
 
 // ------------------------------------------------------------------ bots
 // The host runs the real AI. Everyone else gets "puppet" bots that follow the host's snapshots.
-let frameTargets = [];   // alive players the bots can go after this frame (host only)
+let frameTargets = [], botTargets = [], botFoes = [];   // alive players the bots can go after this frame (host only); botTargets = what enemy bots shoot at, botFoes = what bot teammates shoot at
 const tgtEye = t => new V3(t.pos.x, t.pos.y + t.eyeH, t.pos.z);
-function hurtTarget(t, dmg, bot) { if (t === P) damagePlayer(dmg, bot); else if (NET.net && t.pid !== undefined) NET.net.hostSend(t.pid, { t: 'dmg', d: r1(dmg), b: bot.id }); }
+function hurtTarget(t, dmg, bot) { if (t instanceof Bot) { t.hurt(dmg, false, bot.ally ? -2 : -1, bot); return; } if (t === P) damagePlayer(dmg, bot); else if (NET.net && t.pid !== undefined) NET.net.hostSend(t.pid, { t: 'dmg', d: r1(dmg), b: bot.id }); }
 function botDeathFx(b) {
   const c = b.eye(); burst(c, b.color, 26, 9, .2, 1.1, 12, 4); burst(c, 0xffffff, 12, 7, .14, .8, 12, 3); burst(c, 0xffd34e, 8, 6, .22, 1, 12, 5); blast(new V3(c.x, c.y - .4, c.z), 2.2 * b.sc, b.color); sfxAt('kill', c);
 }
 class Bot {
   constructor(id, idx, o = {}) {
-    this.id = id; this.idx = idx; this.i = id; this.name = o.boss ? 'BOSS' : o.dummy ? 'DUMMY' : BOT_NAMES[idx % 6]; this.dummy = !!o.dummy; this.color = BOT_COLORS[idx % 6]; this.boss = !!o.boss; this.sc = this.boss ? 1.7 : 1; this.puppet = !!o.puppet;
-    this.D = o.D || DIFF[CFG.diff]; this.m = makeBotModel(this.color, { boss: this.boss, scale: this.sc }); scene.add(this.m.g);
+    this.id = id; this.idx = idx; this.i = id; this.ally = !!o.ally; this.sn = !!(M && M.mode === 'snipers'); this.name = o.boss ? 'BOSS' : o.dummy ? 'DUMMY' : this.ally ? ALLY_NAMES[idx % 4] : BOT_NAMES[idx % 6]; this.dummy = !!o.dummy; this.color = this.ally ? ALLY_COLORS[idx % 4] : BOT_COLORS[idx % 6]; this.boss = !!o.boss; this.sc = this.boss ? 1.7 : 1; this.puppet = !!o.puppet;
+    this.D = o.D || DIFF[CFG.diff]; this.m = makeBotModel(this.color, { boss: this.boss, scale: this.sc, player: this.ally }); scene.add(this.m.g);
     this.pos = new V3(); this.tpos = new V3(); this.vel = new V3(); this.r = .38 * this.sc; this.h = 1.75 * this.sc; this.headY = 1.62 * this.sc; this.onGround = true; this.kills = 0; this.deaths = 0; this.tyaw = 0;
     this.yaw = rnd(0, 6.28); this.wp = null; this.alertT = 0; this.lastSeen = new V3(); this.saw = false; this.reactT = 0; this.cd = 0; this.burst = 0; this.pause = 0; this.strafe = Math.random() < .5 ? 1 : -1; this.strafeT = 0; this.stuckT = 0; this.lastP = new V3(); this.flashT = 0; this.barT = 0; this.invT = 0; this.alive = false; this.respT = rnd(.2, 1.5); this.m.g.visible = false;
-    this.nadeT = 8; this.blindT = 0; this.hp = this.maxHp = this.D.hp; this.removeT = 0; this.tgt = null; this.blindP = false; this.alertP = false;
+    this.nadeT = 8; this.blindT = 0; this.hp = this.maxHp = this.D.hp; this.removeT = 0; this.tgt = null; this.blindP = false; this.alertP = false; this.windT = 0; this.hold = 0; this.holdYaw = 0; this.lz = 0; this.lastBy = null;
     botById.set(id, this);
   }
   eye() { return new V3(this.pos.x, this.pos.y + 1.55 * this.sc, this.pos.z); }
+  get eyeH() { return 1.55 * this.sc; }   // so bots can be shot at like players
   remove() { scene.remove(this.m.g); disposeObj(this.m.g); botById.delete(this.id); }
   respawn() {
-    const D = this.D, tg = frameTargets.length ? frameTargets : [P]; let best = null, bd = -1;
-    const roy = M && M.mode === 'royale'; for (let k = 0; k < (roy ? 16 : 4); k++) { const s = pick(M && (roy || (M.free && this.dummy)) ? WAYPOINTS : SPAWNS); let md = 1e9; for (const t of tg) md = Math.min(md, s.distanceTo(t.pos)); const d = md + rnd(0, 12); if (d > bd) { bd = d; best = s; } }
-    this.pos.copy(best); this.vel.set(0, 0, 0); this.hp = this.maxHp = D.hp; this.alive = true; this.everAlive = true; this.m.g.visible = true; this.invT = 1.2; this.alertT = 0; this.saw = false; this.wp = null; this.blindT = 0; this.nadeT = rnd(5, D.nade); this.m.bar.visible = false;
+    const team = M && M.team, p0 = team ? (this.ally ? SPAWNS_A : SPAWNS_B) : null, pool = p0 && p0.length ? p0 : SPAWNS, D = this.D, tg = team ? (this.ally ? botFoes : botTargets) : (frameTargets.length ? frameTargets : [P]); let best = null, bd = -1;
+    const roy = M && M.mode === 'royale'; for (let k = 0; k < (roy ? 16 : 4); k++) { const s = pick(M && (roy || (M.free && this.dummy)) ? WAYPOINTS : pool); let md = 1e9; for (const t of tg) md = Math.min(md, s.distanceTo(t.pos)); const d = md + rnd(0, 12); if (d > bd) { bd = d; best = s; } }
+    this.pos.copy(best); if (team) { this.pos.x += rnd(-.7, .7); this.pos.z += rnd(-.7, .7); } this.hold = 0; this.windT = 0; this.vel.set(0, 0, 0); this.hp = this.maxHp = D.hp; this.alive = true; this.everAlive = true; this.m.g.visible = true; this.invT = 1.2; this.alertT = 0; this.saw = false; this.wp = null; this.blindT = 0; this.nadeT = rnd(5, D.nade); this.m.bar.visible = false;
   }
-  hurt(dmg, head, byPid) {
+  hurt(dmg, head, byPid, from) {
     if (!this.alive || this.invT > 0) return false;
-    this.hp -= dmg; this.flashT = .12; this.barT = 2.5; this.alertT = 5; const src = byPid === 0 ? P : remotes.get(byPid); this.lastSeen.copy(src ? src.pos : P.pos); this.saw = true;
+    this.hp -= dmg; this.flashT = .12; this.barT = 2.5; this.alertT = 5; const src = from || (byPid === 0 ? P : remotes.get(byPid)); this.lastSeen.copy(src ? src.pos : P.pos); this.saw = true; if (from) this.lastBy = from;
     if (this.hp <= 0) { this.die(byPid); return true; } return false;
   }
   die(byPid) {
-    this.alive = false; this.deaths++; this.m.g.visible = false; this.respT = 3; this.removeT = 1.4; botDeathFx(this); dropLoot(this.pos); hostBotKilled(this, byPid);
+    this.alive = false; this.deaths++; this.m.g.visible = false; this.respT = 3; this.removeT = 1.4; botDeathFx(this); dropLoot(this.pos); if (byPid < 0 && this.lastBy) this.lastBy.kills++; hostBotKilled(this, byPid);
   }
   pickTarget() {
-    let best = null, bd = 1e9; for (const t of frameTargets) { const d = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z); if (d < bd) { bd = d; best = t; } }
-    if (this.tgt && frameTargets.includes(this.tgt)) { const dc = Math.hypot(this.tgt.pos.x - this.pos.x, this.tgt.pos.z - this.pos.z); if (dc < bd * 1.35) best = this.tgt; }
+    const list = M && M.team ? (this.ally ? botFoes : botTargets) : frameTargets;
+    let best = null, bd = 1e9; for (const t of list) { if (t.alive === false) continue; const d = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z); if (d < bd) { bd = d; best = t; } }
+    if (this.tgt && this.tgt.alive !== false && list.includes(this.tgt)) { const dc = Math.hypot(this.tgt.pos.x - this.pos.x, this.tgt.pos.z - this.pos.z); if (dc < bd * 1.35) best = this.tgt; }
     return this.tgt = best;
   }
   puppetUpdate(dt) {
@@ -777,8 +783,8 @@ class Bot {
     m.g.position.copy(this.pos); m.body.rotation.y = this.yaw;
     m.legL.rotation.x = Math.sin(ph) * .8 * Math.min(1, sp / 3); m.legR.rotation.x = -Math.sin(ph) * .8 * Math.min(1, sp / 3); m.body.position.y = Math.abs(Math.sin(ph)) * .06 * Math.min(1, sp / 3);
     m.arm.rotation.x = this.alertP ? 0 : -.15; m.head.rotation.z = blind ? Math.sin(time * 9) * .3 : 0;
-    const f = this.flashT > 0; m.torso.material.emissive.setHex(f ? 0xffffff : 0); m.torso.material.emissiveIntensity = f ? 1.2 : 0; m.eyeM.color.setHex(blind ? 0xffffff : this.alertP ? 0xff4a4a : 0x2ee6ff);
-    m.bar.visible = this.boss || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
+    const f = this.flashT > 0; m.torso.material.emissive.setHex(f ? 0xffffff : 0); m.torso.material.emissiveIntensity = f ? 1.2 : 0; m.eyeM.color.setHex(blind ? 0xffffff : this.alertP ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
+    m.bar.visible = this.boss || this.ally || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
   }
   update(dt) {
     if (this.puppet) { this.puppetUpdate(dt); return; }
@@ -790,7 +796,7 @@ class Bot {
     if (T) {
       tEye = tgtEye(T); const to = tEye.clone().sub(eye); dist = to.length(); to.divideScalar(Math.max(dist, .001));
       const fwd0 = new V3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)), flat = new V3(to.x, 0, to.z).normalize(), dotF = fwd0.dot(flat);
-      sees = !blind && dist < 60 && (dotF > .25 || this.alertT > 0) && worldT(eye, to, dist) >= dist - .3 && !smokeBlocks(eye, tEye);
+      sees = !blind && dist < (this.sn ? 115 : 60) && (dotF > .25 || this.alertT > 0) && worldT(eye, to, dist) >= dist - .3 && !smokeBlocks(eye, tEye);
     }
     if (sees) { if (!this.saw) { this.saw = true; this.reactT = D.react * rnd(.8, 1.3); } this.alertT = 4; this.lastSeen.copy(T.pos); } else if (this.alertT <= 0) this.saw = false;
     let wish = new V3(), face = this.yaw, speed = D.speed;
@@ -798,10 +804,12 @@ class Bot {
       const t = sees ? T.pos : this.lastSeen, dx = t.x - this.pos.x, dz = t.z - this.pos.z, d2 = Math.hypot(dx, dz) || 1;
       face = Math.atan2(-dx, -dz); const dir = new V3(dx / d2, 0, dz / d2), right = new V3(-dir.z, 0, dir.x);
       this.strafeT -= dt; if (this.strafeT <= 0) { this.strafe = Math.random() < .5 ? 1 : -1; this.strafeT = rnd(.7, 1.8); }
-      const want = sees ? (d2 > 18 ? 1 : d2 < 8 ? -.7 : 0) : 1; wish.addScaledVector(dir, want).addScaledVector(right, sees ? this.strafe * .9 : 0);
+      const want = this.sn ? (sees ? (d2 > 90 ? 1 : d2 < 14 ? -.8 : 0) : .7) : sees ? (d2 > 18 ? 1 : d2 < 8 ? -.7 : 0) : 1; wish.addScaledVector(dir, want).addScaledVector(right, sees ? this.strafe * (this.sn ? .3 : .9) : 0);
       if (!sees && d2 < 1.5) this.alertT = 0;
+    } else if (this.sn && this.hold > 0) { this.hold -= dt; face = this.holdYaw + Math.sin(time * .45 + this.i * 2) * .8;   // snipers glass the valley from their perch
+    } else if (this.sn && this.wp && Math.hypot(this.wp.x - this.pos.x, this.wp.z - this.pos.z) < 1.6) { this.hold = rnd(3, 7); this.holdYaw = holdFacing(this); this.wp = null;
     } else {
-      if (!this.wp || this.pos.distanceTo(this.wp) < 1.6 || (M && M.storm && stormOutside(this.wp, 1))) this.wp = pickWpIn();
+      if (!this.wp || (!this.sn && this.pos.distanceTo(this.wp) < 1.6) || (M && M.storm && stormOutside(this.wp, 1))) this.wp = this.sn ? pickPerch(this) : pickWpIn();
       const dx = this.wp.x - this.pos.x, dz = this.wp.z - this.pos.z, d2 = Math.hypot(dx, dz) || 1; face = Math.atan2(-dx, -dz); wish.set(dx / d2, 0, dz / d2); speed *= .75;
     }
     if (blind) { wish.set(Math.cos(time * 2.3 + this.i), 0, Math.sin(time * 2.9 + this.i)); face = this.yaw + Math.sin(time * 4 + this.i) * .6; speed *= .55; }
@@ -810,6 +818,7 @@ class Bot {
     for (const n of nades) if (!(n.owner instanceof Bot) && (n.id === 'frag' || n.id === 'molly')) { const dx = this.pos.x - n.pos.x, dz = this.pos.z - n.pos.z, d = Math.hypot(dx, dz); if (d < 7 && n.fuse > .15) { fx += dx / (d + .2) * (8 - d); fz += dz / (d + .2) * (8 - d); } }
     for (const f of fires) if (!(f.owner instanceof Bot)) { const dx = this.pos.x - f.pos.x, dz = this.pos.z - f.pos.z, d = Math.hypot(dx, dz); if (d < f.R + 1.5) { fx += dx / (d + .2) * 4; fz += dz / (d + .2) * 4; } }
     if (fx * fx + fz * fz > .01) { const m = Math.hypot(fx, fz); wish.set(fx / m, 0, fz / m); face = Math.atan2(-fx, -fz); speed *= 1.3; }
+    if (this.sn && this.windT > 0) wish.set(0, 0, 0);   // hold still while lining up a shot
     let dy = angDiff(face, this.yaw); this.yaw += dy * clamp(dt * D.turn, 0, 1);
     if (wish.lengthSq() > 0) wish.normalize();
     const ctl = this.onGround ? 14 : 3; this.vel.x += (wish.x * speed - this.vel.x) * clamp(ctl * dt, 0, 1); this.vel.z += (wish.z * speed - this.vel.z) * clamp(ctl * dt, 0, 1);
@@ -817,9 +826,13 @@ class Bot {
     this.stuckT += dt; if (this.stuckT > .6) { if (this.pos.distanceTo(this.lastP) < .5 && wish.lengthSq() > 0) { if (this.onGround && Math.random() < .6) this.vel.y = 7; this.wp = null; this.strafe *= -1; } this.lastP.copy(this.pos); this.stuckT = 0; }
     // shooting
     if (sees) { this.reactT -= dt; this.pause -= dt; this.cd -= dt;
-      if (this.reactT <= 0 && this.pause <= 0 && this.cd <= 0 && Math.abs(dy) < .35) this.shoot(eye, dist, D, T); }
+      if (this.sn) {
+        if (this.windT > 0) { this.windT -= dt; this.lz -= dt; if (this.lz <= 0) { this.lz = .07; this.laser(eye, T); } if (this.windT <= 0) this.snipe(eye, dist, D, T); }
+        else if (this.reactT <= 0 && this.cd <= 0 && Math.abs(dy) < .12) { this.windT = D.sn.wind * rnd(.85, 1.2); this.lz = 0; if (T === P) sfx('tick'); }   // a red laser shows who they are aiming at
+      } else if (this.reactT <= 0 && this.pause <= 0 && this.cd <= 0 && Math.abs(dy) < .35) this.shoot(eye, dist, D, T); }
+    else this.windT = 0;
     // grenades
-    if (this.alertT > 0 && T && !blind) {
+    if (!this.sn && this.alertT > 0 && T && !blind) {
       this.nadeT -= dt;
       if (this.nadeT <= 0) { const tp = sees ? T.pos : this.lastSeen, d = Math.hypot(tp.x - this.pos.x, tp.z - this.pos.z); if (d > 8 && d < 32) { this.nadeT = rnd(D.nade * .7, D.nade * 1.4); botThrow(this, pick(D.nades), tp); } else this.nadeT = 1; }
     }
@@ -827,8 +840,8 @@ class Bot {
     const m = this.m; m.g.position.copy(this.pos); m.body.rotation.y = this.yaw; const sp = Math.hypot(this.vel.x, this.vel.z), ph = time * (6 + sp * 1.4);
     m.legL.rotation.x = Math.sin(ph) * .8 * Math.min(1, sp / 3); m.legR.rotation.x = -Math.sin(ph) * .8 * Math.min(1, sp / 3); m.body.position.y = Math.abs(Math.sin(ph)) * .06 * Math.min(1, sp / 3);
     m.arm.rotation.x = sees ? clamp(Math.atan2(tEye.y - eye.y, dist), -.5, .5) : -.15; m.head.rotation.z = blind ? Math.sin(time * 9) * .3 : 0;
-    const f = this.flashT > 0; m.torso.material.emissive.setHex(f ? 0xffffff : 0); m.torso.material.emissiveIntensity = f ? 1.2 : 0; m.eyeM.color.setHex(blind ? 0xffffff : this.alertT > 0 ? 0xff4a4a : 0x2ee6ff);
-    m.bar.visible = this.boss || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
+    const f = this.flashT > 0; m.torso.material.emissive.setHex(f ? 0xffffff : 0); m.torso.material.emissiveIntensity = f ? 1.2 : 0; m.eyeM.color.setHex(blind ? 0xffffff : this.alertT > 0 ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
+    m.bar.visible = this.boss || this.ally || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
   }
   shoot(eye, dist, D, T) {
     if (this.burst <= 0) { this.burst = rint(2, 4); this.pause = rnd(.35, .9) * (this.boss ? .5 : 1); return; }
@@ -840,7 +853,25 @@ class Bot {
     tracer(mz, endP, 0xff7a7a, .1); sfxAt('bot', this.pos); if (isMP()) NET.net.hostBroadcast({ t: 'sh', a: v3a(mz), b: v3a(endP), w: -1 });
     if (hp && hp.t < tw) hurtTarget(T, D.dmg * (hp.head ? 1.4 : 1), this);
   }
+  // Sniper's Alley: one slow, hard-hitting shot after a short wind-up
+  snipe(eye, dist, D, T) {
+    const S = D.sn; this.windT = 0; this.cd = S.cd * rnd(.85, 1.2);
+    const tgt = new V3(T.pos.x, T.pos.y + T.h * .6, T.pos.z), dir = tgt.sub(eye).normalize(), err = S.aim * (1 + dist / 70);
+    dir.x += rnd(-err, err); dir.y += rnd(-err, err) * .7; dir.z += rnd(-err, err); dir.normalize();
+    const mz = new V3(eye.x + dir.x * .8 + Math.cos(this.yaw) * .3, eye.y - .35, eye.z + dir.z * .8 - Math.sin(this.yaw) * .3);
+    const tw = worldT(eye, dir), hp = hitEntity(eye, dir, T, T.eyeH - .05), end = hp && hp.t < tw ? hp.t : Math.min(tw, 130), endP = eye.clone().addScaledVector(dir, end);
+    tracer(mz, endP, this.ally ? 0x7cffff : 0xff7a7a, .22); sfx('zap', clamp(1 - this.pos.distanceTo(P.pos) / 140, .2, .85)); burst(mz, 0xffffff, 4, 3, .1, .25, 6, 1);
+    if (isMP()) NET.net.hostBroadcast({ t: 'sh', a: v3a(mz), b: v3a(endP), w: this.ally ? -4 : -3 });
+    if (hp && hp.t < tw) hurtTarget(T, S.dmg * (hp.head ? 1.6 : 1), this);
+  }
+  laser(eye, T) { tracer(new V3(eye.x, eye.y - .3, eye.z), tgtEye(T), this.ally ? 0x7cffff : 0xff2a2a, .09); }
 }
+function pickPerch(b) {
+  if (!PERCHES.length || Math.random() < .2) return pick(WAYPOINTS);
+  const mine = PERCHES.filter(p => b.ally ? TEAM_SIGN * p.z > -14 : TEAM_SIGN * p.z < 14);   // allies hold their half of the map (and the middle), enemies theirs
+  return pick(mine.length ? mine : PERCHES);
+}
+const holdFacing = b => Math.abs(b.pos.x) + Math.abs(b.pos.z) < 8 ? (b.ally === (TEAM_SIGN > 0) ? 0 : Math.PI) : Math.atan2(b.pos.x, b.pos.z);   // look toward the other team (or the middle of the map)
 
 
 // ------------------------------------------------------------------ match modes + co-op networking
@@ -849,11 +880,11 @@ const okVec = a => Array.isArray(a) && a.length >= 3 && a.every(n => Number.isFi
 const myName = () => cleanName($('pname') ? $('pname').value : load('name', '')) || 'Player';
 const nameOf = pid => { const r = NET.roster.find(r => r.pid === pid); return r ? r.name : 'Player'; };
 const colorOf = pid => PLAYER_COLORS[(pid | 0) % 4];
-const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.some(m => c && m.id === c.map && (!m.br || c.mode === 'royale')) ? c.map : 'plaza', diff: DIFF[c && c.diff] ? c.diff : 'normal', rarity: clamp((c && c.rarity) | 0, 0, 4), fp: c && c.fp === 'bots' ? 'bots' : 'dummy' });
+const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.some(m => c && m.id === c.map && mapOK(m, c.mode)) ? c.map : 'plaza', diff: DIFF[c && c.diff] ? c.diff : 'normal', rarity: clamp((c && c.rarity) | 0, 0, 4), fp: c && c.fp === 'bots' ? 'bots' : 'dummy' });
 const wireCfg = () => ({ mode: CFG.mode, map: CFG.map, diff: CFG.diff, rarity: CFG.rarity, fp: CFG.fp });
 const botsAlive = () => bots.filter(b => b.alive).length;
 function newMatch(cfg, np) {
-  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode], grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
+  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', team: cfg.mode === 'snipers', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode], grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'snipers' ? 20 + 8 * (np - 1) : TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
     wave: 0, phase: '', phaseT: 0, toSpawn: 0, spawnT: 0, maxAlive: 8, lives: 0, left: 0, nextBotId: 1 };
 }
 function feedText(text, color = '#fff') { const f = $('feed'), d = document.createElement('div'); d.textContent = text; d.style.color = color; f.appendChild(d); setTimeout(() => d.remove(), 4500); while (f.children.length > 5) f.firstChild.remove(); }
@@ -901,7 +932,7 @@ function hostOnMsg(pid, m) {
       break;
     }
     case 'pl': if (rp && Array.isArray(m.p) && m.p.length >= 12 && m.p.every(n => Number.isFinite(n))) rp.setState(m.p); break;
-    case 'hit': { const b = botById.get(m.b | 0); if (b && b.alive && rp && rp.alive && Number.isFinite(m.d)) b.hurt(clamp(m.d, 0, 200), !!m.h, pid); break; }
+    case 'hit': { const b = botById.get(m.b | 0); if (b && b.alive && !b.ally && rp && rp.alive && Number.isFinite(m.d)) b.hurt(clamp(m.d, 0, 200), !!m.h, pid); break; }
     case 'th': if (rp && okVec(m.p) && okVec(m.v) && (m.id === 'shell' || (ITEMS[m.id] && ITEMS[m.id].kind === 'nade'))) { spawnNade(m.id, v3(m.p), v3(m.v), rp); NET.net.hostBroadcast({ t: 'th', id: m.id, p: m.p, v: m.v, o: pid }, pid); } break;
     case 'rk': if (rp && okVec(m.p) && okVec(m.v) && Number.isFinite(m.d)) { spawnRocket(v3(m.p), v3(m.v), clamp(m.d, 0, 200), rp); NET.net.hostBroadcast({ t: 'rk', p: m.p, v: m.v, d: m.d, o: pid }, pid); } break;
     case 'sh': if (rp && okVec(m.a) && okVec(m.b)) { shotFx(m, rp); NET.net.hostBroadcast({ t: 'sh', a: m.a, b: m.b, w: m.w, r: m.r, o: pid }, pid); } break;
@@ -913,7 +944,7 @@ function hostOnMsg(pid, m) {
   }
 }
 function shotFx(m, rp) {
-  const a = v3(m.a), b = v3(m.b); if (m.w < 0) { tracer(a, b, 0xff7a7a, .1); sfxAt('bot', a); return; }
+  const a = v3(m.a), b = v3(m.b); if (m.w < 0) { const al = m.w === -2 || m.w === -4; if (m.w <= -3) { tracer(a, b, al ? 0x7cffff : 0xff7a7a, .22); sfx('zap', clamp(1 - a.distanceTo(P.pos) / 140, .2, .85)); } else { tracer(a, b, al ? 0x7cffff : 0xff7a7a, .1); sfxAt('bot', a); } return; }
   const wd = WDEF[m.w | 0]; if (!wd) return; tracer(a, b, wd.id === 'zap' ? 0x7cffff : ((m.r | 0) >= 3 ? RARITY[m.r | 0].col : 0xfff2a0), wd.id === 'zap' ? .22 : .08); sfxAt(wd.id, a);
 }
 function hostPlayerDied(pid, botId, teammate, self, env) {
@@ -935,7 +966,8 @@ function onLocalDeath(from, self) {
   if (NET.role === 'client') NET.net.clientSend({ t: 'pd', by: botId, tm, self: self ? 1 : 0, env: env ? 1 : 0 }); else hostPlayerDied(0, botId, tm, self, env);
 }
 function hostBotKilled(b, byPid) {
-  if (byPid >= 0) score.me++;
+  if (b.ally) score.bots++; else if (byPid >= 0 || byPid === -2) score.me++;   // -2 = a bot teammate popped it, -1 = an enemy bot
+  if (M && M.team && byPid < 0 && b.lastBy) announce(`${b.lastBy.name} popped ${b.name}`, b.lastBy.ally ? '#7cecff' : '#ff9a9a');
   if (byPid === 0) onMyKill(b); else if (byPid > 0) feedText(`${nameOf(byPid)} popped ${b.name}`, hex(colorOf(byPid)));
   if (isMP()) NET.net.hostBroadcast({ t: 'bd', id: b.id, k: byPid, x: r2(b.pos.x), y: r2(b.pos.y), z: r2(b.pos.z) });
   updScore(); checkEnd();
@@ -995,7 +1027,7 @@ function applySnap(m) {
   const seen = new Set();
   for (const a of m.b) {
     const [id, idx, x, y, z, yaw, hpp, fl] = a; seen.add(id); let b = botById.get(id);
-    if (!b) { b = new Bot(id, idx, { puppet: true, boss: !!(fl & 8), D: DIFF[M.diff] }); bots.push(b); b.pos.set(x, y, z); b.tpos.set(x, y, z); b.yaw = b.tyaw = yaw; }
+    if (!b) { b = new Bot(id, idx, { puppet: true, boss: !!(fl & 8), ally: !!(fl & 16), D: DIFF[M.diff] }); bots.push(b); b.pos.set(x, y, z); b.tpos.set(x, y, z); b.yaw = b.tyaw = yaw; }
     const was = b.alive, old = b.hp; b.tpos.set(x, y, z); b.tyaw = yaw; b.alive = !!(fl & 1); b.blindP = !!(fl & 2); b.alertP = !!(fl & 4); b.maxHp = 100; b.hp = hpp; if (hpp < old && b.alive) b.barT = 2.5; if (b.alive && !was) b.pos.copy(b.tpos);
   }
   for (let i = bots.length - 1; i >= 0; i--) if (!seen.has(bots[i].id)) { bots[i].remove(); bots.splice(i, 1); }
@@ -1005,7 +1037,7 @@ function applySnap(m) {
   updScore();
 }
 function buildSnap() {
-  const fl = b => (b.alive ? 1 : 0) | (b.blindT > 0 ? 2 : 0) | (b.alertT > 0 ? 4 : 0) | (b.boss ? 8 : 0);
+  const fl = b => (b.alive ? 1 : 0) | (b.blindT > 0 ? 2 : 0) | (b.alertT > 0 ? 4 : 0) | (b.boss ? 8 : 0) | (b.ally ? 16 : 0);
   const pl = [[0, ...myStateArr()]]; for (const [pid, rp] of remotes) pl.push([pid, r2(rp.tpos.x), r2(rp.tpos.y), r2(rp.tpos.z), r2(rp.tyaw), r2(rp.pitch), r2(rp.crouch), rp.alive ? 1 : 0, rp.wi, rp.rar, Math.round(rp.hp), rp.kills, rp.deaths]);
   return { t: 's', b: bots.map(b => [b.id, b.idx, r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), r2(b.yaw), Math.max(0, Math.round(b.hp / b.maxHp * 100)), fl(b)]), p: pl, s: [score.me, score.bots],
     m: [M.wave | 0, M.phase === 'break' ? 1 : M.phase === 'wave' ? 2 : 0, r2(M.phaseT), botsAlive() + M.toSpawn, M.lives | 0, r2(M.timeLeft)],
@@ -1039,6 +1071,7 @@ function hostSetupMode() {
   else if (M.mode === 'free') { const bots4 = M.fp === 'bots', n = bots4 ? 4 : 6 + 2 * (M.np - 1), FD = bots4 ? D : Object.assign({}, D, { hp: 120, speed: 0, fire: 99, react: 99, nade: 99999, aim: 1 }); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D: FD, dummy: !bots4 }); b.respT = .1 + i * .15; bots.push(b); } showCenter('FREEPLAY - grab any blaster!', '#7cecff'); }
   else if (M.mode === 'royale') { stormInit(); const n = Math.min(22, 14 + 3 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .05 + i * .02; bots.push(b); } showCenter('DROP IN!  Find loot, stay out of the storm', '#c58aff'); }
   else if (BRAWLISH(M.mode)) { const n = Math.max(2, 6 - M.np); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter(M.mode === 'gungame' ? 'GUN GAME! Pop to upgrade' : M.mode === 'moon' ? 'MOON BRAWL! Jump high' : 'BRAWL! Everyone is an enemy', '#ff9a4a'); }
+  else if (M.team) { const n = Math.min(9, D.bots + 2 * (M.np - 1)), na = Math.max(2, n - M.np - 1); for (let i = 0; i < na; i++) { const b = new Bot(M.nextBotId++, i, { D, ally: true }); b.respT = .2 + i * .5; bots.push(b); } for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .3 + i * .5; bots.push(b); } showCenter("SNIPER'S ALLEY! Climb high, stay low", '#7cecff'); }
   else { const n = Math.min(10, D.bots + 2 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } }
 }
 function startSolo() { NET.role = 'solo'; NET.me = 0; NET.roster = [{ pid: 0, name: myName(), color: PLAYER_COLORS[0] }]; syncRemotes(); M = newMatch(CFG, 1); loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); beginLocal(); }
@@ -1049,6 +1082,7 @@ function hostStart() {
 function hostTick(dt) {
   if (!M || M.over) return;
   frameTargets = []; if (P.alive) frameTargets.push(P); for (const rp of remotes.values()) if (rp.alive && rp.seen) frameTargets.push(rp);
+  if (M.team) { botFoes = []; const al = []; for (const b of bots) if (b.alive) (b.ally ? al : botFoes).push(b); botTargets = frameTargets.concat(al); } else botTargets = frameTargets;   // team modes: bots fight whoever is on the other team
   for (const b of bots) b.update(dt);
   for (let i = bots.length - 1; i >= 0; i--) { const b = bots[i]; if (!b.alive && M.norespawn && b.deaths > 0 && b.removeT <= 0) { b.remove(); bots.splice(i, 1); } }
   if (M.mode === 'blitz') { M.timeLeft -= dt; if (M.timeLeft <= 0) { M.timeLeft = 0; endHost(score.me > score.bots, score.me > score.bots ? 'TIME! YOU WIN!' : score.me === score.bots ? 'TIME! IT IS A TIE' : 'TIME! BOTS WIN', `Final score ${score.me} to ${score.bots}`); } }
@@ -1059,7 +1093,7 @@ function hostTick(dt) {
 }
 function checkEnd() {
   if (!M || M.over || !isHost()) return;
-  if (TDMISH(M.mode)) { if (score.me >= M.target) endHost(true, 'VICTORY!', `${NET.roster.length > 1 ? 'Your team' : 'You'} reached ${M.target} pops first. Nice shooting!`); else if (score.bots >= M.target) endHost(false, 'DEFEAT', 'The bots got there first. Rematch?'); }
+  if (TDMISH(M.mode)) { if (score.me >= M.target) endHost(true, 'VICTORY!', `${NET.roster.length > 1 || M.team ? 'Your team' : 'You'} reached ${M.target} pops first. Nice shooting!`); else if (score.bots >= M.target) endHost(false, 'DEFEAT', 'The bots got there first. Rematch?'); }
   if (M.mode === 'horde' && M.lives <= 0 && !P.alive && [...remotes.values()].every(r => !r.alive)) endHost(false, 'OVERRUN!', `You made it to wave ${M.wave} with ${score.me} pops.`);
   if (BRAWLISH(M.mode)) {
     const all = [[0, P.kills], ...[...remotes].map(([pid, rp]) => [pid, rp.kills])].sort((a, b) => b[1] - a[1]);
@@ -1079,7 +1113,7 @@ function endHost(win, title, sub, w, title2, sub2) {
 }
 function buildBoard() {
   const rows = [[nameOf(0), P.kills, P.deaths, 0, 0]]; for (const [pid, rp] of remotes) rows.push([rp.name, rp.kills, rp.deaths, pid, 0]);
-  if (M && M.mode !== 'horde' && M.mode !== 'royale') for (const b of bots) rows.push([b.name, b.kills, b.deaths, -1, 1]);
+  if (M && M.mode !== 'horde' && M.mode !== 'royale') for (const b of bots) rows.push([(b.ally ? '+' : '') + b.name, b.kills, b.deaths, -1, 1]);
   return rows.sort((a, b) => b[1] - a[1]);
 }
 function showEnd(win, title, sub, board) {
@@ -1091,7 +1125,7 @@ function showEnd(win, title, sub, board) {
 }
 function boardHTML() {
   const rows = [[isMP() ? nameOf(NET.me) : 'YOU', P.kills, P.deaths, true]]; for (const rp of remotes.values()) rows.push([rp.name, rp.kills, rp.deaths, false]);
-  if (isHost() && M && M.mode !== 'horde' && M.mode !== 'royale') for (const b of bots) rows.push([b.name, b.kills, b.deaths, false]);
+  if (isHost() && M && M.mode !== 'horde' && M.mode !== 'royale') for (const b of bots) rows.push([(b.ally ? '+' : '') + b.name, b.kills, b.deaths, false]);
   rows.sort((a, b) => b[1] - a[1]); const t = document.createElement('tbody'); const h = t.insertRow(); for (const x of ['', 'Pops', 'Popped']) { const c = document.createElement('th'); c.textContent = x; h.appendChild(c); }
   for (const r of rows) { const tr = t.insertRow(); if (r[3]) tr.className = 'me'; tr.insertCell().textContent = String(r[0]).slice(0, 14); tr.insertCell().textContent = r[1]; tr.insertCell().textContent = r[2]; } return t.innerHTML;
 }
@@ -1214,9 +1248,9 @@ function applyLoadout(force) {
   if (up) { showCenter('LEVEL UP: ' + w.d.name, '#ffd34e'); sfx('medal'); }
 }
 function spawnPlayer(initial) {
-  let best = null;
-  if (initial && M && M.mode === 'royale') best = brSpawn(NET.me); else if (initial) best = SPAWNS[(NET.me * 3) % SPAWNS.length];
-  else { let bd = -1; for (const s of SPAWNS) { let md = 1e9; for (const b of bots) if (b.alive) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
+  let best = null; const pool = M && M.team && SPAWNS_A.length ? SPAWNS_A : SPAWNS;   // Sniper's Alley: your team starts at its own end of the map
+  if (initial && M && M.mode === 'royale') best = brSpawn(NET.me); else if (initial) best = pool[(NET.me * 3) % pool.length];
+  else { let bd = -1; for (const s of pool) { let md = 1e9; for (const b of bots) if (b.alive && !(M && M.team && b.ally)) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
   P.pos.copy(best); P.vel.set(0, 0, 0); P.hp = 100; P.shield = 0; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
   for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) cur = slots.find(e => e && e.gun !== undefined).gun; W.forEach((w, k) => w.g.visible = k === cur); selSlot = slotOf(cur); reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); clearHold(); resetInv(); resetReserve(); adsTog = false; P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo(); if (M && M.ladder) applyLoadout(true);
 }
@@ -1278,14 +1312,14 @@ function fire(follow = false) {
   const w = W[cur], d = w.d, st = w.s; w.ammo--; if (!follow) { w.cd = st.rate; if (d.burst) { burstLeft = d.burst - 1; burstT = d.burstGap || .075; } } vmKick = d.kick * 4; flash.material.opacity = 1; flashLight.intensity = 6; setTimeout(() => flashLight.intensity = 0, 50); sfx(d.id); refreshAmmo();
   const dmgMul = P.buffT > 0 ? 2 : 1; const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
   recP += rnd(.5, 1) * d.kick * .3 * (adsK > .5 ? .6 : 1); recY += rnd(-.5, .5) * d.kick * .12; P.shakeT = Math.max(P.shakeT, .08);
-  if (isHost()) for (const b of bots) if (b.alive && b.pos.distanceTo(P.pos) < 38) { b.alertT = Math.max(b.alertT, 3); b.lastSeen.copy(P.pos); }
+  if (isHost()) for (const b of bots) if (b.alive && !b.ally && b.pos.distanceTo(P.pos) < 38) { b.alertT = Math.max(b.alertT, 3); b.lastSeen.copy(P.pos); }
   const mz = muzzleWorld();
   if (d.launch) { const dir = aimDir(0), vel = dir.multiplyScalar(26); vel.y += 2.4; spawnNade('shell', mz, vel, null); netEvent({ t: 'th', id: 'shell', p: v3a(mz), v: v3a(vel) }); return; }
   if (d.proj) { const dir = aimDir(0), vel = dir.multiplyScalar(30); spawnRocket(mz, vel, st.dmg, null); netEvent({ t: 'rk', p: v3a(mz), v: v3a(vel), d: r1(st.dmg) }); return; }
   let shotEnd = null;
   for (let i = 0; i < d.pellets; i++) {
     const dir = aimDir(sp); let tw = worldT(o, dir), hit = null, hb = null;
-    for (const b of bots) { if (!b.alive || b.invT > 0) continue; const h = hitEntity(o, dir, b, b.headY); if (h && h.t < tw && (!hit || h.t < hit.t)) { hit = h; hb = b; } }
+    for (const b of bots) { if (!b.alive || b.invT > 0 || b.ally) continue; const h = hitEntity(o, dir, b, b.headY); if (h && h.t < tw && (!hit || h.t < hit.t)) { hit = h; hb = b; } }
     if (M && M.pvp) for (const rp of remotes.values()) { if (!rp.alive || !rp.seen) continue; const h = hitEntity(o, dir, rp, rp.eyeH - .05); if (h && h.t < tw && (!hit || h.t < hit.t)) { hit = h; hb = rp; } }
     const end = hit ? hit.t : Math.min(tw, 120), endP = o.clone().addScaledVector(dir, end); if (!shotEnd) shotEnd = endP;
     if (i < 3 || d.pellets === 1) tracer(mz, endP, d.id === 'zap' ? 0x7cffff : (w.rar >= 3 ? RARITY[w.rar].col : 0xfff2a0), d.id === 'zap' ? .22 : .08);
@@ -1397,8 +1431,8 @@ function updateCamera(dt) {
 const hc = {}; const setTxt = (id, v) => { if (hc[id] !== v) { hc[id] = v; $(id).textContent = v; } }, setSty = (id, k, v) => { const key = id + k; if (hc[key] !== v) { hc[key] = v; $(id).style[k] = v; } };
 function updateTopBar() {
   if (!M) return; const solo = !isMP();
-  setTxt('lMe', M.mode === 'horde' ? 'POPS' : solo ? 'YOU' : 'TEAM'); setTxt('sMe', score.me);
-  if (TDMISH(M.mode)) { setTxt('lMid', 'FIRST TO'); setTxt('sMid', M.target); setTxt('lBots', 'BOTS'); setTxt('sBots', score.bots); }
+  setTxt('lMe', M.mode === 'horde' ? 'POPS' : solo && !M.team ? 'YOU' : 'TEAM'); setTxt('sMe', score.me);
+  if (TDMISH(M.mode)) { setTxt('lMid', 'FIRST TO'); setTxt('sMid', M.target); setTxt('lBots', M.team ? 'ENEMY' : 'BOTS'); setTxt('sBots', score.bots); }
   else if (M.mode === 'blitz') { const t = Math.max(0, Math.ceil(M.timeLeft)); setTxt('lMid', 'TIME'); setTxt('sMid', Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0')); setTxt('lBots', 'BOTS'); setTxt('sBots', score.bots); }
   else if (M.mode === 'free') { setTxt('lMe', 'POPS'); setTxt('sMe', P.kills); setTxt('lMid', 'FREEPLAY'); setTxt('sMid', '\u221e'); setTxt('lBots', 'ARMORY'); setTxt('sBots', RARITY[M.rarity].name); }
   else if (BRAWLISH(M.mode)) {
@@ -1433,14 +1467,14 @@ function updateHUD(dt) {
   if (dmgInd.length || dir.children.length) { dir.innerHTML = ''; for (const d of dmgInd) { const i = document.createElement('i'); i.style.transform = `rotate(${(-(d.a - P.yaw) * 180 / Math.PI) + 180}deg)`; i.style.opacity = Math.max(0, 1 - (time - d.t) / 1.2); i.style.transition = 'none'; dir.appendChild(i); } }
   // radar
   const r = $('radar'), x = r.getContext('2d'), R = 132; x.clearRect(0, 0, 264, 264); x.save(); x.translate(R, R); x.fillStyle = 'rgba(255,255,255,.08)'; x.beginPath(); x.arc(0, 0, R - 4, 0, 7); x.fill(); x.strokeStyle = 'rgba(255,255,255,.2)'; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, (R - 4) / 2, 0, 7); x.stroke();
-  const rr = curBig ? 62 : 40, sc = (R - 10) / rr, cs = Math.cos(P.yaw), sn = Math.sin(P.yaw);
+  const rr = curBig ? 62 : (curMap && curMap.radar) || 40, sc = (R - 10) / rr, cs = Math.cos(P.yaw), sn = Math.sin(P.yaw);
   const dot = (wx, wz, col, rad) => { const dx = wx - P.pos.x, dz = wz - P.pos.z, rx = dx * cs - dz * sn, rz = dx * sn + dz * cs; let px = rx * sc, py = rz * sc; const m = Math.hypot(px, py), lim = R - 10; if (m > lim) { px *= lim / m; py *= lim / m; } x.fillStyle = col; x.beginPath(); x.arc(px, py, rad, 0, 7); x.fill(); };
   if (M && M.storm) { const S = M.storm, dx = S.cx - P.pos.x, dz = S.cz - P.pos.z, rx = dx * cs - dz * sn, rz = dx * sn + dz * cs; x.save(); x.beginPath(); x.arc(0, 0, R - 4, 0, 7); x.clip(); x.strokeStyle = 'rgba(200,130,255,.95)'; x.lineWidth = 3; x.beginPath(); x.arc(rx * sc, rz * sc, S.r * sc, 0, 7); x.stroke(); x.restore(); }
   for (const ch of chests) if (!ch.open) dot(ch.x, ch.z, '#ffc233', 6);
   for (const pk of pickups) if (pk.on) dot(pk.x, pk.z, pk.css, pk.id === 'gun' ? 5 : 4);
   for (const f of fires) dot(f.pos.x, f.pos.z, 'rgba(255,120,30,.8)', 7);
   for (const s of smokes) dot(s.c.x, s.c.z, 'rgba(230,236,246,.8)', 8);
-  for (const b of bots) if (b.alive) dot(b.pos.x, b.pos.z, b.boss ? '#ff2a4a' : '#ff5a6a', b.boss ? 9 : 6);
+  for (const b of bots) if (b.alive) { if (b.ally) dot(b.pos.x, b.pos.z, '#4affc8', 6); else if (!(M && M.team) || b.alertT > 0 || b.alertP || b.pos.distanceTo(P.pos) < 42) dot(b.pos.x, b.pos.z, b.boss ? '#ff2a4a' : '#ff5a6a', b.boss ? 9 : 6); }   // Sniper's Alley: far-away enemies only show up once they spot someone
   for (const rp of remotes.values()) if (rp.alive && rp.seen) { if (!(M && M.pvp)) dot(rp.pos.x, rp.pos.z, hex(rp.color), 6); else if (Math.hypot(rp.pos.x - P.pos.x, rp.pos.z - P.pos.z) < 16) dot(rp.pos.x, rp.pos.z, '#ff5a6a', 6); }
   x.fillStyle = '#2ee6ff'; x.beginPath(); x.moveTo(0, -9); x.lineTo(7, 7); x.lineTo(-7, 7); x.closePath(); x.fill(); x.restore();
 }
@@ -1491,7 +1525,7 @@ function setNetMsg(t) { for (const id of ['netMsg', 'lobbyMsg']) { const e = $(i
 function buildPickupsPreview() { if (!M) hostRollPickups(1); }
 function setCfg(k, v) {
   if (NET.role === 'client') return; CFG[k] = v; save(k, v);
-  if (k === 'mode' && v !== 'royale' && (MAPS.find(m => m.id === CFG.map) || {}).br) { CFG.map = 'plaza'; save('map', 'plaza'); }
+  if (k === 'mode') { const cm = MAPS.find(m => m.id === CFG.map); if (v === 'snipers' && !(cm && cm.sn)) { CFG.map = 'peaks'; save('map', 'peaks'); } else if (!cm || !mapOK(cm, v)) { CFG.map = 'plaza'; save('map', 'plaza'); } }
   if ((k === 'map' || k === 'mode') && !M) { loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); }
   renderPickers(); if (NET.role === 'host') NET.net.hostBroadcast({ t: 'cfg', cfg: wireCfg() });
 }
@@ -1502,7 +1536,7 @@ function renderPickers() {
     for (const id of Object.keys(MODES)) { const b = mk('button', id === CFG.mode ? 'sel' : '', MODES[id].name); b.disabled = !editable; b.onclick = () => setCfg('mode', id); rm.appendChild(b); }
     gm.appendChild(rm); gm.appendChild(mk('p', 'mdesc', MODES[CFG.mode].blurb)); root.appendChild(gm);
     const gp = mk('div', 'grp'); gp.appendChild(mk('h3', '', 'MAP')); const maps = mk('div', 'maps');
-    for (const m of MAPS.filter(m => !m.br || CFG.mode === 'royale')) { const c = mk('button', 'mapc' + (m.id === CFG.map ? ' sel' : '')); c.disabled = !editable; c.style.background = `linear-gradient(180deg, rgba(10,6,24,0) 15%, rgba(10,6,24,.62)), linear-gradient(180deg, ${m.swatch[0]}, ${m.swatch[1]} 55%, ${m.swatch[2]})`; c.appendChild(mk('b', '', m.name)); c.appendChild(mk('span', '', m.blurb)); c.onclick = () => setCfg('map', m.id); maps.appendChild(c); }
+    for (const m of MAPS.filter(m => mapOK(m, CFG.mode)).sort((a, b) => !!b.sn - !!a.sn)) { const c = mk('button', 'mapc' + (m.id === CFG.map ? ' sel' : '')); c.disabled = !editable; c.style.background = `linear-gradient(180deg, rgba(10,6,24,0) 15%, rgba(10,6,24,.62)), linear-gradient(180deg, ${m.swatch[0]}, ${m.swatch[1]} 55%, ${m.swatch[2]})`; c.appendChild(mk('b', '', m.name)); c.appendChild(mk('span', '', m.blurb)); c.onclick = () => setCfg('map', m.id); maps.appendChild(c); }
     gp.appendChild(maps); root.appendChild(gp);
     const gd = mk('div', 'grp'); gd.appendChild(mk('h3', '', 'BOTS')); const rd = mk('div', 'row');
     for (const [id, nm] of [['easy', 'Chill bots'], ['normal', 'Normal bots'], ['hard', 'Sweaty bots']]) { const b = mk('button', id === CFG.diff ? 'sel' : '', nm); b.disabled = !editable; b.onclick = () => setCfg('diff', id); rd.appendChild(b); }

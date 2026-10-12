@@ -345,3 +345,50 @@ MAPS.push(
     dmg: [[2.2, 2.2, 1.6], [52, .55, -2], [MOON_CRATERS[2][0], 0, MOON_CRATERS[2][1]]],
   },
 );
+
+// ---------------------------------------------------------------------------------------------
+// Sniper's Alley map (sn: true, only offered in Sniper's Alley): Highline Peaks.
+// Team A (spawnsA) starts in the south, team B (spawnsB) in the north. The layout is the same after a half turn,
+// so both sides get the same cover. Every peak is a stepped mountain you can walk up from any side.
+// `perches` are spots on top of the peaks (x, z, height) where sniper bots like to set up.
+// ---------------------------------------------------------------------------------------------
+const hexMix = (a, b, t) => { const ch = s => (a >> s & 255) + ((b >> s & 255) - (a >> s & 255)) * t; return (Math.round(ch(16)) << 16) | (Math.round(ch(8)) << 8) | Math.round(ch(0)); };
+const shades = (n, c0, c1) => Array.from({ length: n }, (_, i) => hexMix(c0, c1, n > 1 ? Math.pow(i / (n - 1), 1.9) : 0));   // mostly stone, with snow only near the top
+const turn = ([x, z, ...rest]) => [-x, -z, ...rest];   // the same spot after a half turn of the map
+const PEAK = {
+  center: [0, 0, 6.6],
+  flank: [[-28, 14, 4.4]],            // + their half-turn twins
+  fwd: [[30, 30, 3.3]],
+  ridge: [[0, 31, 1.65]],
+  terr: [[44.5, 0, 3.3]],
+  bunk: [[-28, 44, 1.65], [28, 44, 1.65]],
+};
+MAPS.push({
+  id: 'peaks', name: 'Highline Peaks', half: 52, sn: true, radar: 62,
+  blurb: "Sniper's Alley only. Snowy mountain peaks, long ledges, spires and rocks to hide behind. Climb high, stay low, line it up.",
+  swatch: ['#2a78ff', '#9fd0ff', '#f4faff'],
+  theme: { sky: [0x2a78ff, 0x9fd0ff, 0xf4faff], sunStr: 1.2, fog: [0xd6ebff, 80, 250], floor: ['#86c874', '#78bc68', 'rgba(30,80,50,.3)'], ground: 0x6aa86a, wall: 0x4a6288,
+    strips: [0x2ee6ff, 0xffffff, 0x4aa8ff, 0x8aa8ff], hemi: [0xe8f4ff, 0x9ab4d8, 1.1], sun: [0xfff6e0, 2.4], exposure: 1.1, clouds: 0xffffff, deco: 'none' },
+  build(b) {
+    const STONE = 0x6a7a9a, SNOW = 0xffffff, ROCK = 0x7a88a6, DARK = 0x46557a;
+    mesa(b, 0, 0, 30, 30, 12, shades(12, STONE, SNOW), 1.2);                                          // the big middle peak (top at 6.6)
+    for (const sg of [1, -1]) {
+      mesa(b, sg * -28, sg * 14, 20, 20, 8, shades(8, 0x7585a5, SNOW), 1.1);                          // flank peaks (top at 4.4)
+      mesa(b, sg * 30, sg * 30, 16, 16, 6, shades(6, 0x7585a5, SNOW), 1.2);                           // forward peaks (top at 3.3)
+      mesa(b, 0, sg * 31, 30, 8, 3, shades(3, 0x8090b0, 0xdfe8f4), 1.3);                              // long low ridges (top at 1.65)
+      mesa(b, sg * 44.5, 0, 9, 46, 6, shades(6, 0x8896b4, 0xd8e2f0), .7);                             // terraces along the edges: long ledges to run along (top at 3.3)
+      for (const dx of [-28, 28]) mesa(b, dx, sg * 44, 12, 8, 3, shades(3, 0x8090b0, 0xdfe8f4), 1.3);   // base bunkers
+      for (const [x, z] of [[-14, 22], [20, 10]]) { b.box(sg * x, 5, sg * z, 2.2, 10, 2.2, DARK); b.glow(sg * x, 10.2, sg * z, 1.2, .4, 1.2, 0x2ee6ff); }   // tall spires
+      for (const [x, z, sx, sy, sz] of [[-8, 21, 4, 2.4, 3], [9, 22, 3, 1.8, 3], [-24, 31, 3, 2, 3], [34, 10, 3, 2, 3], [-36, 0, 3, 2.2, 3], [18, 40, 3, 2.2, 3], [-18, 40, 3, 2.4, 3], [38, 40, 3, 1.8, 3]]) b.box(sg * x, sy / 2, sg * z, sx, sy, sz, ROCK);   // rocks to stand behind
+      for (const [x, z, sx, sz] of [[16, 21, 6, 1.2], [-8, 38, 8, 1.2], [8, 38, 8, 1.2], [-39, 28, 1.2, 6], [0, 18, 1.2, 5]]) b.box(sg * x, .6, sg * z, sx, 1.2, sz, 0xa6b2cc);   // low walls to crouch behind
+    }
+  },
+  spawnsA: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [-38, 47], [38, 45]],
+  spawnsB: [[18, -46], [9, -46], [0, -46], [-9, -46], [-18, -46], [4, -42], [-4, -42], [38, -47], [-38, -45]],
+  spawns: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [18, -46], [9, -46], [0, -46], [-9, -46], [-18, -46], [4, -42], [-4, -42]],
+  perches: [PEAK.center, ...PEAK.flank, ...PEAK.flank.map(turn), ...PEAK.fwd, ...PEAK.fwd.map(turn), ...PEAK.ridge, ...PEAK.ridge.map(turn), ...PEAK.terr, ...PEAK.terr.map(turn), [44.5, 15, 3.3], [-44.5, -15, 3.3], [44.5, -15, 3.3], [-44.5, 15, 3.3], ...PEAK.bunk, ...PEAK.bunk.map(turn)],
+  loot: [[-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6],
+    ...[[-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6]].map(turn),
+    [0, 0, 6.6], [-28, 14, 4.4], [28, -14, 4.4], [30, 30, 3.3], [-30, -30, 3.3], [44.5, 0, 3.3], [-44.5, 0, 3.3], [0, 31, 1.65], [0, -31, 1.65]],
+  dmg: [[0, 6.6, 1.2], [0, 6.6, -1.2]],
+});
