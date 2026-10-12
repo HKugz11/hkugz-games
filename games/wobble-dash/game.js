@@ -1,10 +1,10 @@
 // WOBBLE DASH - a wobbly bean obstacle race. Run, jump and dive through three courses against computer racers: the top runners of each round qualify for the next one.
-import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, camera, renderer, scene, W, rnd, clamp, lerp, TAU, angDiff, load, save, hex, followSun, updateFX, clearFX, burst, ring, audioInit, setVolume, sfx, adaptRes, blendSky, rng } from './core.js?v=12';
-import { world, pushOut } from './physics.js?v=12';
-import { COURSES, THEMES, generateCourse, Course } from './course.js?v=12';
-import { MOVE, Racer, cam, updateCamera } from './bean.js?v=12';
-import { DIFFS, makeAI, aiStep } from './ai.js?v=12';
-import { TOUCH, initTouch } from './touch.js?v=12';
+import { THREE, V3, $, DEBUG, S, GFX, GFX_PREF, QL, camera, renderer, scene, W, rnd, clamp, lerp, TAU, angDiff, load, save, hex, followSun, updateFX, clearFX, burst, ring, audioInit, setVolume, sfx, adaptRes, blendSky, rng } from './core.js?v=13';
+import { world, pushOut } from './physics.js?v=13';
+import { COURSES, THEMES, generateCourse, Course } from './course.js?v=13';
+import { MOVE, Racer, cam, updateCamera } from './bean.js?v=13';
+import { DIFFS, makeAI, aiStep } from './ai.js?v=13';
+import { TOUCH, initTouch } from './touch.js?v=13';
 
 const NAMES = ['Bumble', 'Noodle', 'Pudding', 'Waffles', 'Sprout', 'Pickle', 'Mochi', 'Biscuit', 'Gizmo', 'Zippy', 'Tofu', 'Muffin', 'Nacho', 'Jellybean', 'Wobbles', 'Pretzel'];
 const COLORS = [0xff4fa8, 0x2ee6ff, 0xffd31a, 0x8aff3a, 0xb06bff, 0xff7a1a, 0xffffff, 0x4a6aff, 0xff4a4a, 0x40e0b0];
@@ -118,7 +118,7 @@ function bumpRacers(rs, dt) {
 
 // ================================================================== results and rounds
 function showResults() {
-  const R = race; state = 'results'; W.state = 'results'; const rk = R.rk, tbl = $('resTable'); tbl.innerHTML = '<tr><th>#</th><th>Racer</th><th>Time</th>' + (R.meta ? '<th></th>' : '') + '</tr>';
+  const R = race; if (!show) show = { r: 0, entrants: [], next: false }; state = 'results'; W.state = 'results'; const rk = R.rk, tbl = $('resTable'); tbl.innerHTML = '<tr><th>#</th><th>Racer</th><th>Time</th>' + (R.meta ? '<th></th>' : '') + '</tr>';
   rk.forEach((r, i) => { const tr = document.createElement('tr'); if (r.isPlayer) tr.className = 'me'; const out = R.meta && !(r.finished && r.place <= R.qualify); tr.innerHTML = `<td>${i + 1}</td><td><i style="background:${hex(r.color)}"></i>${r.name}</td><td>${r.finished ? fmtT(r.finishT) : 'DNF'}</td>` + (R.meta ? `<td class="${out ? 'x' : 'ok'}">${out ? '✗' : '✓'}</td>` : ''); tbl.appendChild(tr); });
   const me = P, last = R.meta && R.meta.title === 'THE FINAL';
   if (R.meta) {

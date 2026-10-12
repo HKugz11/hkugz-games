@@ -1,6 +1,6 @@
 // WOBBLE DASH - the racers: wobbly toon beans with a tight platformer controller (run, jump, dive), plus the follow camera.
-import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU, W } from './core.js?v=12';
-import { world, moveEntity, pushOut } from './physics.js?v=12';
+import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU, W } from './core.js?v=13';
+import { world, moveEntity, pushOut } from './physics.js?v=13';
 
 export const MOVE = { speed: 9, sprint: 1.28, jump: 11.5, g: 32, dive: 12.5 };
 const dark = toon(0x2a2140), white = toon(0xffffff); dark.userData.shared = white.userData.shared = true;

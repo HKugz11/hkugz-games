@@ -1,8 +1,8 @@
 // WOBBLE DASH - the race courses. A course is built from segments (spinning bars, swinging hammers, sliding gates, gaps, belts...)
 // laid out along one long lane. Every moving thing is a pure function of the race clock, so everybody sees the same course.
 // Coordinates: the lane runs toward -z. u = distance from the start line, v = sideways (x).
-import { THREE, V3, scene, toon, INK, QL, rng, clamp, lerp, TAU, W, burst, ring, blendSky } from './core.js?v=12';
-import { world, sphereVsObb } from './physics.js?v=12';
+import { THREE, V3, scene, toon, INK, QL, rng, clamp, lerp, TAU, W, burst, ring, blendSky } from './core.js?v=13';
+import { world, sphereVsObb } from './physics.js?v=13';
 
 export const TH = .9, LANE = 16;
 export const THEMES = [

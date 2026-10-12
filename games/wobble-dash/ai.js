@@ -1,7 +1,7 @@
 // WOBBLE DASH - the computer racers: they follow the course waypoints, hop gaps, ride ferries, balance on beams, jump spinning bars,
 // dive at the finish and, like everybody else, get knocked around by the obstacles.
-import { world } from './physics.js?v=12';
-import { clamp, rnd } from './core.js?v=12';
+import { world } from './physics.js?v=13';
+import { clamp, rnd } from './core.js?v=13';
 
 export const DIFFS = {
   easy: { name: 'Easy', pace: [.8, .98], skill: .5 },
