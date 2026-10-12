@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=4.5';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=4.5';
-import { TOUCH, initTouch } from './touch.js?v=4.5';
+import { MAPS } from './maps.js?v=4.8';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=4.8';
+import { TOUCH, initTouch } from './touch.js?v=4.8';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -24,7 +24,7 @@ const MODES = {
   gungame: { name: 'Gun Game', blurb: 'Free-for-all with a ladder of ten blasters. Every pop upgrades your gun to the next one and the last one is the Pop-Gun. First to finish the ladder wins!' },
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: low gravity and giant jumps, so fights happen in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun, with unlimited ammo and no loot. Pure aim!' },
-  snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high (jump at a rock or ledge to climb onto it, step on a jump pad to fly up), line it up and hold your breath.' },
+  snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high: jump at a rock to climb it, hold jump while pushing into a tall spire or wall (or a tree trunk) to climb it, or step on a jump pad. Bots cannot see you up in a tree. Line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
 const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'snipers';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
@@ -82,13 +82,13 @@ for (let i = 0; i < QL.clouds; i++) { const g = new THREE.Group(), n = rint(3, 5
 // ------------------------------------------------------------------ maps (data lives in maps.js)
 const world = [];   // static AABBs used for collision + line of sight
 const mapGroup = new THREE.Group(); scene.add(mapGroup);
-const SPAWNS = [], WAYPOINTS = [], LOOT_SPOTS = [], DMG_SPOTS = [], CHEST_SPOTS = [], SPAWNS_A = [], SPAWNS_B = [], PERCHES = [], PADS = [];   // SPAWNS_A/B: team ends (Sniper's Alley), PERCHES: sniper spots on top of peaks
+const SPAWNS = [], WAYPOINTS = [], LOOT_SPOTS = [], DMG_SPOTS = [], CHEST_SPOTS = [], SPAWNS_A = [], SPAWNS_B = [], PERCHES = [], PADS = [], TREES = [];   // TREES: climbable trees (x, z, size) whose tops hide you from bots   // SPAWNS_A/B: team ends (Sniper's Alley), PERCHES: sniper spots on top of peaks
 let TEAM_SIGN = 1;   // +1 when team A (yours) starts on the +z side of the map
 let HALF = 32, curMap = null, snowPts = null;
 function addBox(cx, cy, cz, sx, sy, sz, color, o = {}) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), toon(color)); m.position.set(cx, cy, cz); m.castShadow = true; m.receiveShadow = true; mapGroup.add(m);
   if (QL.edges && o.edges !== false) m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0x1c1030 })));
-  if (o.solid !== false) world.push({ minX: cx - sx / 2, maxX: cx + sx / 2, minY: cy - sy / 2, maxY: cy + sy / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2 });   // solid: false = just for looks (treetops)
+  if (o.solid !== false) world.push({ minX: cx - sx / 2, maxX: cx + sx / 2, minY: cy - sy / 2, maxY: cy + sy / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2, nc: !!o.noclimb });   // nc: the arena walls can't be climbed   // solid: false = just for looks (treetops)
   return m;
 }
 function addGlow(cx, cy, cz, sx, sy, sz, color) { const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), new THREE.MeshBasicMaterial({ color })); m.position.set(cx, cy, cz); mapGroup.add(m); return m; }
@@ -117,7 +117,7 @@ function loadMap(id, big = false) {
   clearMap(); curMap = def; curBig = big; const H = def.half, tile = big && !def.br; HALF = tile ? H * 2 : H; const t = def.theme; applyTheme(t, HALF);
   sun.position.set(30, 50, 20); sun.target.position.set(0, 0, 0);
   // boundary walls + glowing strips
-  for (const [x, z, sx, sz] of [[0, -HALF - 1, 2 * HALF + 4, 2], [0, HALF + 1, 2 * HALF + 4, 2], [-HALF - 1, 0, 2, 2 * HALF], [HALF + 1, 0, 2, 2 * HALF]]) addBox(x, 4, z, sx, 8, sz, t.wall);
+  for (const [x, z, sx, sz] of [[0, -HALF - 1, 2 * HALF + 4, 2], [0, HALF + 1, 2 * HALF + 4, 2], [-HALF - 1, 0, 2, 2 * HALF], [HALF + 1, 0, 2, 2 * HALF]]) addBox(x, 4, z, sx, 8, sz, t.wall, { noclimb: true });
   [[0, -HALF + .08, 2 * HALF, .1, t.strips[0]], [0, HALF - .08, 2 * HALF, .1, t.strips[1]], [-HALF + .08, 0, .1, 2 * HALF, t.strips[2]], [HALF - .08, 0, .1, 2 * HALF, t.strips[3]]].forEach(([x, z, sx, sz, c]) => { addGlow(x, .6, z, sx, .35, sz, c); addGlow(x, 5.2, z, sx, .35, sz, c); });
   // battle royale builds the map four times (mirrored) side by side: twice as wide, four times the area
   const copies = tile ? [[-H, -H, 0, 0], [H, -H, 1, 0], [-H, H, 0, 1], [H, H, 1, 1]] : [[0, 0, 0, 0]];
@@ -132,6 +132,7 @@ function loadMap(id, big = false) {
   const each = (list, fn) => { for (const [ox, oz, mx, mz] of copies) for (const e of list) fn(ox + (mx ? -e[0] : e[0]), oz + (mz ? -e[1] : e[1]), e); };
   SPAWNS.length = 0; each(def.spawns, (x, z) => { if (freeAt(x, z, 1.2)) SPAWNS.push(new V3(x, 0, z)); });
   SPAWNS_A.length = SPAWNS_B.length = PERCHES.length = 0; each(def.spawnsA || [], (x, z) => { if (freeAt(x, z, 1.2)) SPAWNS_A.push(new V3(x, 0, z)); }); each(def.spawnsB || [], (x, z) => { if (freeAt(x, z, 1.2)) SPAWNS_B.push(new V3(x, 0, z)); }); each(def.perches || [], (x, z, e) => PERCHES.push(new V3(x, e[2] || 0, z))); TEAM_SIGN = SPAWNS_A.length && SPAWNS_A.reduce((s, p) => s + p.z, 0) < 0 ? -1 : 1;
+  TREES.length = 0; each(def.trees || [], (x, z, e) => TREES.push({ x, z, s: e[2] }));
   PADS.length = 0; each(def.pads || [], (x, z, e) => makePad(x, z, e[2], e[3], e[4], e[5]));
   WAYPOINTS.length = 0; for (let x = -(HALF - 4); x <= HALF - 4; x += 4) for (let z = -(HALF - 4); z <= HALF - 4; z += 4) if (freeAt(x, z, .9)) WAYPOINTS.push(new V3(x, 0, z));
   LOOT_SPOTS.length = 0; each(def.loot, (x, z, e) => { const y = e[2] || 0; if (y > 0 || freeAt(x, z, .8)) LOOT_SPOTS.push([x, z, y]); });
@@ -611,7 +612,7 @@ class RemotePlayer {
     if (!this.seen || (this.alive && !was)) { this.pos.copy(this.tpos); this.yaw = this.tyaw; } this.seen = true; this.lastMsg = performance.now();
   }
   update(dt) {
-    const m = this.m, vis = this.alive && this.seen; m.g.visible = vis; if (!vis) return;
+    this.revealT = Math.max(0, (this.revealT || 0) - dt); const m = this.m, vis = this.alive && this.seen; m.g.visible = vis; if (!vis) return;
     const px = this.pos.x, pz = this.pos.z, k = 1 - Math.exp(-dt * 14);
     if (this.pos.distanceTo(this.tpos) > 6) this.pos.copy(this.tpos); else this.pos.lerp(this.tpos, k);
     this.yaw += angDiff(this.tyaw, this.yaw) * k;
@@ -809,8 +810,8 @@ class Bot {
   }
   pickTarget() {
     const list = M && M.team ? (this.ally ? botFoes : botTargets) : frameTargets;
-    let best = null, bd = 1e9; for (const t of list) { if (t.alive === false) continue; const d = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z); if (d < bd) { bd = d; best = t; } }
-    if (this.tgt && this.tgt.alive !== false && list.includes(this.tgt)) { const dc = Math.hypot(this.tgt.pos.x - this.pos.x, this.tgt.pos.z - this.pos.z); if (dc < bd * 1.35) best = this.tgt; }
+    let best = null, bd = 1e9; for (const t of list) { if (t.alive === false || treeHidden(t)) continue; const d = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z); if (d < bd) { bd = d; best = t; } }
+    if (this.tgt && this.tgt.alive !== false && !treeHidden(this.tgt) && list.includes(this.tgt)) { const dc = Math.hypot(this.tgt.pos.x - this.pos.x, this.tgt.pos.z - this.pos.z); if (dc < bd * 1.35) best = this.tgt; }
     return this.tgt = best;
   }
   puppetUpdate(dt) {
@@ -861,7 +862,11 @@ class Bot {
     let dy = angDiff(face, this.yaw); this.yaw += dy * clamp(dt * D.turn, 0, 1);
     if (wish.lengthSq() > 0) wish.normalize();
     const ctl = this.onGround ? 14 : this.padT > 0 ? 0 : 3; this.vel.x += (wish.x * speed - this.vel.x) * clamp(ctl * dt, 0, 1); this.vel.z += (wish.z * speed - this.vel.z) * clamp(ctl * dt, 0, 1);
-    this.blocked = false; moveEntity(this, dt); { const pp = padCheck(this, dt); if (pp && this.sn) { this.wp = null; this.hold = pp.T + rnd(2.5, 6); this.holdYaw = holdFacing(this); } }
+    this.revealT = Math.max(0, (this.revealT || 0) - dt);
+    if (this.mant) mantleStep(this, dt); else {
+      this.blocked = false; moveEntity(this, dt); { const pp = padCheck(this, dt); if (pp && this.sn) { this.wp = null; this.hold = pp.T + rnd(2.5, 6); this.holdYaw = holdFacing(this); } }
+      if (this.onGround && this.blocked && wish.lengthSq() > 0) { const f = mantleFind(this, wish, 3.3); if (f) startMantle(this, f, .3 + (f.b.maxY - this.pos.y) * .09); }   // a rock or ledge in the way: climb on top of it
+    }
     this.stuckT += dt; if (this.stuckT > .6) { if (this.pos.distanceTo(this.lastP) < .5 && wish.lengthSq() > 0) { if (this.onGround && Math.random() < .6) this.vel.y = 7; this.wp = null; this.strafe *= -1; } this.lastP.copy(this.pos); this.stuckT = 0; }
     // shooting
     if (sees) { this.reactT -= dt; this.pause -= dt; this.cd -= dt;
@@ -889,7 +894,7 @@ class Bot {
     dir.x += rnd(-err, err); dir.y += rnd(-err, err) * .7; dir.z += rnd(-err, err); dir.normalize();
     const mz = new V3(eye.x + dir.x * .8 * this.sc + Math.cos(this.yaw) * .3 * this.sc, eye.y - .35 * this.sc, eye.z + dir.z * .8 * this.sc - Math.sin(this.yaw) * .3 * this.sc);
     const tw = worldT(eye, dir), hp = hitEntity(eye, dir, T, T.eyeH - .05), end = hp && hp.t < tw ? hp.t : Math.min(tw, 70), endP = eye.clone().addScaledVector(dir, end);
-    tracer(mz, endP, 0xff7a7a, .1); sfxAt('bot', this.pos); if (isMP()) NET.net.hostBroadcast({ t: 'sh', a: v3a(mz), b: v3a(endP), w: -1 });
+    tracer(mz, endP, 0xff7a7a, .1); this.revealT = 2.5; sfxAt('bot', this.pos); if (isMP()) NET.net.hostBroadcast({ t: 'sh', a: v3a(mz), b: v3a(endP), w: -1 });
     if (hp && hp.t < tw) hurtTarget(T, D.dmg * (hp.head ? 1.4 : 1), this);
   }
   // Sniper's Alley: one slow, hard-hitting shot after a short wind-up
@@ -899,7 +904,7 @@ class Bot {
     dir.x += rnd(-err, err); dir.y += rnd(-err, err) * .7; dir.z += rnd(-err, err); dir.normalize();
     const mz = new V3(eye.x + dir.x * .8 + Math.cos(this.yaw) * .3, eye.y - .35, eye.z + dir.z * .8 - Math.sin(this.yaw) * .3);
     const tw = worldT(eye, dir), hp = hitEntity(eye, dir, T, T.eyeH - .05), end = hp && hp.t < tw ? hp.t : Math.min(tw, 130), endP = eye.clone().addScaledVector(dir, end);
-    tracer(mz, endP, this.ally ? 0x7cffff : 0xff7a7a, .22); sfx('zap', clamp(1 - this.pos.distanceTo(P.pos) / 140, .2, .85)); burst(mz, 0xffffff, 4, 3, .1, .25, 6, 1);
+    this.revealT = 2.5; tracer(mz, endP, this.ally ? 0x7cffff : 0xff7a7a, .22); sfx('zap', clamp(1 - this.pos.distanceTo(P.pos) / 140, .2, .85)); burst(mz, 0xffffff, 4, 3, .1, .25, 6, 1);
     if (isMP()) NET.net.hostBroadcast({ t: 'sh', a: v3a(mz), b: v3a(endP), w: this.ally ? -4 : -3 });
     if (hp && hp.t < tw) hurtTarget(T, S.dmg * (hp.head ? 1.6 : 1), this);
   }
@@ -924,7 +929,7 @@ const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.som
 const wireCfg = () => ({ mode: CFG.mode, map: CFG.map, diff: CFG.diff, rarity: CFG.rarity, fp: CFG.fp });
 const botsAlive = () => bots.filter(b => b.alive).length;
 function newMatch(cfg, np) {
-  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', team: cfg.mode === 'snipers', snipe: cfg.mode === 'snipers', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode], grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'snipers' ? 20 + 8 * (np - 1) : TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
+  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', team: cfg.mode === 'snipers', snipe: cfg.mode === 'snipers', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode], grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'snipers' ? 25 + 8 * (np - 1) : TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
     wave: 0, phase: '', phaseT: 0, toSpawn: 0, spawnT: 0, maxAlive: 8, lives: 0, left: 0, nextBotId: 1 };
 }
 function feedText(text, color = '#fff') { const f = $('feed'), d = document.createElement('div'); d.textContent = text; d.style.color = color; f.appendChild(d); setTimeout(() => d.remove(), 4500); while (f.children.length > 5) f.firstChild.remove(); }
@@ -975,7 +980,7 @@ function hostOnMsg(pid, m) {
     case 'hit': { const b = botById.get(m.b | 0); if (b && b.alive && !b.ally && rp && rp.alive && Number.isFinite(m.d)) b.hurt(clamp(m.d, 0, 200), !!m.h, pid); break; }
     case 'th': if (rp && okVec(m.p) && okVec(m.v) && (m.id === 'shell' || (ITEMS[m.id] && ITEMS[m.id].kind === 'nade'))) { spawnNade(m.id, v3(m.p), v3(m.v), rp); NET.net.hostBroadcast({ t: 'th', id: m.id, p: m.p, v: m.v, o: pid }, pid); } break;
     case 'rk': if (rp && okVec(m.p) && okVec(m.v) && Number.isFinite(m.d)) { spawnRocket(v3(m.p), v3(m.v), clamp(m.d, 0, 200), rp); NET.net.hostBroadcast({ t: 'rk', p: m.p, v: m.v, d: m.d, o: pid }, pid); } break;
-    case 'sh': if (rp && okVec(m.a) && okVec(m.b)) { shotFx(m, rp); NET.net.hostBroadcast({ t: 'sh', a: m.a, b: m.b, w: m.w, r: m.r, o: pid }, pid); } break;
+    case 'sh': if (rp && okVec(m.a) && okVec(m.b)) { rp.revealT = 2.5; shotFx(m, rp); NET.net.hostBroadcast({ t: 'sh', a: m.a, b: m.b, w: m.w, r: m.r, o: pid }, pid); } break;
     case 'claim': { const pk = pkById.get(m.n | 0); if (pk && pk.on && rp && Math.hypot(rp.tpos.x - pk.x, rp.tpos.z - pk.z) < 6) hostGrant(pk, pid); break; }
     case 'pd': if (M && !M.over) hostPlayerDied(pid, m.by | 0, m.tm | 0, !!m.self, !!m.env); break;
     case 'copen': { const ch = chestById.get(m.n | 0); if (ch && !ch.open && rp && Math.hypot(rp.tpos.x - ch.x, rp.tpos.z - ch.z) < 6) hostOpenChest(ch); break; }
@@ -1103,7 +1108,7 @@ function beginLocal() {
   const st0 = M && M.snipe ? SNIPE_START : 0; for (const w of W) { w.owned = WDEF.indexOf(w.d) === st0; w.rar = 0; applyRarity(w); } slots.fill(null); slots[0] = { gun: st0 }; selSlot = 0; clearHold(); adsTog = false;
   score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = st0; wantSwap = -1; swapT = 0; selectWeapon(st0, true); G = M && M.grav ? 9 : 22; if (M && M.ladder) { M.myTier = -1; applyLoadout(true); }
   clearStormVis(); specI = 0; $('team').style.display = M.pvp ? 'none' : ''; for (const rp of remotes.values()) rp.tag.material.depthTest = !!M.pvp;
-  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT A ROCK OR LEDGE TO CLIMB ON IT · STEP ON A PAD TO FLY UP', '#7cecff');
+  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT ROCKS TO CLIMB · HOLD JUMP AT SPIRES AND TREES · TREETOPS HIDE YOU', '#7cecff');
 }
 function hostSetupMode() {
   const D = DIFF[M.diff];
@@ -1291,7 +1296,7 @@ function spawnPlayer(initial) {
   let best = null; const pool = M && M.team && SPAWNS_A.length ? SPAWNS_A : SPAWNS;   // Sniper's Alley: your team starts at its own end of the map
   if (initial && M && M.mode === 'royale') best = brSpawn(NET.me); else if (initial) best = pool[(NET.me * 3) % pool.length];
   else { let bd = -1; for (const s of pool) { let md = 1e9; for (const b of bots) if (b.alive && !(M && M.team && b.ally)) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
-  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.mant = null; P.hp = 100; P.shield = 0; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
+  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.mant = null; P.climb = null; P.revealT = 0; P.hp = 100; P.shield = 0; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
   for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) cur = slots.find(e => e && e.gun !== undefined).gun; W.forEach((w, k) => w.g.visible = k === cur); selSlot = slotOf(cur); reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); clearHold(); resetInv(); resetReserve(); adsTog = false; P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo(); if (M && M.ladder) applyLoadout(true);
 }
 function clearHazards() {
@@ -1352,6 +1357,7 @@ function fire(follow = false) {
   const w = W[cur], d = w.d, st = w.s; w.ammo--; if (!follow) { w.cd = st.rate; if (d.burst) { burstLeft = d.burst - 1; burstT = d.burstGap || .075; } } vmKick = d.kick * 4; flash.material.opacity = 1; flashLight.intensity = 6; setTimeout(() => flashLight.intensity = 0, 50); sfx(d.id); refreshAmmo();
   const dmgMul = P.buffT > 0 ? 2 : 1; const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
   recP += rnd(.5, 1) * d.kick * .3 * (adsK > .5 ? .6 : 1); recY += rnd(-.5, .5) * d.kick * .12; P.shakeT = Math.max(P.shakeT, .08);
+  P.revealT = 2.5;   // shooting gives away your spot in the trees
   if (isHost()) for (const b of bots) if (b.alive && !b.ally && b.pos.distanceTo(P.pos) < 38) { b.alertT = Math.max(b.alertT, 3); b.lastSeen.copy(P.pos); }
   const mz = muzzleWorld();
   if (d.launch) { const dir = aimDir(0), vel = dir.multiplyScalar(26); vel.y += 2.4; spawnNade('shell', mz, vel, null); netEvent({ t: 'th', id: 'shell', p: v3a(mz), v: v3a(vel) }); return; }
@@ -1416,24 +1422,53 @@ function finishUse() {
 }
 
 // ---- per-frame updates
-// mantle: jump at a ledge that is too high to step onto (rocks, walls, boulders...) and you pull yourself up on top of it
-function mantleCheck(wish) {
-  if (P.mant || P.onGround || P.vel.y < -5 || wish.lengthSq() < .01 || !P.alive) return;
-  const rr = P.r + .14; let best = null, bd = 9;
-  for (const b of world) {
-    const dy = b.maxY - P.pos.y; if (dy < STEP + .05 || dy > 2.05 || b.minY > P.pos.y + 1) continue;   // reachable, but more than a step, and it must reach up to body height
-    const nx = Math.max(b.minX, Math.min(P.pos.x, b.maxX)), nz = Math.max(b.minZ, Math.min(P.pos.z, b.maxZ)), dx = nx - P.pos.x, dz = nz - P.pos.z, d = Math.hypot(dx, dz);
+// mantle: jump at a ledge that is too high to step onto (rocks, walls, boulders...) and you pull yourself up on top of it. Bots do it when a ledge blocks their way.
+function mantleFind(e, wish, maxDy, only) {
+  const rr = e.r + .14; let best = null, bd = 9;
+  for (const b of only ? [only] : world) {
+    const dy = b.maxY - e.pos.y; if (dy < STEP + .05 || dy > maxDy || b.minY > e.pos.y + 1) continue;   // reachable, but more than a step, and it must reach up to body height
+    const nx = Math.max(b.minX, Math.min(e.pos.x, b.maxX)), nz = Math.max(b.minZ, Math.min(e.pos.z, b.maxZ)), dx = nx - e.pos.x, dz = nz - e.pos.z, d = Math.hypot(dx, dz);
     if (d > rr || d < 1e-4 || d >= bd || (wish.x * dx + wish.z * dz) / d < .4) continue;   // touching it, and pushing toward it
-    const ux = dx / d, uz = dz / d, mn = P.r * .9, tx = clamp(P.pos.x + ux * (d + P.r + .3), b.minX + mn, b.maxX - mn), tz = clamp(P.pos.z + uz * (d + P.r + .3), b.minZ + mn, b.maxZ - mn);
-    const probe = { pos: new V3(tx, b.maxY + .02, tz), r: P.r, h: CROUCH_H }; if (world.some(o => o !== b && overlaps(probe, o))) continue;   // room to stand up there
+    const ux = dx / d, uz = dz / d, mn = e.r * .9, tx = clamp(e.pos.x + ux * (d + e.r + .3), b.minX + mn, b.maxX - mn), tz = clamp(e.pos.z + uz * (d + e.r + .3), b.minZ + mn, b.maxZ - mn);
+    const probe = { pos: new V3(tx, b.maxY + .02, tz), r: e.r, h: CROUCH_H }; if (world.some(o => o !== b && overlaps(probe, o))) continue;   // room to stand up there
     bd = d; best = { b, tx, tz };
   }
-  if (best) { P.mant = { x0: P.pos.x, y0: P.pos.y, z0: P.pos.z, x1: best.tx, y1: best.b.maxY, z1: best.tz, t: 0 }; P.vel.set(0, 0, 0); sfx('mantle'); }
+  return best;
 }
-function mantleStep(dt) {
-  const m = P.mant, e = u => u * u * (3 - 2 * u); m.t += dt / .32; const k = Math.min(1, m.t), up = Math.min(1, k / .62), fw = Math.max(0, (k - .45) / .55);
-  P.pos.set(m.x0 + (m.x1 - m.x0) * e(fw), m.y0 + (m.y1 - m.y0) * e(up), m.z0 + (m.z1 - m.z0) * e(fw)); P.vel.set(0, 0, 0); P.onGround = false;
-  if (m.t >= 1) { P.pos.set(m.x1, m.y1, m.z1); P.mant = null; P.onGround = true; }
+function startMantle(e, f, dur = .32) { e.mant = { x0: e.pos.x, y0: e.pos.y, z0: e.pos.z, x1: f.tx, y1: f.b ? f.b.maxY : f.ty, z1: f.tz, t: 0, dur }; e.vel.set(0, 0, 0); if (e === P) sfx('mantle'); }
+function mantleStep(e, dt) {
+  const m = e.mant, ez = u => u * u * (3 - 2 * u); m.t += dt / m.dur; const k = Math.min(1, m.t), up = Math.min(1, k / .62), fw = Math.max(0, (k - .45) / .55);
+  e.pos.set(m.x0 + (m.x1 - m.x0) * ez(fw), m.y0 + (m.y1 - m.y0) * ez(up), m.z0 + (m.z1 - m.z0) * ez(fw)); e.vel.set(0, 0, 0); e.onGround = false;
+  if (m.t >= 1) { e.pos.set(m.x1, m.y1, m.z1); e.mant = null; e.onGround = true; }
+}
+function mantleCheck(wish) {
+  if (P.mant || P.onGround || P.vel.y < -5 || wish.lengthSq() < .01 || !P.alive) return;
+  const f = mantleFind(P, wish, 2.05); if (f) startMantle(P, f);
+}
+// climbing: hold jump while pushing into a tall wall or spire to climb it, or jump at a tree trunk to climb into the tree (treetops hide you from bots)
+function climbCheck(wish) {
+  if (P.mant || P.climb || !keys.Space || wish.lengthSq() < .01 || !P.alive || P.vel.y < -5) return;
+  for (const t of TREES) { const dx = t.x - P.pos.x, dz = t.z - P.pos.z, d = Math.hypot(dx, dz); if (d < 1.05 && P.pos.y < 2.5 && (wish.x * dx + wish.z * dz) / (d || 1) > .4) { startMantle(P, { tx: t.x, tz: t.z, ty: 4.6 }, .9); return; } }
+  const rr = P.r + .14;
+  for (const b of world) {
+    if (b.nc) continue; const dy = b.maxY - P.pos.y; if (dy <= 2.05 || dy > 14 || b.minY > P.pos.y + 1) continue;
+    const dx = Math.max(b.minX, Math.min(P.pos.x, b.maxX)) - P.pos.x, dz = Math.max(b.minZ, Math.min(P.pos.z, b.maxZ)) - P.pos.z, d = Math.hypot(dx, dz);
+    if (d > rr || d < 1e-4 || (wish.x * dx + wish.z * dz) / d < .4) continue;
+    P.climb = { b }; return;
+  }
+}
+function climbTick(wish) {
+  const c = P.climb; if (!c) return; const b = c.b;
+  const dx = Math.max(b.minX, Math.min(P.pos.x, b.maxX)) - P.pos.x, dz = Math.max(b.minZ, Math.min(P.pos.z, b.maxZ)) - P.pos.z, d = Math.hypot(dx, dz);
+  if (!keys.Space || wish.lengthSq() < .01 || d > P.r + .3 || P.pos.y > b.maxY + .3) { P.climb = null; return; }
+  if (b.maxY - P.pos.y <= 2.0) { P.climb = null; const f = mantleFind(P, wish, 2.05, b); if (f) startMantle(P, f); return; }   // the top is in reach: pull yourself over
+  P.vel.y = 5.6; P.vel.x = dx / (d || 1) * .8; P.vel.z = dz / (d || 1) * .8; P.onGround = false;
+}
+// stealth: standing on top of a tree hides you from bots, until you shoot (then they see you for a few seconds)
+function treeHidden(e) {
+  if (!TREES.length || e.pos.y < 3.1 || (e.revealT || 0) > 0) return false;
+  for (const t of TREES) if (Math.abs(e.pos.x - t.x) < 2 * t.s && Math.abs(e.pos.z - t.z) < 2 * t.s) return true;
+  return false;
 }
 function updatePlayer(dt) {
   if (!P.alive) { P.respT -= dt; P.shakeT = 0; if (P.respT <= 0) spawnPlayer(); return; }
@@ -1443,14 +1478,15 @@ function updatePlayer(dt) {
   if (!wantC && P.crouchK > .02) { const probe = { pos: P.pos, r: P.r, h: STAND_H }; if (world.some(b => overlaps(probe, b))) wantC = true; }
   P.crouchK += ((wantC ? 1 : 0) - P.crouchK) * clamp(dt * 14, 0, 1); if (!wantC && P.crouchK < .02) P.crouchK = 0;
   P.h = STAND_H - (STAND_H - CROUCH_H) * P.crouchK; P.eyeH = STAND_EYE - (STAND_EYE - CROUCH_EYE) * P.crouchK;
-  if (P.mant) mantleStep(dt); else {
+  P.revealT = Math.max(0, (P.revealT || 0) - dt); P.hidden = treeHidden(P);
+  if (P.mant) mantleStep(P, dt); else {
   const fwd = new V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), right = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)), wish = new V3();
   if (keys.KeyW) wish.add(fwd); if (keys.KeyS) wish.sub(fwd); if (keys.KeyD) wish.add(right); if (keys.KeyA) wish.sub(right); if (wish.lengthSq() > 0) wish.normalize();
   const sprint = keys.Tab && keys.KeyW && P.crouchK < .3 && !use;   // sprint = Tab (hold) + W
   const spd = (sprint ? 10.5 : 7.2) * (adsK > .5 ? .65 : 1) * (1 - .5 * P.crouchK) * (use ? .6 : 1) * (P.speedT > 0 ? 1.35 : 1) * (!holdItem && W[cur].d.heavy && mouseL ? .55 : 1), ctl = P.onGround ? 14 : P.padT > 0 ? (wish.lengthSq() > 0 ? .6 : 0) : 2.8;
   P.vel.x += (wish.x * spd - P.vel.x) * clamp(ctl * dt, 0, 1); P.vel.z += (wish.z * spd - P.vel.z) * clamp(ctl * dt, 0, 1);
   if (keys.Space && P.onGround && P.crouchK < .6) { P.vel.y = M && M.grav ? 8.4 : 7.6; P.onGround = false; }
-  moveEntity(P, dt); padCheck(P, dt); mantleCheck(wish);
+  climbTick(wish); moveEntity(P, dt); padCheck(P, dt); mantleCheck(wish); climbCheck(wish);
   }
   P.buffT = Math.max(0, P.buffT - dt); P.speedT = Math.max(0, (P.speedT || 0) - dt); P.protT = Math.max(0, (P.protT || 0) - dt); throwCD = Math.max(0, throwCD - dt); throwAnim = Math.max(0, throwAnim - dt);
   // weapon state
@@ -1516,7 +1552,7 @@ function updateHUD(dt) {
   setTxt('shNum', P.shield > 0 ? '+' + Math.ceil(P.shield) : ''); setSty('shFill', 'width', P.shield + '%');
   const w = W[cur]; setTxt('aMag', holdItem ? inv[holdItem] : w.ammo); setTxt('aRes', holdItem ? '' : FREE() ? '\u221e' : reserve[w.d.at]);
   { const nt = P.alive ? nearestInteract() : null, pt = nt ? promptText(nt) : ''; setTxt('promptT', pt); setSty('prompt', 'display', pt ? 'flex' : 'none'); if (nt) setSty('promptT', 'color', nt.col); } setTxt('rl', tx(holdItem ? (ITEMS[holdItem].kind === 'nade' ? 'PRESS F TO THROW' : 'PRESS F TO USE') : reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : '')));
-  setTxt('buff', !P.alive ? (P.respT < 1e8 ? `RESPAWNING IN ${Math.max(0, Math.ceil(P.respT))}` : M && M.mode === 'royale' ? (specName ? 'SPECTATING ' + specName + ' (click to switch)' : 'ELIMINATED') : 'OUT OF LIVES') : P.buffT > 0 ? `DOUBLE DAMAGE ${Math.ceil(P.buffT)}s` : P.speedT > 0 ? `SPEED SODA ${Math.ceil(P.speedT)}s` : '');
+  setTxt('buff', !P.alive ? (P.respT < 1e8 ? `RESPAWNING IN ${Math.max(0, Math.ceil(P.respT))}` : M && M.mode === 'royale' ? (specName ? 'SPECTATING ' + specName + ' (click to switch)' : 'ELIMINATED') : 'OUT OF LIVES') : P.buffT > 0 ? `DOUBLE DAMAGE ${Math.ceil(P.buffT)}s` : P.speedT > 0 ? `SPEED SODA ${Math.ceil(P.speedT)}s` : P.hidden ? 'HIDDEN IN THE TREE - BOTS CANNOT SEE YOU' : '');
   const spread = (8 + Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8) * 10 + (P.onGround ? 0 : 8) + w.s.spread * 500) * (1 - P.crouchK * .35) * (adsK > .5 ? .5 : 1), c = $('cross');
   const T = { t: [0, -spread], b: [0, spread], l: [-spread, 0], r: [spread, 0] };
   for (const key in T) setSty('cross_' + key, 'transform', `translate(${T[key][0].toFixed(1)}px,${T[key][1].toFixed(1)}px)`);
@@ -1716,5 +1752,5 @@ for (const key of ['t', 'b', 'l', 'r']) $('cross').querySelector('.' + key).id =
 buildItems(); refreshItems(); refreshSlots(); refreshAmmo();
 loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); renderPickers();
 window.__ba = { P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
-  get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck };
+  get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck, TREES, treeHidden };
 requestAnimationFrame(loop);
