@@ -4,7 +4,6 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 
 | Game | Type |
 |---|---|
-| **Tower of Destiny** | Unofficial fan remake (see below) |
 | **Blaster Arena** | Original 3D shooter vs bots (Three.js): 8 maps (4 classic + 4 huge Battle Royale maps: Candy Canyon, Jungle Temple, Skyline City, Moonbase Alpha), 6 modes (incl. player-vs-player Brawl, Battle Royale and a Freeplay practice range), 11 blasters with rarities and ammo, a 5-slot hotbar, chests, solo or online co-op for up to 4 players. Runs on Chromebooks (auto Low-graphics mode, trackpad-friendly aim toggle; touch controls for phones and tablets: floating joystick, look pad, fire/aim/jump buttons, tappable hotbar) |
 | **Fort Fight** | Original building shooter (Three.js), first person with a third-person option: walls, floors, stairs and roofs on a grid with materials and HP, editing (cut doors, windows and holes), a build range with a sky-ring ramp challenge, box fights (first to 5 rounds), a 6-player island free-for-all against bots, and online play for up to 4 players (box fights or building together, room codes through PeerJS). Auto Low-graphics mode for Chromebooks; touch controls for phones and tablets (joystick, look pad, build and edit buttons) |
 | **Sky Tower** | Original 3D obby tower climber (Three.js): a generated tower of 10 themed stages (moving platforms and lifts, crumbling tiles, ice, bounce pads, conveyor belts, spinning bars, hammers, pistons, zap strips) with checkpoints, best times, a seeded Random Tower and a no-checkpoint Hardcore mode. Auto Low-graphics mode for Chromebooks; touch controls for phones and tablets |
@@ -19,14 +18,6 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 | Scratch game | Coming soon |
 
 Scores and progress are saved only in your own browser (`localStorage`).
-
-## About the Tower of Destiny remake
-
-Tower of Destiny is a one-button game by its original creators. This is a free, non-commercial **fan remake**, made for fun.
-It is not affiliated with or endorsed by the original creators. All code and artwork here was written from scratch.
-
-- Play the original: https://www.coolmathgames.com/0-tower-of-destiny
-- If you are the original creator and would like anything changed or removed, please open an issue on this repository and it will be taken care of right away.
 
 ## Running locally
 
