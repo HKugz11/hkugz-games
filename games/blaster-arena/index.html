@@ -44,7 +44,12 @@
   #buff { position: absolute; left: 50%; bottom: 210px; transform: translateX(-50%); font-weight: 900; color: #ff8aff; font-size: 18px; letter-spacing: .1em; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
   #vig { position: absolute; inset: 0; box-shadow: inset 0 0 140px 30px rgba(255, 40, 70, 0); transition: box-shadow .25s; } #vig.on { box-shadow: inset 0 0 140px 40px rgba(255, 40, 70, .65); transition: none; } #vig.low { box-shadow: inset 0 0 120px 20px rgba(255, 40, 70, .35); }
   #dir { position: absolute; left: 50%; top: 50%; width: 0; height: 0; } #dir i { position: absolute; left: -70px; top: -150px; width: 140px; height: 30px; transform-origin: 70px 150px; background: radial-gradient(ellipse at 50% 100%, rgba(255,60,80,.9), rgba(255,60,80,0) 70%); opacity: 0; transition: opacity .8s; }
-  #scope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 24%, #000 24.4%); }
+  #scope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 var(--sr, 24%), #000 calc(var(--sr, 24%) + .4%)); }
+  #scope.nomask { background: none; } #scope.rt:before, #scope.rt:after { display: none; }
+  #scopeRet { position: absolute; left: 50%; top: 50%; width: var(--lens, 0px); height: var(--lens, 0px); transform: translate(-50%, -50%); pointer-events: none; } #scopeRet svg { width: 100%; height: 100%; display: block; }
+  #scope.nomask #scopeRet { width: 130px; height: 130px; }
+  #scopeLens { display: none; position: absolute; left: 50%; top: 50%; width: var(--lens, 0px); height: var(--lens, 0px); transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; }
+  #scope.thermal #scopeLens { display: block; -webkit-backdrop-filter: grayscale(1) contrast(1.5) brightness(.95) sepia(.25) hue-rotate(160deg); backdrop-filter: grayscale(1) contrast(1.5) brightness(.95) sepia(.25) hue-rotate(160deg); }
   #scope:before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(0,0,0,.7); } #scope:after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(0,0,0,.7); }
   /* overlays */
   .screen { position: fixed; inset: 0; display: grid; place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.82), rgba(8,4,20,.96)); z-index: 5; text-align: center; padding: 20px; }
@@ -112,7 +117,7 @@
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
 <meta name="description" content="A bouncy 3D robot shooter with 13 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ctext%20y%3D'.9em'%20font-size%3D'90'%3E%F0%9F%A4%96%3C%2Ftext%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'48'%20fill%3D'%23fff'%2F%3E%3Cg%20fill%3D'none'%20stroke%3D'%238a9099'%20stroke-width%3D'4.6'%20stroke-linejoin%3D'round'%20stroke-linecap%3D'round'%3E%3Cpath%20d%3D'M16%2037H79Q84%2037%2084%2042V50H56L53%2056H47L44%2050H16Z'%2F%3E%3Cpath%20d%3D'M44%2050L36%2076H52L59%2056'%2F%3E%3Cpath%20d%3D'M53%2056Q62%2057%2059%2066'%2F%3E%3Cpath%20d%3D'M23%2037V32H29V37M73%2037V33H78V37'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <meta name="theme-color" content="#0a0618">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Blaster Arena - free browser game">
@@ -125,7 +130,7 @@
 
 <div class="hud" id="hud">
   <div id="vig"></div><div id="dir"></div>
-  <div id="scope" class="hide"></div>
+  <div id="scope" class="hide"><div id="scopeLens"></div><div id="scopeRet"></div></div>
   <div id="cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><i class="d"></i></div>
   <div id="hit"></div>
   <div id="score"><div class="pill me"><small id="lMe">YOU</small><span id="sMe">0</span></div><div><small id="lMid">FIRST TO</small><span id="sMid">25</span></div><div class="pill bots"><small id="lBots">BOTS</small><span id="sBots">0</span></div></div>
@@ -208,6 +213,6 @@
 <div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
 <a class="back" href="../../index.html">&larr; All games</a>
 <script src="vendor/peerjs.min.js"></script>
-<script type="module" src="game.js?v=4.8"></script>
+<script type="module" src="game.js?v=5.0"></script>
 </body>
 </html>

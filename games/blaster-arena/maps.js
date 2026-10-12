@@ -368,10 +368,22 @@ const PK_ROCKS = [[-8, 21, 4, 2.4, 3], [9, 22, 3, 1.8, 3], [-24, 31, 3, 2, 3], [
 const PK_WALLS = [[16, 21, 6, 1.2], [-8, 38, 8, 1.2], [8, 38, 8, 1.2], [-39, 28, 1.2, 6]];
 const PK_SPIRES = [[-14, 22], [20, 10]];
 const PK_PADS = [[0, 19.5, 0, 6.6, .8, 1.5], [-22, 27.5, -28, 4.4, 14, 1.5], [20, 30.5, 30, 3.3, 30, 1.2], [37.5, 12, 44.5, 3.3, 12, 1.05]];
-const PK_WOODS = [[28.5, 9.5, 11, 16], [-27.5, 31.5, 11, 14]];   // forests: x, z, radius, trees (each one has a twin after a half turn)
+const PK_WOODS = [[28.5, 9.5, 11, 16], [-27.5, 31.5, 11, 14]];
+// watchtowers in the four corners: climb the yellow ladder column (hold jump toward it), jump on the pad, or walk up from a perch. Platform top is at 9 m.
+const PK_TOWERS = [[44, 33], [-44, -33], [-44, 33], [44, -33]];
+const PK_TPADS = [[44, 25, 44, 9, 33, 1.7], [-44, -25, -44, 9, -33, 1.7], [-44, 25, -44, 9, 33, 1.7], [44, -25, 44, 9, -33, 1.7]];   // pads in front of each tower
+const tower = (b, cx, cz) => {
+  const s = Math.sign(cz), H = 9, STONE = 0x7a6a58, DECK = 0xa8b4cc, RAIL = 0x8896b4;
+  for (const dx of [-3.4, 3.4]) for (const dz of [-3.4, 3.4]) b.box(cx + dx, H / 2, cz + dz, 1.2, H, 1.2, STONE);   // legs
+  b.box(cx, H - .3, cz, 8, .6, 8, DECK);                                                                           // the deck
+  b.box(cx, H + .5, cz - s * 3.85, 8, 1, .3, RAIL); b.box(cx - 3.85, H + .5, cz, .3, 1, 8, RAIL); b.box(cx + 3.85, H + .5, cz, .3, 1, 8, RAIL);   // low walls to hide behind
+  for (const dx of [-2.4, 2.4]) b.box(cx + dx, H + .5, cz + s * 3.85, 3.2, 1, .3, RAIL);                           // outer wall with a gap in the middle
+  b.box(cx, H / 2, cz + s * 4.6, 1, H, 1, 0xf0c040);                                                              // the ladder column
+  for (const dx of [-3.4, 3.4]) b.glow(cx + dx, H + 2.4, cz - s * 3.4, .25, 2.8, .25, 0x2ee6ff);                  // beacons
+};   // forests: x, z, radius, trees (each one has a twin after a half turn)
 const padTurn = ([x, z, tx, ty, tz, T]) => [-x, -z, -tx, ty, -tz, T];
 // the footprints of the peaks, ridges, terraces and bunkers: [x, z, width, depth] (both halves)
-const PK_RECTS = (() => { const o = [], both = (x, z, w, d) => o.push([x, z, w, d], [-x, -z, w, d]); both(0, 0, 30, 30); both(-28, 14, 20, 20); both(30, 30, 16, 16); both(0, 31, 30, 8); both(44.5, 0, 9, 46); both(-28, 44, 12, 8); both(28, 44, 12, 8); return o; })();
+const PK_RECTS = (() => { const o = [], both = (x, z, w, d) => o.push([x, z, w, d], [-x, -z, w, d]); both(0, 0, 30, 30); both(-28, 14, 20, 20); both(30, 30, 16, 16); both(0, 31, 30, 8); both(44.5, 0, 9, 46); both(-28, 44, 12, 8); both(28, 44, 12, 8); both(44, 33, 10, 10); both(-44, 33, 10, 10); return o; })();
 const inRects = (x, z, m) => PK_RECTS.some(([cx, cz, w, d]) => Math.abs(x - cx) < w / 2 + m && Math.abs(z - cz) < d / 2 + m);
 // everything else that is already standing somewhere: [x, z, radius] (both halves), so new rocks and trees stay out of the way
 const PK_OCC = (() => {
@@ -379,7 +391,7 @@ const PK_OCC = (() => {
   PK_ROCKS.forEach(([x, z, sx, , sz]) => both(x, z, Math.max(sx, sz) / 2 + 2.5));
   PK_WALLS.forEach(([x, z, sx, sz]) => both(x, z, Math.max(sx, sz) / 2 + 2.2));
   PK_SPIRES.forEach(([x, z]) => both(x, z, 5));
-  PK_PADS.forEach(([x, z]) => both(x, z, 4.2));
+  PK_PADS.forEach(([x, z]) => both(x, z, 4.2)); for (const [x, z] of PK_TPADS) o.push([x, z, 4.2]);
   for (const x of [-20, -10, 0, 10, 20]) both(x, 46, 5.5); both(0, 42, 6); both(-38, 47, 5); both(38, 45, 5);
   return o;
 })();
@@ -411,7 +423,7 @@ const PK_BOULDERS = (() => {
 const PK_TREE_COL = [0x2f8a3e, 0x3a9a4a, 0x2a7a52], PK_TREE_TOP = [0x3aa84a, 0x4ab85a, 0x34986a], PK_ROCK_COL = [0x7a88a6, 0x6f7d9a, 0x8794b0, 0x93a0ba];
 MAPS.push({
   id: 'peaks', name: 'Highline Peaks', half: 52, sn: true, radar: 62,
-  blurb: "Sniper's Alley only. Snowy peaks you can climb or jump-pad up, two forests, long ledges, spires and boulders to hide behind. Climb high, stay low, line it up.",
+  blurb: "Sniper's Alley only. Snowy peaks you can climb or jump-pad up, two forests, watchtowers in the corners, long ledges, spires and boulders to hide behind. Climb high, stay low, line it up.",
   swatch: ['#2a78ff', '#9fd0ff', '#86c874'],
   theme: { sky: [0x2a78ff, 0x9fd0ff, 0xf4faff], sunStr: 1.2, fog: [0xd6ebff, 80, 250], floor: ['#86c874', '#78bc68', 'rgba(30,80,50,.3)'], ground: 0x6aa86a, wall: 0x4a6288,
     strips: [0x2ee6ff, 0xffffff, 0x4aa8ff, 0x8aa8ff], hemi: [0xe8f4ff, 0x9ab4d8, 1.1], sun: [0xfff6e0, 2.4], exposure: 1.1, clouds: 0xffffff, deco: 'none' },
@@ -438,14 +450,15 @@ MAPS.push({
       b.box(x, 5.2, z, 2.8 * s, 1.2, 2.8 * s, PK_TREE_TOP[c], { solid: false });
       b.box(x, 6.3, z, 1.6 * s, 1.1, 1.6 * s, PK_TREE_TOP[(c + 1) % 3], { solid: false });
     }
+    for (const [cx, cz] of PK_TOWERS) tower(b, cx, cz);   // watchtowers in the corners
   },
   spawnsA: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [-38, 47], [38, 45]],
   spawnsB: [[18, -46], [9, -46], [0, -46], [-9, -46], [-18, -46], [4, -42], [-4, -42], [38, -47], [-38, -45]],
   spawns: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [18, -46], [9, -46], [0, -46], [-9, -46], [-18, -46], [4, -42], [-4, -42]],
-  perches: [PEAK.center, ...PEAK.flank, ...PEAK.flank.map(turn), ...PEAK.fwd, ...PEAK.fwd.map(turn), ...PEAK.ridge, ...PEAK.ridge.map(turn), ...PEAK.terr, ...PEAK.terr.map(turn), [44.5, 15, 3.3], [-44.5, -15, 3.3], [44.5, -15, 3.3], [-44.5, 15, 3.3], ...PEAK.bunk, ...PEAK.bunk.map(turn), ...PK_SPIRES.map(([x, z]) => [x, z, 8.8]), ...PK_SPIRES.map(([x, z]) => [-x, -z, 8.8])],
-  pads: [...PK_PADS, ...PK_PADS.map(padTurn)],
+  perches: [PEAK.center, ...PEAK.flank, ...PEAK.flank.map(turn), ...PEAK.fwd, ...PEAK.fwd.map(turn), ...PEAK.ridge, ...PEAK.ridge.map(turn), ...PEAK.terr, ...PEAK.terr.map(turn), [44.5, 15, 3.3], [-44.5, -15, 3.3], [44.5, -15, 3.3], [-44.5, 15, 3.3], ...PEAK.bunk, ...PEAK.bunk.map(turn), ...PK_SPIRES.map(([x, z]) => [x, z, 8.8]), ...PK_SPIRES.map(([x, z]) => [-x, -z, 8.8]), ...PK_TOWERS.map(([x, z]) => [x, z, 9])],
+  pads: [...PK_PADS, ...PK_PADS.map(padTurn), ...PK_TPADS],
   trees: PK_TREES.map(([x, z, s]) => [x, z, s]),
-  loot: [[-14, 22, 8.8], [20, 10, 8.8], [14, -22, 8.8], [-20, -10, 8.8], [-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42],
+  loot: [...PK_TOWERS.flatMap(([x, z]) => [[x, z, 9], [x + 2, z + 2, 9]]), [-14, 22, 8.8], [20, 10, 8.8], [14, -22, 8.8], [-20, -10, 8.8], [-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42],
     ...[[-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42]].map(turn),
     [0, 0, 6.6], [-28, 14, 4.4], [28, -14, 4.4], [30, 30, 3.3], [-30, -30, 3.3], [44.5, 0, 3.3], [-44.5, 0, 3.3], [0, 31, 1.65], [0, -31, 1.65]],
   dmg: [[0, 6.6, 1.2], [0, 6.6, -1.2]],

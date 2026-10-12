@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=4.8';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=4.8';
-import { TOUCH, initTouch } from './touch.js?v=4.8';
+import { MAPS } from './maps.js?v=5.0';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=5.0';
+import { TOUCH, initTouch } from './touch.js?v=5.0';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -330,6 +330,32 @@ const SLOTN = 5, slots = [{ gun: 0 }, null, null, null, null];   // the whole in
 let selSlot = 0, holdItem = null, adsTog = false;
 const AMMO = { light: { name: 'LIGHT', col: 0xffc233, max: 150, box: [30, 60] }, medium: { name: 'MEDIUM', col: 0x4aa8ff, max: 180, box: [30, 60] }, shells: { name: 'SHELLS', col: 0xff6a4a, max: 40, box: [6, 12] }, heavy: { name: 'HEAVY', col: 0x8aff3a, max: 30, box: [5, 10] }, rockets: { name: 'ROCKETS', col: 0xff4fe0, max: 12, box: [2, 4] } };
 const reserve = { light: 0, medium: 0, shells: 0, heavy: 0, rockets: 0 };
+// scopes: pick one up (Sniper's Alley loot) and every sniper rifle uses it while you aim. zoom = field of view when aiming (smaller = closer), sr = size of the scope picture (% of the screen diagonal, 0 = no black ring)
+const SCOPES = {
+  dot: { name: 'RED DOT', zoom: 55, sr: 0, ret: 'dot', col: 0xff4a4a, w: 3 },
+  x4: { name: '4X SCOPE', zoom: 24, sr: 30, ret: 'cross', col: 0x4aa8ff, w: 3 },
+  x8: { name: '8X SCOPE', zoom: 12, sr: 26, ret: 'mil', col: 0x4aff8a, w: 3 },
+  x12: { name: '12X SCOPE', zoom: 7, sr: 22, ret: 'fine', col: 0xb06bff, w: 2 },
+  thermal: { name: 'THERMAL 6X', zoom: 16, sr: 26, ret: 'cross', col: 0xff9a3a, w: 2, thermal: true },
+};
+const SCOPE_IDS = Object.keys(SCOPES), SCOPE_TOTAL = SCOPE_IDS.reduce((s, k) => s + SCOPES[k].w, 0);
+let myScope = null, thermalView = false;   // the scope you picked up (null = each rifle's own scope), and whether you are looking through the thermal one
+const scopeZoom = w => w.d.zoom && myScope ? SCOPES[myScope].zoom : w.d.zoom;
+function rollScope() { let r = Math.random() * SCOPE_TOTAL, at = SCOPE_IDS[0]; for (const k of SCOPE_IDS) { r -= SCOPES[k].w; if (r <= 0) { at = k; break; } } return { id: 'scope', qty: 1, at }; }
+const RET = {
+  cross: '<svg viewBox="-50 -50 100 100"><path d="M-50 0H-5M5 0H50M0 -50V-5M0 5V50" stroke="#000" stroke-width=".5"/><circle r=".5" fill="#f33"/></svg>',
+  mil: '<svg viewBox="-50 -50 100 100"><path d="M-50 0H-4M4 0H50M0 -50V-4M0 4V50" stroke="#000" stroke-width=".4"/><path d="M-50 0H-32M32 0H50M0 -50V-32M0 32V50" stroke="#000" stroke-width="1.8"/><g fill="#000">' + [-24, -16, -8, 8, 16, 24].map(v => '<circle cx="' + v + '" cy="0" r=".7"/><circle cx="0" cy="' + v + '" r=".7"/>').join('') + '</g><circle r=".6" fill="#f33"/></svg>',
+  fine: '<svg viewBox="-50 -50 100 100"><path d="M-50 0H-2M2 0H50M0 -50V-2M0 2V50" stroke="#000" stroke-width=".22"/><circle r=".45" fill="#f33"/></svg>',
+  dot: '<svg viewBox="-50 -50 100 100"><circle r="2.2" fill="#ff2a2a"/><circle r="9" fill="none" stroke="#ff2a2a" stroke-width=".7" opacity=".7"/></svg>',
+};
+let scopeKey = '';
+function updateScopeUI() {   // what the scope picture looks like (size, crosshair style, thermal tint)
+  const key = (myScope || 'std') + innerWidth + 'x' + innerHeight; if (key === scopeKey) return; scopeKey = key;
+  const sc = myScope ? SCOPES[myScope] : null, sr = sc ? sc.sr : 24, el = $('scope'), lens = sr / 100 * Math.hypot(innerWidth, innerHeight);
+  el.style.setProperty('--sr', sr + '%'); el.style.setProperty('--lens', lens + 'px');
+  el.classList.toggle('nomask', !!sc && sc.sr === 0); el.classList.toggle('rt', !!sc); el.classList.toggle('thermal', !!(sc && sc.thermal));
+  $('scopeRet').innerHTML = sc ? RET[sc.ret] : '';
+}
 let burstLeft = 0, burstT = 0;
 const FREE = () => !!(M && (M.free || M.inf));   // unlimited ammo
 const slotOf = gi => slots.findIndex(e => e && e.gun === gi), itemSlot = id => slots.findIndex(e => e && e.item === id);
@@ -370,6 +396,7 @@ function rollAmmo() {
 }
 function rollLoot() {
   const p = M && M.mode === 'royale' ? .3 : .2, q = Math.random(); if (!(M && M.ladder)) { if (q < p) return rollGun(); if (q < p + .2) return rollAmmo(); }   // forced-blaster modes: no guns or ammo on the floor
+  if (M && M.snipe && q >= p + .2 && q < p + .32) return rollScope();   // Sniper's Alley: scopes lie around too
   let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return { id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }; } return { id: 'bandage', qty: 1 };
 }
 
@@ -392,6 +419,15 @@ function itemModel(id) {
     case 'shell': add(C(.07, .07, .22), 0xff8a3a); add(Sp(.07), 0xffd34e, 0, .11, 0); add(C(.075, .075, .05), 0x2a2a3a, 0, -.12, 0); break;
     default: { const m = new THREE.Mesh(new THREE.OctahedronGeometry(.42), toon(0xff4fe0, { emissive: 0xff4fe0, emissiveIntensity: .5 })); outline(m, 1.12); g.add(m); }
   }
+  return g;
+}
+function scopeModel(at) {   // a little scope tube with a coloured band and a glowing lens
+  const g = new THREE.Group(), col = SCOPES[at] ? SCOPES[at].col : 0xffffff, long = at === 'x8' || at === 'x12';
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, long ? .9 : .65, 14), toon(0x2a2f44)); tube.rotation.z = Math.PI / 2; outline(tube, 1.08); g.add(tube);
+  for (const x of long ? [-.42, .42] : [-.3, .3]) { const bell = new THREE.Mesh(new THREE.CylinderGeometry(.17, .13, .14, 14), toon(0x4a5070)); bell.rotation.z = Math.PI / 2; bell.position.x = x; g.add(bell); }
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(.135, .135, .12, 14), new THREE.MeshBasicMaterial({ color: col })); band.rotation.z = Math.PI / 2; g.add(band);
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(.13, 14), new THREE.MeshBasicMaterial({ color: col })); lens.rotation.y = Math.PI / 2; lens.position.x = long ? .5 : .375; g.add(lens);
+  const mount = new THREE.Mesh(new THREE.BoxGeometry(.3, .1, .14), toon(0x2a2f44)); mount.position.y = -.14; g.add(mount);
   return g;
 }
 function ammoModel(at) {
@@ -420,10 +456,11 @@ function setPickup(pk, loot) {
   pk.id = loot.id; pk.qty = loot.qty || 1; pk.gi = loot.gi || 0; pk.rar = loot.rar || 0; pk.at = loot.at || null;
   if (pk.id === 'gun') { pk.col = RARITY[pk.rar].col; const m = GUNS[WDEF[pk.gi].id]().g; m.scale.setScalar(1.7); pk.core.add(m); pk.beam.visible = true; pk.beam.material.color.setHex(pk.col); pk.beam.material.opacity = .14 + pk.rar * .06; }
   else if (pk.id === 'ammo') { pk.col = AMMO[pk.at].col; const m = ammoModel(pk.at); m.scale.setScalar(1.5); pk.core.add(m); pk.beam.visible = false; }
+  else if (pk.id === 'scope') { pk.col = SCOPES[pk.at] ? SCOPES[pk.at].col : 0xffffff; const m = scopeModel(pk.at); m.scale.setScalar(1.5); pk.core.add(m); pk.beam.visible = true; pk.beam.material.color.setHex(pk.col); pk.beam.material.opacity = .2; }
   else { pk.col = pk.id === 'dmg' ? 0xff4fe0 : ITEMS[pk.id].col; const m = itemModel(pk.id); m.scale.setScalar(1.6); pk.core.add(m); pk.beam.visible = false; }
   pk.css = hex(pk.col); pk.ring.material.color.setHex(pk.col); pk.on = true; pk.g.visible = true; pk.claimT = -9;
 }
-const lootOf = pk => pk.id === 'gun' ? { id: 'gun', qty: 1, gi: pk.gi, rar: pk.rar } : pk.id === 'ammo' ? { id: 'ammo', at: pk.at, qty: pk.qty } : { id: pk.id, qty: pk.qty };
+const lootOf = pk => pk.id === 'gun' ? { id: 'gun', qty: 1, gi: pk.gi, rar: pk.rar } : pk.id === 'scope' ? { id: 'scope', at: pk.at, qty: 1 } : pk.id === 'ammo' ? { id: 'ammo', at: pk.at, qty: pk.qty } : { id: pk.id, qty: pk.qty };
 const wirePk = pk => ({ n: pk.nid, id: pk.id, q: pk.qty, gi: pk.gi, ra: pk.rar, at: pk.at, x: pk.x, y: pk.y, z: pk.z, f: pk.fixed ? 1 : 0, tmp: pk.temp ? 1 : 0, on: pk.on ? 1 : 0 });
 const lootFromWire = w => ({ id: w.id, qty: w.q, gi: w.gi, rar: w.ra, at: w.at });
 function clearPickups() { for (const pk of pickups) { scene.remove(pk.g); disposeObj(pk.g); } pickups.length = 0; pkById.clear(); for (const c of chests) { scene.remove(c.g); disposeObj(c.g); } chests.length = 0; chestById.clear(); }
@@ -459,6 +496,7 @@ function updatePickups(dt) {
 }
 // could the local player make use of this loot right now?
 function lootUseful(l) {
+  if (l.id === 'scope') return !!SCOPES[l.at] && myScope !== l.at;
   if (l.id === 'gun') { const w = W[l.gi]; return !(w.owned && l.rar <= w.rar); }
   if (l.id === 'dmg') return true;
   if (l.id === 'ammo') return !FREE() && reserve[l.at] < AMMO[l.at].max;
@@ -466,10 +504,10 @@ function lootUseful(l) {
 }
 function whyNot(l) {
   if (time - fullHintT < 1.2) return; fullHintT = time;
-  if (l.id === 'gun') hint('YOU HAVE A BETTER ' + WDEF[l.gi].name, '#ffd34e'); else if (l.id === 'ammo') hint(FREE() ? 'AMMO IS UNLIMITED HERE' : AMMO[l.at].name + ' AMMO FULL', '#ffd34e'); else hint(ITEMS[l.id].name + ' FULL', '#ffd34e');
+  if (l.id === 'gun') hint('YOU HAVE A BETTER ' + WDEF[l.gi].name, '#ffd34e'); else if (l.id === 'ammo') hint(FREE() ? 'AMMO IS UNLIMITED HERE' : AMMO[l.at].name + ' AMMO FULL', '#ffd34e'); else if (l.id === 'scope') hint('YOU ALREADY HAVE THE ' + SCOPES[l.at].name, '#ffd34e'); else hint(ITEMS[l.id].name + ' FULL', '#ffd34e');
 }
 function lootLabel(l) {
-  if (l.id === 'gun') return RARITY[l.rar].name + ' ' + WDEF[l.gi].name; if (l.id === 'ammo') return '+' + l.qty + ' ' + AMMO[l.at].name + ' AMMO'; if (l.id === 'dmg') return 'DOUBLE DAMAGE';
+  if (l.id === 'gun') return RARITY[l.rar].name + ' ' + WDEF[l.gi].name; if (l.id === 'ammo') return '+' + l.qty + ' ' + AMMO[l.at].name + ' AMMO'; if (l.id === 'dmg') return 'DOUBLE DAMAGE'; if (l.id === 'scope') return SCOPES[l.at] ? SCOPES[l.at].name : 'SCOPE';
   return (l.qty > 1 ? '+' + l.qty + ' ' : '') + ITEMS[l.id].name;
 }
 const chests = [], chestById = new Map();
@@ -494,7 +532,7 @@ const chestWire = () => chests.map(c => [c.nid, c.x, c.z, c.open ? 1 : 0]);
 function buildChestsFromWire(list) { for (const c of chests) { scene.remove(c.g); disposeObj(c.g); } chests.length = 0; chestById.clear(); for (const [n, x, z, o] of list || []) addChest(x, z, n, o); }
 function buildChests() { const spots = M && M.mode === 'royale' ? CHEST_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 4 + (M.np || 1)) : CHEST_SPOTS; for (const [x, z] of spots) addChest(x, z, nextCh++, false); }
 function rollConsumable() { let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return { id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }; } return { id: 'bandage', qty: 1 }; }
-function chestLoot() { const gun = rollGun(); gun.rar = Math.min(4, rollRarity() + (Math.random() < .55 ? 1 : 0)); return [gun, rollAmmo(), rollConsumable(), Math.random() < .5 ? rollConsumable() : rollAmmo()]; }
+function chestLoot() { const gun = rollGun(); gun.rar = Math.min(4, rollRarity() + (Math.random() < .55 ? 1 : 0)); return [gun, rollAmmo(), rollConsumable(), Math.random() < .5 ? rollConsumable() : (M && M.snipe && Math.random() < .55 ? rollScope() : rollAmmo())]; }
 function openChestFx(ch) { ch.open = true; const c = new V3(ch.x, .8, ch.z); burst(c, 0xffd34e, 22, 6, .16, .9, 8, 4); burst(c, 0xffffff, 10, 5, .1, .6, 8, 3); sfxAt('medal', c); }
 function hostOpenChest(ch) {
   if (ch.open) return; ch.respT = 75; openChestFx(ch); if (isMP()) NET.net.hostBroadcast({ t: 'cho', n: ch.nid });
@@ -519,6 +557,7 @@ function promptText(t) {
   const l = lootOf(t.o), lab = lootLabel(l); if (!lootUseful(l)) return lab + '  (cannot carry more)';
   const full = slots.indexOf(null) < 0, drops = ' (drops ' + slotLabel(selSlot) + ')';
   if (l.id === 'gun') return W[l.gi].owned ? 'Upgrade to ' + lab : full ? 'Swap for ' + lab + drops : 'Pick up ' + lab;
+  if (l.id === 'scope') return 'Equip ' + lab + (myScope ? ' (replaces ' + SCOPES[myScope].name + ')' : ' (for all your sniper rifles)');
   if (l.id === 'ammo' || l.id === 'dmg') return 'Pick up ' + lab;
   return itemSlot(l.id) < 0 && full ? 'Swap for ' + lab + drops : 'Pick up ' + lab;
 }
@@ -571,6 +610,7 @@ function applyLoot(l) {
     feed(`<b style="color:${hex(R.col)}">${r === 'up' ? 'UPGRADED' : '+'} ${R.name} ${nm}</b>`); if (l.rar >= 3) { showCenter(`${R.name} ${nm}!`, hex(R.col)); sfx('medal'); }
     if (r === 'new') { if (holdItem || !W[cur].owned) selectWeapon(l.gi, !W[cur].owned); else selectWeapon(l.gi); } refreshSlots(); refreshAmmo();
   } else if (l.id === 'ammo') { const A = AMMO[l.at], n = Math.min(A.max - reserve[l.at], l.qty); reserve[l.at] += n; feed(`<b style="color:${hex(A.col)}">+${n} ${A.name} AMMO</b>`); refreshAmmo(); }
+  else if (l.id === 'scope') { if (!SCOPES[l.at]) return; myScope = l.at; updateScopeUI(); const S0 = SCOPES[l.at]; feed(`<b style="color:${hex(S0.col)}">EQUIPPED ${S0.name}</b>`); showCenter(S0.name + ' EQUIPPED', hex(S0.col)); sfx('pick'); refreshAmmo(); }
   else if (l.id === 'dmg') { P.buffT = 12; feed('<b style="color:#ff8aff">DOUBLE DAMAGE!</b>'); showCenter('DOUBLE DAMAGE!', '#ff8aff'); }
   else { const it = ITEMS[l.id], n = giveItem(l.id, l.qty); feed(`<b style="color:${hex(it.col)}">+${n} ${it.name}</b>`); refreshItems(); }
 }
@@ -823,7 +863,7 @@ class Bot {
     m.g.position.copy(this.pos); m.body.rotation.y = this.yaw;
     m.legL.rotation.x = Math.sin(ph) * .8 * Math.min(1, sp / 3); m.legR.rotation.x = -Math.sin(ph) * .8 * Math.min(1, sp / 3); m.body.position.y = Math.abs(Math.sin(ph)) * .06 * Math.min(1, sp / 3);
     m.arm.rotation.x = this.alertP ? 0 : -.15; m.head.rotation.z = blind ? Math.sin(time * 9) * .3 : 0;
-    const f = this.flashT > 0; m.torso.material.emissive.setHex(f ? 0xffffff : 0); m.torso.material.emissiveIntensity = f ? 1.2 : 0; m.eyeM.color.setHex(blind ? 0xffffff : this.alertP ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
+    const f = this.flashT > 0, hot = thermalView && !this.ally; m.torso.material.emissive.setHex(f ? 0xffffff : hot ? 0xffb050 : 0); m.torso.material.emissiveIntensity = f ? 1.2 : hot ? 1.6 : 0;   // thermal scope: enemies glow m.eyeM.color.setHex(blind ? 0xffffff : this.alertP ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
     m.bar.visible = this.boss || this.ally || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
   }
   update(dt) {
@@ -884,7 +924,7 @@ class Bot {
     const m = this.m; m.g.position.copy(this.pos); m.body.rotation.y = this.yaw; const sp = Math.hypot(this.vel.x, this.vel.z), ph = time * (6 + sp * 1.4);
     m.legL.rotation.x = Math.sin(ph) * .8 * Math.min(1, sp / 3); m.legR.rotation.x = -Math.sin(ph) * .8 * Math.min(1, sp / 3); m.body.position.y = Math.abs(Math.sin(ph)) * .06 * Math.min(1, sp / 3);
     m.arm.rotation.x = sees ? clamp(Math.atan2(tEye.y - eye.y, dist), -.5, .5) : -.15; m.head.rotation.z = blind ? Math.sin(time * 9) * .3 : 0;
-    const f = this.flashT > 0; m.torso.material.emissive.setHex(f ? 0xffffff : 0); m.torso.material.emissiveIntensity = f ? 1.2 : 0; m.eyeM.color.setHex(blind ? 0xffffff : this.alertT > 0 ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
+    const f = this.flashT > 0, hot = thermalView && !this.ally; m.torso.material.emissive.setHex(f ? 0xffffff : hot ? 0xffb050 : 0); m.torso.material.emissiveIntensity = f ? 1.2 : hot ? 1.6 : 0;   // thermal scope: enemies glow m.eyeM.color.setHex(blind ? 0xffffff : this.alertT > 0 ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
     m.bar.visible = this.boss || this.ally || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
   }
   shoot(eye, dist, D, T) {
@@ -913,7 +953,7 @@ class Bot {
 function pickPerch(b) {
   if (!PERCHES.length || Math.random() < .2) return pick(WAYPOINTS);
   const mine = PERCHES.filter(p => b.ally ? TEAM_SIGN * p.z > -14 : TEAM_SIGN * p.z < 14);   // allies hold their half of the map (and the middle), enemies theirs
-  if (PADS.length && Math.random() < .4) { const np = PADS.filter(p => Math.hypot(p.x - b.pos.x, p.z - b.pos.z) < 36 && (b.ally ? TEAM_SIGN * p.z > -14 : TEAM_SIGN * p.z < 14)); if (np.length) { const p = pick(np); return new V3(p.x, 0, p.z); } }   // sometimes ride a jump pad up to the high ground
+  if (PADS.length && Math.random() < .45) { const np = PADS.filter(p => Math.hypot(p.x - b.pos.x, p.z - b.pos.z) < (p.to.y > 8 ? 62 : 36) && (b.ally ? TEAM_SIGN * p.z > -14 : TEAM_SIGN * p.z < 14)); if (np.length) { const hi = np.filter(p => p.to.y > 8), p = pick(hi.length && Math.random() < .5 ? hi : np); return new V3(p.x, 0, p.z); } }   // sometimes ride a jump pad up to the high ground
   return pick(mine.length ? mine : PERCHES);
 }
 const holdFacing = b => Math.abs(b.pos.x) + Math.abs(b.pos.z) < 8 ? (b.ally === (TEAM_SIGN > 0) ? 0 : Math.PI) : Math.atan2(b.pos.x, b.pos.z);   // look toward the other team (or the middle of the map)
@@ -1105,7 +1145,7 @@ function netTick(dt) {
 // ---- starting / ending matches
 function beginLocal() {
   for (const b of bots) b.remove(); bots.length = 0; botById.clear(); for (const p of projs) { scene.remove(p.m); } projs.length = 0; clearHazards();
-  const st0 = M && M.snipe ? SNIPE_START : 0; for (const w of W) { w.owned = WDEF.indexOf(w.d) === st0; w.rar = 0; applyRarity(w); } slots.fill(null); slots[0] = { gun: st0 }; selSlot = 0; clearHold(); adsTog = false;
+  myScope = null; updateScopeUI(); const st0 = M && M.snipe ? SNIPE_START : 0; for (const w of W) { w.owned = WDEF.indexOf(w.d) === st0; w.rar = 0; applyRarity(w); } slots.fill(null); slots[0] = { gun: st0 }; selSlot = 0; clearHold(); adsTog = false;
   score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = st0; wantSwap = -1; swapT = 0; selectWeapon(st0, true); G = M && M.grav ? 9 : 22; if (M && M.ladder) { M.myTier = -1; applyLoadout(true); }
   clearStormVis(); specI = 0; $('team').style.display = M.pvp ? 'none' : ''; for (const rp of remotes.values()) rp.tag.material.depthTest = !!M.pvp;
   if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT ROCKS TO CLIMB · HOLD JUMP AT SPIRES AND TREES · TREETOPS HIDE YOU', '#7cecff');
@@ -1343,7 +1383,7 @@ function refreshAmmo() {
   const rs = $('aRes').parentElement; if (rs) rs.style.visibility = holdItem ? 'hidden' : 'visible';
   if (holdItem) { const it = ITEMS[holdItem], c = hex(it.col); $('wName').textContent = it.name; $('wName').style.color = c; $('wRar').textContent = it.kind === 'nade' ? 'THROWABLE' : 'CONSUMABLE'; $('wRar').style.color = c; $('aMag').textContent = inv[holdItem]; $('rl').textContent = tx(it.kind === 'nade' ? 'PRESS F TO THROW' : 'PRESS F TO USE'); return; }
   const w = W[wantSwap >= 0 ? wantSwap : cur], R = RARITY[w.rar], c = hex(R.col);
-  $('wName').textContent = w.d.name; $('wName').style.color = c; $('wRar').textContent = R.name; $('wRar').style.color = c; $('aMag').textContent = w.ammo; $('aRes').textContent = FREE() ? '\u221e' : reserve[w.d.at]; $('rl').textContent = tx(reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : ''));
+  $('wName').textContent = w.d.name + (w.d.zoom && myScope ? ' \u00b7 ' + SCOPES[myScope].name : ''); $('wName').style.color = c; $('wRar').textContent = R.name; $('wRar').style.color = c; $('aMag').textContent = w.ammo; $('aRes').textContent = FREE() ? '\u221e' : reserve[w.d.at]; $('rl').textContent = tx(reloadT > 0 ? 'RELOADING...' : (w.ammo === 0 ? (!FREE() && reserve[w.d.at] <= 0 ? 'NO AMMO' : 'PRESS R') : ''));
 }
 function startReload() {
   const w = W[cur]; if (use || reloadT > 0 || w.ammo >= w.s.mag || swapT > 0) return;
@@ -1501,7 +1541,7 @@ function updatePlayer(dt) {
 }
 function updateCamera(dt) {
   const w = W[cur], tgt = (mouseR || adsTog) && P.alive && swapT <= 0 && reloadT <= 0 && !use && !holdItem ? 1 : 0; adsK += (tgt - adsK) * clamp(dt * 12, 0, 1);
-  const wantFov = S.fov * (1 - adsK) + (w.d.zoom ? w.d.zoom : (w.d.adsFov || S.fov * .8)) * adsK; if (Math.abs(wantFov - camera.fov) > .01) { camera.fov += (wantFov - camera.fov) * clamp(dt * 14, 0, 1); camera.updateProjectionMatrix(); }
+  const wantFov = S.fov * (1 - adsK) + (w.d.zoom ? scopeZoom(w) : (w.d.adsFov || S.fov * .8)) * adsK; if (Math.abs(wantFov - camera.fov) > .01) { camera.fov += (wantFov - camera.fov) * clamp(dt * 14, 0, 1); camera.updateProjectionMatrix(); }
   // recoil climbs smoothly instead of snapping
   const ap = recP * clamp(dt * 26, 0, 1), ay = recY * clamp(dt * 26, 0, 1); P.pitch += ap; P.yaw += ay; recP -= ap; recY -= ay; P.pitch = clamp(P.pitch, -1.5, 1.5);
   // step-ups teleport the player up a bit; ease the camera instead of popping
@@ -1523,7 +1563,7 @@ function updateCamera(dt) {
   flashLight.position.copy(camera.position).add(new V3(0, 0, -1).applyEuler(camera.rotation));
   // eliminated in a battle royale: watch a living player (click to switch)
   if (!P.alive && P.respT > 1e8 && M) { const list = [...remotes.values()].filter(r => r.alive && r.seen); if (list.length) { const rp = list[specI % list.length]; camera.position.set(rp.pos.x, rp.pos.y + rp.eyeH, rp.pos.z); camera.rotation.set(rp.pitch, rp.yaw, 0); specName = rp.name.toUpperCase(); } else specName = ''; } else specName = '';
-  const scoped = w.d.zoom && adsK > .85; $('scope').classList.toggle('hide', !scoped); vmScene.visible = !scoped && P.alive && inMatch();
+  updateScopeUI(); const scoped = w.d.zoom && adsK > .85, dotOnly = scoped && myScope && SCOPES[myScope].sr === 0; thermalView = !!(scoped && myScope === 'thermal'); $('scope').classList.toggle('hide', !scoped); vmScene.visible = !(scoped && !dotOnly) && P.alive && inMatch();
 }
 const hc = {}; const setTxt = (id, v) => { if (hc[id] !== v) { hc[id] = v; $(id).textContent = v; } }, setSty = (id, k, v) => { const key = id + k; if (hc[key] !== v) { hc[key] = v; $(id).style[k] = v; } };
 function updateTopBar() {
@@ -1679,7 +1719,7 @@ document.addEventListener('pointerlockerror', () => { if (started && state === '
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== canvas && !DEBUG && !TOUCH) return; if (state !== 'play' || !P.alive) return;
   if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;   // ignore the occasional bogus spike
-  const k = .0022 * S.sens * (adsK > .5 ? (W[cur].d.zoom ? .3 * Math.min(1, W[cur].d.zoom / 22) : .7) : 1); P.yaw -= e.movementX * k; P.pitch -= e.movementY * k;
+  const k = .0022 * S.sens * (adsK > .5 ? (W[cur].d.zoom ? .3 * Math.min(1, scopeZoom(W[cur]) / 22) : .7) : 1); P.yaw -= e.movementX * k; P.pitch -= e.movementY * k;
 });
 addEventListener('mousedown', e => { if (state !== 'play') return; if (!P.alive) specI++; if (e.button === 0) mouseL = true; if (e.button === 2) mouseR = true; });
 addEventListener('mouseup', e => { if (e.button === 0) mouseL = false; if (e.button === 2) mouseR = false; });
@@ -1752,5 +1792,5 @@ for (const key of ['t', 'b', 'l', 'r']) $('cross').querySelector('.' + key).id =
 buildItems(); refreshItems(); refreshSlots(); refreshAmmo();
 loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); renderPickers();
 window.__ba = { P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
-  get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck, TREES, treeHidden };
+  get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck, TREES, treeHidden, SCOPES, updateScopeUI, get myScope() { return myScope; }, set myScope(v) { myScope = v; }, get thermalView() { return thermalView; } };
 requestAnimationFrame(loop);
