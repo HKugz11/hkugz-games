@@ -91,6 +91,82 @@ export const MAPS = [
       [21, 21, 2.2], [-21, -21, 2.2], [21, -21, 2.2], [-21, 21, 2.2]],
     dmg: [[21, 2.2, 21], [-21, 2.2, -21]],
   },
+  {
+    id: 'toys', name: 'Toy Box', half: 30,
+    blurb: 'A giant playroom: stepped block castles, an alphabet tower and cover everywhere. Quick and colorful.',
+    swatch: ['#3a8aff', '#ffd34e', '#ff6a4a'],
+    theme: { sky: [0x3a8aff, 0x9fd8ff, 0xfff4cc], sunStr: 1, fog: [0xd8f0ff, 45, 150], floor: ['#ffe9b0', '#ffd88a', 'rgba(255,90,60,.35)'], ground: 0xff9a5a, wall: 0xd04a3a,
+      strips: [0xff4a4a, 0xffd31a, 0x2e8bff, 0x4adf6a], hemi: [0xe0f0ff, 0xc08a60, 1.1], sun: [0xfff1d0, 2.3], exposure: 1.1, clouds: 0xffffff, deco: 'balloons' },
+    build(b) {
+      const C = [0xff4a4a, 0xffd31a, 0x2e8bff, 0x4adf6a, 0xff7a1a, 0xb06bff];
+      [[-19, -19], [19, -19], [-19, 19], [19, 19]].forEach(([x, z], i) => { b.box(x, .275, z, 9, .55, 9, C[i]); b.box(x, .825, z, 7, .55, 7, C[(i + 1) % 6]); b.box(x, 1.375, z, 5, .55, 5, C[(i + 2) % 6]); b.box(x, 1.925, z, 3, .55, 3, C[(i + 3) % 6]); });   // four stepped castles (top at 2.2)
+      b.box(0, 1.1, 0, 4, 2.2, 4, 0xffd31a); b.box(0, 2.9, 0, 2.4, 1.4, 2.4, 0xff4a4a);                                  // the alphabet tower
+      [[-6, 0, 0], [6, 0, 1], [0, -6, 2], [0, 6, 3]].forEach(([x, z, c]) => b.box(x, .8, z, 2.4, 1.6, 2.4, C[c]));
+      [[-10, -4, 0], [10, 4, 0], [-4, 10, 1], [4, -10, 1], [-24, 0, 1], [24, 0, 1], [0, -26, 0], [0, 26, 0]].forEach(([x, z, rot], i) => rot ? b.box(x, 2, z, 6, 4, 1.2, C[i % 6]) : b.box(x, 2, z, 1.2, 4, 6, C[i % 6]));   // dominoes
+      [[-13, 12, 2.4, 0], [13, -12, 2.4, 2], [-25, -10, 2, 4], [25, 10, 2, 1], [-8, -22, 2, 3], [8, 22, 2, 5], [-26, 21, 3, 0], [26, -21, 3, 2], [-14, -9, 1.6, 1], [14, 9, 1.6, 3]].forEach(([x, z, s, c]) => b.box(x, s / 2, z, s, s, s, C[c]));
+    },
+    spawns: [[-27, -27], [27, -27], [-27, 27], [27, 27], [0, -28], [0, 28], [-28, 0], [28, 0], [-10, -14], [10, 14], [-14, 8], [14, -8]],
+    loot: [[-9, -9], [9, 9], [-9, 9], [9, -9], [0, -14], [0, 14], [-14, 0], [14, 0], [-24, -24], [24, 24], [-24, 24], [24, -24], [-19, -19, 2.2], [19, -19, 2.2], [-19, 19, 2.2], [19, 19, 2.2], [0, -22], [0, 22], [-22, 0], [22, 0]],
+    dmg: [[-19, 2.2, -19], [19, 2.2, 19]],
+  },
+  {
+    id: 'cove', name: 'Pirate Cove', half: 32,
+    blurb: 'A wrecked pirate ship on a sunny beach. Climb aboard, hide behind barrels, or sneak around the palm trees.',
+    swatch: ['#1a5a9a', '#6ad0e8', '#f0dca8'],
+    theme: { sky: [0x1a5a9a, 0x6ad0e8, 0xffe8b0], sunStr: 1.2, fog: [0xbfeaf0, 45, 160], floor: ['#f0dca8', '#e2c88c', 'rgba(110,70,30,.3)'], ground: 0x2a8ab8, wall: 0x6a4a2a,
+      strips: [0xffd34e, 0xff6a3a, 0x4adfa0, 0xffffff], hemi: [0xd8f4ff, 0xc09a60, 1.1], sun: [0xfff0c0, 2.4], exposure: 1.1, clouds: 0xffffff, deco: 'none' },
+    build(b) {
+      const WOOD = 0x8a5a2a, DARK = 0x6a4420, LIGHT = 0xb07a3a;
+      b.box(0, .825, 0, 7, 1.65, 24, WOOD);                                                                                  // the ship's hull: the deck is at 1.65
+      b.box(0, 1.65 + .9, 7.5, 5, 1.8, 4, DARK); b.box(0, 1.65 + .45, -9, 5, .9, 3, LIGHT);                                 // cabin and a cargo hatch on deck
+      b.box(0, 5.8, 0, .8, 8.3, .8, 0xe8dcc0); b.box(0, 10.2, 0, 3.2, .5, 3.2, DARK);                                      // the mast and the crow's nest
+      for (const s of [-1, 1]) for (const zz of [-6, 6]) { b.box(s * 5.6, .275, zz, 1.5, .55, 4, LIGHT); b.box(s * 4.2, .55, zz, 1.4, 1.1, 4, LIGHT); }   // gangways up to the deck
+      b.box(-23, .15, 0, 7, .3, 22, 0x9a7440); b.box(-23, .6, -9, .8, 1.2, .8, DARK); b.box(-23, .6, 9, .8, 1.2, .8, DARK);   // a wooden dock
+      [[-14, 14], [15, -14], [-16, -15], [17, 15], [-5, 20], [5, -20], [26, 3], [-27, -22]].forEach(([x, z], i) => { b.box(x, .7, z, 1.4, 1.4, 1.4, i % 2 ? 0x9a6a30 : 0x7a4a1c); b.box(x + 1.6, .6, z + .4, 1.2, 1.2, 1.2, 0x9a6a30); });   // barrels
+      [[-12, -6, 3, 2.4, 3], [13, 8, 3.4, 2.8, 3], [22, -22, 4, 3.2, 4], [-22, 22, 4, 2.6, 4], [-6, 25, 5, 2, 2.4], [8, -26, 5, 2, 2.4], [26, 14, 2.4, 2, 2.4], [-27, -10, 2.4, 2.2, 2.4]].forEach(([x, z, sx, sy, sz]) => b.box(x, sy / 2, z, sx, sy, sz, 0x9aa0a8));   // rocks
+      [[-9, 10], [11, -8], [-20, -24], [21, 22], [-25, 8], [25, -2]].forEach(([x, z]) => { b.box(x, 2.5, z, .6, 5, .6, 0x8a5a2a); b.box(x, 5.4, z, 3.6, .5, 3.6, 0x2aa84a); });   // palm trees
+    },
+    spawns: [[-28, -28], [28, -28], [-28, 28], [28, 28], [0, -29], [0, 29], [-12, 0], [12, 0], [-29, 0], [29, 0], [-16, 20], [16, -20]],
+    loot: [[-10, -10], [10, 10], [-10, 10], [10, -10], [0, -16], [0, 16], [-18, 0], [18, 0], [-24, -24], [24, 24], [-24, 24], [24, -24], [0, 0, 1.65], [0, 9, 1.65], [0, -9, 1.65], [-14, 25], [14, -25], [-27, 12], [27, -12], [-6, -26]],
+    dmg: [[0, 1.65, 4], [0, 1.65, -4]],
+  },
+  {
+    id: 'lava', name: 'Lava Lair', half: 30,
+    blurb: 'A volcano crater: a glowing stepped cone in the middle, black rock pillars and rivers of lava all around.',
+    swatch: ['#2a0a0a', '#ff5a2a', '#ffc060'],
+    theme: { sky: [0x2a0a0a, 0xff5a2a, 0xffc060], sunStr: .5, fog: [0x7a2a1a, 30, 120], floor: ['#3a2a30', '#2e2026', 'rgba(255,100,40,.5)'], ground: 0x1a0a0a, wall: 0x5a2a2a,
+      strips: [0xff5a1a, 0xffd31a, 0xff2a4a, 0xffffff], hemi: [0xffb080, 0x4a1a10, .95], sun: [0xffa060, 1.8], exposure: 1.1, clouds: 0x5a2a20, deco: 'stars' },
+    build(b) {
+      [[16, .55, .275, 0x4a3038], [12, .55, .825, 0x5a3a40], [8, .55, 1.375, 0x6a4048], [4, .55, 1.925, 0x7a4a50]].forEach(([w, h, y, c]) => b.box(0, y, 0, w, h, w, c));   // the cone (top at 2.2)
+      b.glow(0, 2.22, 0, 3.4, .08, 3.4, 0xff5a1a);
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .2, r = 17; b.box(Math.cos(a) * r, 3.5, Math.sin(a) * r, 2.2, 7, 2.2, 0x1c1018); b.glow(Math.cos(a) * r, 7.1, Math.sin(a) * r, 1.4, .3, 1.4, 0xff7a2a); }   // obsidian pillars with glowing tips
+      for (const [x, z, sx, sz] of [[-22, 0, 1.6, 9], [22, 0, 1.6, 9], [0, -22, 9, 1.6], [0, 22, 9, 1.6]]) b.box(x, 1.2, z, sx, 2.4, sz, 0x3a2028);              // low rock walls to duck behind
+      for (const [x, z, sx, sy, sz] of [[-10, -10, 3, 1.5, 3], [10, 10, 3, 1.5, 3], [-10, 10, 3, 1.5, 3], [10, -10, 3, 1.5, 3], [-26, -22, 4, 2.4, 3], [26, 22, 4, 2.4, 3], [-26, 22, 3, 2, 4], [26, -22, 3, 2, 4]]) b.box(x, sy / 2, z, sx, sy, sz, 0x4a2c34);
+      for (const [x, z, sx, sz] of [[-13, 0, 3, 26], [13, 0, 3, 26], [0, -13, 26, 3], [0, 13, 26, 3]]) b.glow(x, .035, z, sx, .07, sz, 0xff5a1a);                    // rivers of lava (just for looks)
+    },
+    spawns: [[-27, -27], [27, -27], [-27, 27], [27, 27], [0, -28], [0, 28], [-28, 0], [28, 0], [-18, -8], [18, 8], [-8, 18], [8, -18]],
+    loot: [[-6, -6], [6, 6], [-6, 6], [6, -6], [0, -9], [0, 9], [-9, 0], [9, 0], [-22, -22], [22, 22], [-22, 22], [22, -22], [0, -24], [0, 24], [-24, 0], [24, 0], [0, 0, 2.2], [3, -3, 2.2]],
+    dmg: [[0, 2.2, 1.5], [0, 2.2, -1.5]],
+  },
+  {
+    id: 'orbit', name: 'Orbit Station', half: 34,
+    blurb: 'A space station: four pods with doorways, a glowing reactor in the middle and crates in the corridors.',
+    swatch: ['#02010a', '#2a4a9a', '#2ee6ff'],
+    theme: { sky: [0x02010a, 0x140a3a, 0x2a4a9a], sunStr: 0, fog: [0x10143a, 35, 140], floor: ['#2a3050', '#222844', 'rgba(46,230,255,.45)'], ground: 0x0a0c1a, wall: 0x2f3a68,
+      strips: [0x2ee6ff, 0x8aff3a, 0xff4fa8, 0xffffff], hemi: [0xa0b0ff, 0x20244a, .95], sun: [0xdde4ff, 1.6], exposure: 1.05, clouds: 0x3a4a8a, deco: 'stars' },
+    build(b) {
+      const room = (cx, cz, s, c) => { const hw = s / 2, gap = 2, len = hw - gap, off = gap + len / 2; for (const sg of [-1, 1]) for (const sd of [-1, 1]) { b.box(cx + sd * off, 1.8, cz + sg * hw, len, 3.6, 1, c); b.box(cx + sg * hw, 1.8, cz + sd * off, 1, 3.6, len, c); } };
+      room(-18, -18, 14, 0x4a5a98); room(18, -18, 14, 0x4a5a98); room(-18, 18, 14, 0x4a5a98); room(18, 18, 14, 0x4a5a98);
+      for (const [x, z, c] of [[-18, -18, 0x2ee6ff], [18, -18, 0x8aff3a], [-18, 18, 0xff4fa8], [18, 18, 0xffd31a]]) { b.box(x, .6, z, 3, 1.2, 3, 0x6a7ab8); b.glow(x, 1.3, z, 1.6, .15, 1.6, c); }   // a console in every pod
+      b.box(0, .55, 0, 12, 1.1, 12, 0x5a6aa8); b.box(0, 1.1 + 1.4, 0, 5, 2.8, 5, 0x3a4a88); b.glow(0, 4.3, 0, 2.2, 3, 2.2, 0x2ee6ff);                 // the reactor on a platform
+      for (const [x, z] of [[-7.4, 0], [7.4, 0], [0, -7.4], [0, 7.4]]) b.box(x, .275, z, x ? 2.4 : 6, .55, z ? 2.4 : 6, 0x7a8ac0);                      // its steps
+      for (const [x, z, sx, sy, sz, c] of [[-30, -8, 3, 2, 3, 0x6a7ab8], [30, 8, 3, 2, 3, 0x6a7ab8], [-8, -30, 3, 2, 3, 0x6a7ab8], [8, 30, 3, 2, 3, 0x6a7ab8], [-30, 12, 2, 1.4, 4, 0x8a9ad0], [30, -12, 2, 1.4, 4, 0x8a9ad0], [-12, 30, 4, 1.4, 2, 0x8a9ad0], [12, -30, 4, 1.4, 2, 0x8a9ad0], [0, -19, 8, 1.2, 1.4, 0x6a7ab8], [0, 19, 8, 1.2, 1.4, 0x6a7ab8], [-19, 0, 1.4, 1.2, 8, 0x6a7ab8], [19, 0, 1.4, 1.2, 8, 0x6a7ab8]]) b.box(x, sy / 2, z, sx, sy, sz, c);
+      for (const [x, z, c] of [[-32, -32, 0x2ee6ff], [32, -32, 0xff4fa8], [-32, 32, 0xffd31a], [32, 32, 0x8aff3a]]) b.glow(x, 4, z, .4, 8, .4, c);
+    },
+    spawns: [[-30, -30], [30, -30], [-30, 30], [30, 30], [0, -31], [0, 31], [-31, 0], [31, 0], [-9, -9], [9, 9], [-9, 9], [9, -9], [-18, -18], [18, 18]],
+    loot: [[-18, -18], [18, 18], [-18, 18], [18, -18], [0, -25], [0, 25], [-25, 0], [25, 0], [-9, 0], [9, 0], [0, -9], [0, 9], [-30, -20], [30, 20], [-30, 20], [30, -20], [-20, -30], [20, 30], [-20, 30], [20, -30], [0, 0, 1.1]],
+    dmg: [[0, 1.1, 8], [0, 1.1, -8]],
+  },
 ];
 
 // ---------------------------------------------------------------------------------------------

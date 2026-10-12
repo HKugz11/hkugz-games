@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=3.6';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=3.6';
-import { TOUCH, initTouch } from './touch.js?v=3.6';
+import { MAPS } from './maps.js?v=3.7';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=3.7';
+import { TOUCH, initTouch } from './touch.js?v=3.7';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -20,15 +20,21 @@ const MODES = {
   brawl: { name: 'Brawl', blurb: 'Free-for-all! Every player and bot is on their own, so friends can fight each other. First to 15 pops wins.' },
   royale: { name: 'Battle Royale', blurb: 'Loot up, then outlast the shrinking storm. One life. Last one standing wins, and players fight each other and the bots.' },
   blitz: { name: 'Blitz', blurb: 'Five minutes on the clock. Out-pop the bots before time runs out.' },
+  gungame: { name: 'Gun Game', blurb: 'Free-for-all with a ladder of ten blasters. Every pop upgrades your gun to the next one and the last one is the Pop-Gun. First to finish the ladder wins!' },
+  moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: low gravity and giant jumps, so fights happen in the air. First to 12 pops wins.' },
+  pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun, with unlimited ammo and no loot. Pure aim!' },
+  snipers: { name: "Sniper's Alley", blurb: 'Team deathmatch with nothing but the Zapper and unlimited ammo. Line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
+const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'snipers';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
+const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], snipers: [4] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
 const DIFF = {
   easy:   { bots: 4, hp: 70,  aim: 0.085, react: 0.75, dmg: 5,  speed: 3.6, fire: 0.36, turn: 5, nade: 22, nades: ['frag'] },
   normal: { bots: 5, hp: 100, aim: 0.05,  react: 0.45, dmg: 7,  speed: 4.4, fire: 0.25, turn: 7, nade: 13, nades: ['frag', 'frag', 'molly', 'flash'] },
   hard:   { bots: 6, hp: 120, aim: 0.026, react: 0.25, dmg: 9,  speed: 5.3, fire: 0.18, turn: 10, nade: 8, nades: ['frag', 'molly', 'flash', 'flash', 'frag'] },
 };
 if (!DIFF[CFG.diff]) CFG.diff = 'normal';
-const G = 22, STEP = 0.6;
+let G = 22; const STEP = 0.6;   // G is lower in Moon Brawl
 const BOT_COLORS = [0xff7a1a, 0xff4fa8, 0xb06bff, 0xffd31a, 0xff4a4a, 0xa0ff3a];
 const BOT_NAMES = ['Blip', 'Zorp', 'Chomp', 'Bolt', 'Pixel', 'Waffle'];
 const PLAYER_COLORS = [0x2ee6ff, 0x4aa8ff, 0x4affc8, 0xffffff];
@@ -282,7 +288,7 @@ let selSlot = 0, holdItem = null, adsTog = false;
 const AMMO = { light: { name: 'LIGHT', col: 0xffc233, max: 150, box: [30, 60] }, medium: { name: 'MEDIUM', col: 0x4aa8ff, max: 180, box: [30, 60] }, shells: { name: 'SHELLS', col: 0xff6a4a, max: 40, box: [6, 12] }, heavy: { name: 'HEAVY', col: 0x8aff3a, max: 30, box: [5, 10] }, rockets: { name: 'ROCKETS', col: 0xff4fe0, max: 12, box: [2, 4] } };
 const reserve = { light: 0, medium: 0, shells: 0, heavy: 0, rockets: 0 };
 let burstLeft = 0, burstT = 0;
-const FREE = () => !!(M && M.free);
+const FREE = () => !!(M && (M.free || M.inf));   // unlimited ammo
 const slotOf = gi => slots.findIndex(e => e && e.gun === gi), itemSlot = id => slots.findIndex(e => e && e.item === id);
 function resetReserve() { for (const k in reserve) reserve[k] = 0; reserve.light = 60; for (const w of W) if (w.owned) reserve[w.d.at] = Math.max(reserve[w.d.at], w.s.mag * 2); }
 
@@ -306,7 +312,7 @@ function putItem(id, n) { const si = slots.indexOf(null); if (si < 0) return; sl
 function resetInv() {
   for (const id of ITEM_IDS) inv[id] = 0; for (let i = 0; i < SLOTN; i++) if (slots[i] && slots[i].item) slots[i] = null;
   if (M && M.mode === 'royale') return;   // battle royale: you land with nothing but your pistol
-  if (FREE()) { putItem('bandage', ITEMS.bandage.max); putItem('mini', ITEMS.mini.max); putItem('frag', ITEMS.frag.max); return; }
+  if (M && M.free) { putItem('bandage', ITEMS.bandage.max); putItem('mini', ITEMS.mini.max); putItem('frag', ITEMS.frag.max); return; }
   putItem('bandage', 1); putItem('frag', 1);
 }
 resetInv();
@@ -319,7 +325,7 @@ function rollAmmo() {
   for (let i = 0; i < types.length; i++) { r -= ws[i]; if (r <= 0) { at = types[i]; break; } } const b = AMMO[at].box; return { id: 'ammo', at, qty: rint(b[0], b[1]) };
 }
 function rollLoot() {
-  const p = M && M.mode === 'royale' ? .3 : .2, q = Math.random(); if (q < p) return rollGun(); if (q < p + .2) return rollAmmo();
+  const p = M && M.mode === 'royale' ? .3 : .2, q = Math.random(); if (!(M && M.ladder)) { if (q < p) return rollGun(); if (q < p + .2) return rollAmmo(); }   // forced-blaster modes: no guns or ammo on the floor
   let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return { id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }; } return { id: 'bandage', qty: 1 };
 }
 
@@ -388,7 +394,7 @@ function freeplayLoot() {
   return pickups.map(wirePk);
 }
 function hostRollPickups(np) {
-  clearPickups(); if (M && M.free) return freeplayLoot(); let forced = 0; const br = M && M.mode === 'royale', nForce = br ? 4 + np : 5 + (np - 1);
+  clearPickups(); if (M && M.free) return freeplayLoot(); let forced = 0; const br = M && M.mode === 'royale', nForce = br ? 4 + np : 5 + (np - 1); if (M && M.ladder) forced = 99;
   const spots = br ? LOOT_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 14 + 5 * np) : LOOT_SPOTS;   // battle royale: big map, only a little loot
   for (const [x, z, y] of spots) addPickup(forced < nForce ? rollGun(1 + (forced++ % (WDEF.length - 1))) : rollLoot(), x, y, z);
   for (const [x, y, z] of (br ? DMG_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 2) : DMG_SPOTS)) addPickup({ id: 'dmg' }, x, y, z, { fixed: 'dmg' });
@@ -847,7 +853,7 @@ const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.som
 const wireCfg = () => ({ mode: CFG.mode, map: CFG.map, diff: CFG.diff, rarity: CFG.rarity, fp: CFG.fp });
 const botsAlive = () => bots.filter(b => b.alive).length;
 function newMatch(cfg, np) {
-  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: cfg.mode === 'brawl' || cfg.mode === 'royale', free: cfg.mode === 'free', rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'tdm' ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
+  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode], grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
     wave: 0, phase: '', phaseT: 0, toSpawn: 0, spawnT: 0, maxAlive: 8, lives: 0, left: 0, nextBotId: 1 };
 }
 function feedText(text, color = '#fff') { const f = $('feed'), d = document.createElement('div'); d.textContent = text; d.style.color = color; f.appendChild(d); setTimeout(() => d.remove(), 4500); while (f.children.length > 5) f.firstChild.remove(); }
@@ -1023,7 +1029,7 @@ function netTick(dt) {
 function beginLocal() {
   for (const b of bots) b.remove(); bots.length = 0; botById.clear(); for (const p of projs) { scene.remove(p.m); } projs.length = 0; clearHazards();
   for (const w of W) { w.owned = w.d.id === 'pop'; w.rar = 0; applyRarity(w); } slots.fill(null); slots[0] = { gun: 0 }; selSlot = 0; clearHold(); adsTog = false;
-  score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = 0; wantSwap = -1; swapT = 0; selectWeapon(0, true);
+  score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = 0; wantSwap = -1; swapT = 0; selectWeapon(0, true); G = M && M.grav ? 9 : 22; if (M && M.ladder) { M.myTier = -1; applyLoadout(true); }
   clearStormVis(); specI = 0; $('team').style.display = M.pvp ? 'none' : ''; for (const rp of remotes.values()) rp.tag.material.depthTest = !!M.pvp;
   if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME';
 }
@@ -1032,7 +1038,7 @@ function hostSetupMode() {
   if (M.mode === 'horde') { M.phase = 'break'; M.phaseT = 6; M.wave = 0; M.lives = 4 + 2 * M.np; showCenter('GET READY!', '#7cecff'); }
   else if (M.mode === 'free') { const bots4 = M.fp === 'bots', n = bots4 ? 4 : 6 + 2 * (M.np - 1), FD = bots4 ? D : Object.assign({}, D, { hp: 120, speed: 0, fire: 99, react: 99, nade: 99999, aim: 1 }); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D: FD, dummy: !bots4 }); b.respT = .1 + i * .15; bots.push(b); } showCenter('FREEPLAY - grab any blaster!', '#7cecff'); }
   else if (M.mode === 'royale') { stormInit(); const n = Math.min(22, 14 + 3 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .05 + i * .02; bots.push(b); } showCenter('DROP IN!  Find loot, stay out of the storm', '#c58aff'); }
-  else if (M.mode === 'brawl') { const n = Math.max(2, 6 - M.np); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter('BRAWL! Everyone is an enemy', '#ff9a4a'); }
+  else if (BRAWLISH(M.mode)) { const n = Math.max(2, 6 - M.np); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter(M.mode === 'gungame' ? 'GUN GAME! Pop to upgrade' : M.mode === 'moon' ? 'MOON BRAWL! Jump high' : 'BRAWL! Everyone is an enemy', '#ff9a4a'); }
   else { const n = Math.min(10, D.bots + 2 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } }
 }
 function startSolo() { NET.role = 'solo'; NET.me = 0; NET.roster = [{ pid: 0, name: myName(), color: PLAYER_COLORS[0] }]; syncRemotes(); M = newMatch(CFG, 1); loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); beginLocal(); }
@@ -1048,14 +1054,14 @@ function hostTick(dt) {
   if (M.mode === 'blitz') { M.timeLeft -= dt; if (M.timeLeft <= 0) { M.timeLeft = 0; endHost(score.me > score.bots, score.me > score.bots ? 'TIME! YOU WIN!' : score.me === score.bots ? 'TIME! IT IS A TIE' : 'TIME! BOTS WIN', `Final score ${score.me} to ${score.bots}`); } }
   if (M.mode === 'horde') hordeTick(dt);
   if (M.mode === 'royale') { stormTick(dt); checkEnd(); }
-  if (M.mode === 'brawl') checkEnd();
+  if (BRAWLISH(M.mode)) checkEnd();
   M.left = botsAlive() + M.toSpawn;
 }
 function checkEnd() {
   if (!M || M.over || !isHost()) return;
-  if (M.mode === 'tdm') { if (score.me >= M.target) endHost(true, 'VICTORY!', `${NET.roster.length > 1 ? 'Your team' : 'You'} reached ${M.target} pops first. Nice shooting!`); else if (score.bots >= M.target) endHost(false, 'DEFEAT', 'The bots got there first. Rematch?'); }
+  if (TDMISH(M.mode)) { if (score.me >= M.target) endHost(true, 'VICTORY!', `${NET.roster.length > 1 ? 'Your team' : 'You'} reached ${M.target} pops first. Nice shooting!`); else if (score.bots >= M.target) endHost(false, 'DEFEAT', 'The bots got there first. Rematch?'); }
   if (M.mode === 'horde' && M.lives <= 0 && !P.alive && [...remotes.values()].every(r => !r.alive)) endHost(false, 'OVERRUN!', `You made it to wave ${M.wave} with ${score.me} pops.`);
-  if (M.mode === 'brawl') {
+  if (BRAWLISH(M.mode)) {
     const all = [[0, P.kills], ...[...remotes].map(([pid, rp]) => [pid, rp.kills])].sort((a, b) => b[1] - a[1]);
     if (all[0][1] >= M.target) endHost(all[0][0] === 0, `${nameOf(all[0][0]).toUpperCase()} WINS!`, `First to ${M.target} pops. Nice shooting!`, all[0][0], 'DEFEAT', `${nameOf(all[0][0])} got to ${M.target} pops first.`);
   }
@@ -1174,7 +1180,7 @@ function hordeClear() {
 function leaveMatch(msg) {
   if (NET.net) { try { NET.net.close(); } catch (e) {} } NET.net = null; NET.role = 'solo'; NET.me = 0; NET.roster = []; NET.code = '';
   for (const rp of remotes.values()) rp.dispose(); remotes.clear(); for (const b of bots) b.remove(); bots.length = 0; botById.clear(); for (const p of projs) scene.remove(p.m); projs.length = 0; clearHazards(); clearPickups();
-  clearStormVis(); M = null; started = false; state = 'menu'; mouseL = mouseR = false; endUse(); clearHold(); if (document.pointerLockElement) document.exitPointerLock();
+  clearStormVis(); M = null; G = 22; started = false; state = 'menu'; mouseL = mouseR = false; endUse(); clearHold(); if (document.pointerLockElement) document.exitPointerLock();
   for (const id of ['over', 'pause', 'lobby']) $(id).classList.add('hide'); $('menu').classList.remove('hide'); setNetMsg(msg || ''); loadMap(CFG.map, CFG.mode === 'royale'); buildPickupsPreview(); renderPickers();
 }
 
@@ -1199,12 +1205,20 @@ function brSpawn(pid) {
   const np = Math.max(3, (M && M.np) || 1), a = (pid / np) * 6.283 + .7, r = HALF * .62, tx = Math.cos(a) * r, tz = Math.sin(a) * r; let best = WAYPOINTS[0], bd = 1e9;
   for (const w of WAYPOINTS) { const d = Math.hypot(w.x - tx, w.z - tz); if (d < bd) { bd = d; best = w; } } return best;
 }
+// forced-blaster modes (Gun Game, Pop-Gun Party, Sniper's Alley): you carry exactly one blaster, picked by how many pops you have
+function applyLoadout(force) {
+  if (!M || !M.ladder) return; const t = Math.min(P.kills, M.ladder.length - 1); if (!force && M.myTier === t) return; const up = M.myTier >= 0 && t > M.myTier; M.myTier = t; const gi = M.ladder[t];
+  for (const w of W) w.owned = false; for (let i = 0; i < SLOTN; i++) if (slots[i] && slots[i].gun !== undefined) slots[i] = null;
+  const w = W[gi], si = slots.indexOf(null); w.owned = true; w.rar = 2; applyRarity(w); w.ammo = w.s.mag; w.cd = 0; slots[si < 0 ? 0 : si] = { gun: gi };
+  clearHold(); cur = gi; selSlot = si < 0 ? 0 : si; wantSwap = -1; swapT = up ? .3 : 0; reloadT = 0; burstLeft = 0; adsTog = false; W.forEach((x, k) => x.g.visible = k === gi); refreshAmmo(); refreshSlots();
+  if (up) { showCenter('LEVEL UP: ' + w.d.name, '#ffd34e'); sfx('medal'); }
+}
 function spawnPlayer(initial) {
   let best = null;
   if (initial && M && M.mode === 'royale') best = brSpawn(NET.me); else if (initial) best = SPAWNS[(NET.me * 3) % SPAWNS.length];
   else { let bd = -1; for (const s of SPAWNS) { let md = 1e9; for (const b of bots) if (b.alive) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
   P.pos.copy(best); P.vel.set(0, 0, 0); P.hp = 100; P.shield = 0; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
-  for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) cur = slots.find(e => e && e.gun !== undefined).gun; W.forEach((w, k) => w.g.visible = k === cur); selSlot = slotOf(cur); reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); clearHold(); resetInv(); resetReserve(); adsTog = false; P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo();
+  for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) cur = slots.find(e => e && e.gun !== undefined).gun; W.forEach((w, k) => w.g.visible = k === cur); selSlot = slotOf(cur); reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); clearHold(); resetInv(); resetReserve(); adsTog = false; P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo(); if (M && M.ladder) applyLoadout(true);
 }
 function clearHazards() {
   for (const n of nades) { scene.remove(n.m); disposeObj(n.m); } nades.length = 0;
@@ -1330,6 +1344,7 @@ function finishUse() {
 // ---- per-frame updates
 function updatePlayer(dt) {
   if (!P.alive) { P.respT -= dt; P.shakeT = 0; if (P.respT <= 0) spawnPlayer(); return; }
+  if (M && M.ladder) applyLoadout();   // Gun Game: a new blaster after every pop
   // crouch = Shift; stay low when there's no headroom to stand up
   let wantC = !!(keys.ShiftLeft || keys.ShiftRight);
   if (!wantC && P.crouchK > .02) { const probe = { pos: P.pos, r: P.r, h: STAND_H }; if (world.some(b => overlaps(probe, b))) wantC = true; }
@@ -1340,7 +1355,7 @@ function updatePlayer(dt) {
   const sprint = keys.Tab && keys.KeyW && P.crouchK < .3 && !use;   // sprint = Tab (hold) + W
   const spd = (sprint ? 10.5 : 7.2) * (adsK > .5 ? .65 : 1) * (1 - .5 * P.crouchK) * (use ? .6 : 1) * (P.speedT > 0 ? 1.35 : 1) * (!holdItem && W[cur].d.heavy && mouseL ? .55 : 1), ctl = P.onGround ? 14 : 2.8;
   P.vel.x += (wish.x * spd - P.vel.x) * clamp(ctl * dt, 0, 1); P.vel.z += (wish.z * spd - P.vel.z) * clamp(ctl * dt, 0, 1);
-  if (keys.Space && P.onGround && P.crouchK < .6) { P.vel.y = 7.6; P.onGround = false; }
+  if (keys.Space && P.onGround && P.crouchK < .6) { P.vel.y = M && M.grav ? 8.4 : 7.6; P.onGround = false; }
   moveEntity(P, dt);
   P.buffT = Math.max(0, P.buffT - dt); P.speedT = Math.max(0, (P.speedT || 0) - dt); P.protT = Math.max(0, (P.protT || 0) - dt); throwCD = Math.max(0, throwCD - dt); throwAnim = Math.max(0, throwAnim - dt);
   // weapon state
@@ -1383,12 +1398,12 @@ const hc = {}; const setTxt = (id, v) => { if (hc[id] !== v) { hc[id] = v; $(id)
 function updateTopBar() {
   if (!M) return; const solo = !isMP();
   setTxt('lMe', M.mode === 'horde' ? 'POPS' : solo ? 'YOU' : 'TEAM'); setTxt('sMe', score.me);
-  if (M.mode === 'tdm') { setTxt('lMid', 'FIRST TO'); setTxt('sMid', M.target); setTxt('lBots', 'BOTS'); setTxt('sBots', score.bots); }
+  if (TDMISH(M.mode)) { setTxt('lMid', 'FIRST TO'); setTxt('sMid', M.target); setTxt('lBots', 'BOTS'); setTxt('sBots', score.bots); }
   else if (M.mode === 'blitz') { const t = Math.max(0, Math.ceil(M.timeLeft)); setTxt('lMid', 'TIME'); setTxt('sMid', Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0')); setTxt('lBots', 'BOTS'); setTxt('sBots', score.bots); }
   else if (M.mode === 'free') { setTxt('lMe', 'POPS'); setTxt('sMe', P.kills); setTxt('lMid', 'FREEPLAY'); setTxt('sMid', '\u221e'); setTxt('lBots', 'ARMORY'); setTxt('sBots', RARITY[M.rarity].name); }
-  else if (M.mode === 'brawl') {
+  else if (BRAWLISH(M.mode)) {
     let best = P.kills, bn = 'YOU'; for (const rp of remotes.values()) if (rp.kills > best) { best = rp.kills; bn = rp.name.slice(0, 8); }
-    setTxt('lMe', 'YOU'); setTxt('sMe', P.kills); setTxt('lMid', 'FIRST TO'); setTxt('sMid', M.target); setTxt('lBots', 'LEADER'); setTxt('sBots', bn + ' ' + best);
+    setTxt('lMe', 'YOU'); setTxt('sMe', P.kills); setTxt('lMid', M.mode === 'gungame' ? 'LEVEL' : 'FIRST TO'); setTxt('sMid', M.mode === 'gungame' ? (Math.min(P.kills, M.ladder.length - 1) + 1) + '/' + M.ladder.length : M.target); setTxt('lBots', 'LEADER'); setTxt('sBots', bn + ' ' + best);
   } else if (M.mode === 'royale') {
     const S = M.storm; setTxt('lMe', 'KILLS'); setTxt('sMe', P.kills); setTxt('lMid', 'ALIVE'); setTxt('sMid', botsAlive() + humansAlive());
     setTxt('lBots', S && S.state === 'shrink' ? 'STORM' : 'STORM IN'); setTxt('sBots', !S ? '-' : S.state === 'shrink' ? 'CLOSING' : S.t > 900 ? 'FINAL' : Math.max(0, Math.ceil(S.t)) + 's');

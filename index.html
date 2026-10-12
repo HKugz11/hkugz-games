@@ -19,7 +19,7 @@
   <div class="grid">
     <a class="card" href="games/blaster-arena/">
       <div class="thumb"><img src="assets/thumbs/blaster-arena.png" alt="Blaster Arena screenshot" loading="lazy"></div>
-      <div class="body"><h3>Blaster Arena</h3><p>3D robot shooter vs bots. 8 maps (4 are huge battle royale maps), 6 modes (team deathmatch, horde, blitz, brawl, battle royale, freeplay practice), 11 blasters with rarities and ammo, a 5-slot hotbar, chests, grenades that one-shot, and shields. Runs on Chromebooks, and now plays on phones and tablets with on-screen controls. Play solo or online co-op with up to 3 friends.</p><span class="tag new">New &middot; Phone controls</span></div>
+      <div class="body"><h3>Blaster Arena</h3><p>3D robot shooter vs bots. 12 maps (4 are huge battle royale maps), 10 modes (team deathmatch, horde, blitz, brawl, battle royale, gun game, moon brawl, pop-gun party, sniper's alley, freeplay practice), 11 blasters with rarities and ammo, a 5-slot hotbar, chests, grenades that one-shot, and shields. Runs on Chromebooks, and now plays on phones and tablets with on-screen controls. Play solo or online co-op with up to 3 friends.</p><span class="tag new">New &middot; 4 maps, 4 modes</span></div>
     </a>
     <a class="card" href="games/fort-fight/">
       <div class="thumb"><img src="assets/thumbs/fort-fight.png" alt="Fort Fight screenshot" loading="lazy"></div>
@@ -76,11 +76,23 @@
     <div class="card"><div class="thumb" style="background:#4d97ff;display:grid;place-items:center;font-size:56px">😺</div><div class="body"><h3>Scratch game</h3><p>Coming soon.</p><span class="tag soon">Coming soon</span></div></div>
   </div>
 
+  <section class="dev" id="submit">
+    <h2>Made a game? Put it here!</h2>
+    <p>This is a great place to start. If you make games and want more people to play yours, send it to me. I usually put games up here with your name on them, and I am reaching out to other young developers too. Anything that runs in a web page works: HTML, Scratch, Unity WebGL, and more.</p>
+    <div class="dev-actions"><a class="btn" id="submitBtn" href="https://github.com/HKugz11/hkugz-games/issues/new?title=Game%20submission%3A%20&amp;body=Game%20name%3A%0A%0AWho%20made%20it%20(the%20name%20you%20want%20shown)%3A%0A%0ALink%20to%20play%20it%2C%20or%20how%20to%20send%20me%20the%20files%3A%0A%0AIn%20one%20sentence%2C%20what%20is%20it%3F%0A%0AI%20am%20OK%20with%20my%20game%20being%20on%20HKugz%20Games%20(yes%2Fno)%3A" target="_blank" rel="noopener">Send me your game</a><a class="btn alt" id="mailBtn" href="#" style="display:none">Email me</a></div>
+    <p class="fine">I play every game before I put it up, I always credit the person who made it, and if you ever want yours taken down, just ask.</p>
+  </section>
+
   <footer>
     Games by HKugz.<br>
     Everything here is free to play, with no ads and no tracking. Scores are saved only in your own browser.<br>Online play in Blaster Arena and Fort Fight (only if you choose Host or Join) connects friends through the free <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> service.<br>
     Questions or removal requests: <a href="https://github.com/HKugz11/hkugz-games/issues" target="_blank" rel="noopener">open an issue</a>.
   </footer>
 </div>
+<script>
+  // Put a public contact email here to show an "Email me" button next to the submit button. Left empty on purpose.
+  const CONTACT_EMAIL = "";
+  if (CONTACT_EMAIL) { const b = document.getElementById("mailBtn"); b.href = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent("Game submission"); b.style.display = ""; }
+</script>
 </body>
 </html>
