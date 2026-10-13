@@ -1,0 +1,114 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Save codes - HKugz Games</title>
+<meta name="description" content="Move your game progress to another device or keep a backup with a save code. No account, no password, no email.">
+<link rel="icon" type="image/svg+xml" href="../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../assets/logo.png"><link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#42d7f1">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .box { background: rgba(255, 255, 255, .66); border-radius: 20px; padding: 20px 24px 22px; margin: 18px 0; box-shadow: var(--shadow); }
+  .box h2 { margin: 0 0 8px; font-size: 22px; }
+  .box p { margin: 8px 0; line-height: 1.5; }
+  .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; margin: 12px 0 14px; }
+  .games label { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .7); border-radius: 10px; padding: 8px 10px; font-weight: 600; cursor: pointer; }
+  .games small { opacity: .6; font-weight: 500; margin-left: auto; white-space: nowrap; }
+  textarea { width: 100%; min-height: 120px; box-sizing: border-box; font: 12px/1.4 ui-monospace, Consolas, monospace; border: 2px solid rgba(11, 42, 51, .25); border-radius: 12px; padding: 10px; background: #fff; color: var(--ink); resize: vertical; word-break: break-all; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0 0; }
+  button.btn { border: 0; cursor: pointer; font-family: inherit; }
+  button.btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  .btn.small { font-size: 14px; padding: 8px 16px; border-radius: 12px; }
+  .msg { min-height: 1.2em; font-weight: 600; }
+  .msg.ok { color: #0b6a3a; } .msg.err { color: #b3261e; }
+  .note { font-size: 14px; opacity: .8; line-height: 1.5; }
+  #ldPreview { margin-top: 14px; }
+  .back { display: inline-block; margin: 6px 0 30px; font-weight: 700; }
+</style>
+<body>
+<div class="wrap">
+  <header class="hero" style="padding-top:38px">
+    <img class="logo" src="../assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
+    <h1>Save codes</h1>
+    <p>Move your progress to another computer or phone, or keep a backup. No account, no password, no email.</p>
+  </header>
+
+  <section class="box">
+    <h2>1. Make a save code</h2>
+    <p>Your games save your progress inside this browser. Pick the games you want, and you get a code you can copy or download. Paste it on another device to carry on where you stopped.</p>
+    <div class="games" id="mkList"></div>
+    <div class="row"><button class="btn" id="mk" type="button">Make my code</button></div>
+    <div id="mkOut" hidden>
+      <p style="margin-top:14px"><b>Your save code</b> <span id="mkInfo" class="note"></span></p>
+      <textarea id="mkCode" readonly spellcheck="false"></textarea>
+      <div class="row"><button class="btn small" id="cp" type="button">Copy the code</button><button class="btn small alt" id="dl" type="button">Download it as a file</button></div>
+    </div>
+    <p class="msg" id="mkMsg"></p>
+  </section>
+
+  <section class="box">
+    <h2>2. Load a save code</h2>
+    <p>Paste a code here, or choose the file you downloaded. You will see what is inside before anything changes.</p>
+    <textarea id="ldCode" spellcheck="false" placeholder="HKG1.…"></textarea>
+    <div class="row"><input type="file" id="ldFile" accept=".txt,text/plain"><button class="btn small" id="ck" type="button">Check the code</button></div>
+    <div id="ldPreview" hidden>
+      <p><b>This code has:</b> <span id="ldInfo" class="note"></span></p>
+      <div class="games" id="ldList"></div>
+      <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="bk" checked> Download a backup of what is on this device first</label>
+      <div class="row"><button class="btn" id="go" type="button">Replace my saves on this device</button></div>
+      <p class="note">This replaces the saves of the ticked games on <b>this</b> device with the ones in the code. Games you leave unticked are not touched.</p>
+    </div>
+    <p class="msg" id="ldMsg"></p>
+  </section>
+
+  <p class="note">A code holds only game progress and settings, plus any name you typed into a game. It never holds an email or a password, because there are no accounts here. Anyone who has your code can load your progress, so share it only with people you trust.</p>
+  <a class="back" href="../index.html">&larr; All games</a>
+</div>
+<script src="../assets/savecodes.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var KB = function (n) { return n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB'; };
+  var pending = null;
+  function say(el, text, ok) { el.textContent = text || ''; el.className = 'msg' + (text ? (ok ? ' ok' : ' err') : ''); }
+  function checks(box, groups) {
+    box.innerHTML = '';
+    groups.forEach(function (g) {
+      var l = document.createElement('label'), c = document.createElement('input'), s = document.createElement('small');
+      c.type = 'checkbox'; c.checked = true; c.value = g.name; l.appendChild(c); l.appendChild(document.createTextNode(g.name)); s.textContent = g.keys.length + ' saved · ' + KB(g.bytes); l.appendChild(s); box.appendChild(l);
+    });
+  }
+  function ticked(box) { return Array.prototype.filter.call(box.querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; }); }
+  function download(name, text) { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+  function stamp() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function refresh() {
+    var s = HKSave.scan();
+    if (!s.groups.length) { $('mkList').innerHTML = ''; say($('mkMsg'), 'Nothing is saved in this browser yet. Play a game for a bit, then come back.', false); $('mk').disabled = true; }
+    else { checks($('mkList'), s.groups); $('mk').disabled = false; say($('mkMsg'), ''); }
+  }
+  $('mk').onclick = function () {
+    var names = ticked($('mkList')); if (!names.length) { say($('mkMsg'), 'Tick at least one game.', false); return; }
+    HKSave.makeCode(names).then(function (code) { $('mkCode').value = code; $('mkInfo').textContent = '(' + code.length + ' characters)'; $('mkOut').hidden = false; say($('mkMsg'), 'Done! Copy it or download it, then keep it somewhere safe.', true); }, function (e) { say($('mkMsg'), e.message, false); });
+  };
+  $('cp').onclick = function () {
+    var t = $('mkCode'); t.select();
+    (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(function () { say($('mkMsg'), 'Copied!', true); }, function () { try { document.execCommand('copy'); say($('mkMsg'), 'Copied!', true); } catch (e) { say($('mkMsg'), 'Could not copy. Select the code and copy it by hand.', false); } });
+  };
+  $('dl').onclick = function () { download('hkugz-save-' + stamp() + '.txt', $('mkCode').value); say($('mkMsg'), 'Downloaded.', true); };
+  $('ldFile').onchange = function () { var f = this.files && this.files[0]; if (!f) return; if (f.size > 3000000) { say($('ldMsg'), 'That file is too big to be a save code.', false); return; } var r = new FileReader(); r.onload = function () { $('ldCode').value = String(r.result || '').trim(); say($('ldMsg'), 'File loaded. Now press "Check the code".', true); }; r.readAsText(f); };
+  $('ck').onclick = function () {
+    pending = null; $('ldPreview').hidden = true;
+    HKSave.readCode($('ldCode').value).then(function (r) {
+      pending = r; checks($('ldList'), r.groups); var when = r.t ? new Date(r.t).toLocaleString() : 'an unknown time';
+      $('ldInfo').textContent = 'made on ' + when; $('ldPreview').hidden = false; say($('ldMsg'), 'The code is good. Pick what to load, then press the button.', true);
+    }, function (e) { say($('ldMsg'), e.message, false); });
+  };
+  $('go').onclick = function () {
+    if (!pending) return; var names = ticked($('ldList')); if (!names.length) { say($('ldMsg'), 'Tick at least one game.', false); return; }
+    if (!confirm('Replace the saves of ' + names.join(', ') + ' on this device with the ones in the code?')) return;
+    var run = function () { var res = HKSave.apply(pending, names); pending = null; $('ldPreview').hidden = true; $('ldCode').value = ''; say($('ldMsg'), 'Loaded ' + res.written + ' saved items. Open a game and carry on!', true); refresh(); };
+    if ($('bk').checked) HKSave.makeCode(null).then(function (code) { download('hkugz-backup-' + stamp() + '.txt', code); setTimeout(run, 400); }, function () { run(); });   // nothing saved here yet = nothing to back up
+    else run();
+  };
+  refresh();
+})();
+</script>
