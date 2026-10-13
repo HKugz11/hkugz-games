@@ -122,7 +122,7 @@
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
 <meta name="description" content="A bouncy 3D robot shooter with 15 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'48'%20fill%3D'%23fff'%2F%3E%3Cg%20fill%3D'none'%20stroke%3D'%238a9099'%20stroke-width%3D'4.6'%20stroke-linejoin%3D'round'%20stroke-linecap%3D'round'%3E%3Cpath%20d%3D'M16%2037H79Q84%2037%2084%2042V50H56L53%2056H47L44%2050H16Z'%2F%3E%3Cpath%20d%3D'M44%2050L36%2076H52L59%2056'%2F%3E%3Cpath%20d%3D'M53%2056Q62%2057%2059%2066'%2F%3E%3Cpath%20d%3D'M23%2037V32H29V37M73%2037V33H78V37'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#0a0618">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Blaster Arena - free browser game">
@@ -158,7 +158,7 @@
 
 <div class="screen" id="menu">
   <div class="box wide">
-    <h1>BLASTER<br>ARENA</h1>
+    <img src="../../assets/logo.svg" alt="HKugz Games logo" style="display:block;margin:0 auto 6px;width:clamp(48px,11vh,88px);height:clamp(48px,11vh,88px);filter:drop-shadow(0 3px 10px rgba(0,0,0,.45))"><h1>BLASTER<br>ARENA</h1>
     <p class="sub">Bright, bouncy robot shooter. Play solo or team up online with up to 3 friends.<br>No blood, just confetti.</p>
     <div id="menuPickers"></div>
     <div class="stick">
@@ -219,6 +219,6 @@
 <div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
 <a class="back" href="../../index.html">&larr; All games</a>
 <script src="vendor/peerjs.min.js"></script>
-<script type="module" src="game.js?v=6.2"></script>
+<script type="module" src="game.js?v=6.3"></script>
 </body>
 </html>

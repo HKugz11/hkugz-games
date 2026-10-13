@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" alt="HKugz Games logo" width="96" height="96"></p>
+
 # HKugz Games
 
 Free browser games, built by HKugz. Everything runs in your browser: no downloads, no sign-ups, no ads, no tracking.

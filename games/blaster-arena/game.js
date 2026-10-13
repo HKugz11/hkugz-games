@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=6.2';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.2';
-import { TOUCH, initTouch } from './touch.js?v=6.2';
+import { MAPS } from './maps.js?v=6.3';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.3';
+import { TOUCH, initTouch } from './touch.js?v=6.3';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -792,14 +792,15 @@ function makeBotModel(color, opts = {}) {
   const visor = new THREE.Mesh(new THREE.BoxGeometry(.42, .17, .2), dark); visor.position.set(0, 1.64, -.2); body.add(visor);
   const eyeM = new THREE.MeshBasicMaterial({ color: opts.player ? 0x4aff8a : 0x2ee6ff }); const e1 = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), eyeM), e2 = e1.clone(); e1.position.set(-.1, 1.65, -.3); e2.position.set(.1, 1.65, -.3); body.add(e1, e2);
   const ant = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, .22, 6), dark); ant.position.set(0, 2.0, 0); const ball = new THREE.Mesh(new THREE.SphereGeometry(.065, 8, 6), mat); ball.position.set(0, 2.14, 0); body.add(ant, ball);
-  if (opts.player) { const d = new THREE.Mesh(new THREE.OctahedronGeometry(.13), new THREE.MeshBasicMaterial({ color })); d.position.set(0, 2.4, 0); body.add(d); }   // teammate marker
+  let marker = null;
+  if (opts.player) { const d = marker = new THREE.Mesh(new THREE.OctahedronGeometry(.13), new THREE.MeshBasicMaterial({ color })); d.position.set(0, 2.4, 0); body.add(d); }   // teammate marker
   if (opts.boss) for (const sx of [-1, 1]) { const horn = new THREE.Mesh(new THREE.ConeGeometry(.1, .4, 8), toon(0xffd34e)); horn.position.set(sx * .22, 1.98, 0); horn.rotation.z = -sx * .45; outline(horn, 1.1); body.add(horn); }
   const legL = new THREE.Mesh(new THREE.BoxGeometry(.18, .5, .2), dark), legR = legL.clone(); legL.position.set(-.15, .25, 0); legR.position.set(.15, .25, 0); outline(legL, 1.08); outline(legR, 1.08); body.add(legL, legR);
   const arm = new THREE.Group(); arm.position.set(.34, 1.12, -.05); const gun = new THREE.Mesh(new THREE.BoxGeometry(.1, .12, .5), dark); gun.position.set(0, 0, -.28); outline(gun, 1.08); const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(.07, .22, 3, 8), mat); sleeve.rotation.x = Math.PI / 2; sleeve.position.set(0, 0, -.1); arm.add(gun, sleeve); body.add(arm);
   const bar = new THREE.Group(); const bg = new THREE.Mesh(new THREE.PlaneGeometry(.9, .1), new THREE.MeshBasicMaterial({ color: 0x120a24, depthTest: false, transparent: true })), fg = new THREE.Mesh(new THREE.PlaneGeometry(.86, .06), new THREE.MeshBasicMaterial({ color: 0x4aff8a, depthTest: false })); fg.position.z = .001; bg.renderOrder = 10; fg.renderOrder = 11; bar.add(bg, fg); bar.position.y = 2.45; g.add(bar);
   if (opts.scale) g.scale.setScalar(opts.scale);
   if (!QL.shadow) { const bs = new THREE.Mesh(new THREE.CircleGeometry(.5, 14), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3, depthWrite: false })); bs.rotation.x = -Math.PI / 2; bs.position.y = .04; g.add(bs); }   // blob shadow when real shadows are off
-  return { g, body, torso, head, legL, legR, arm, mat, bar, fg, eyeM };
+  return { g, body, torso, head, legL, legR, arm, mat, bar, fg, eyeM, marker };
 }
 
 // ------------------------------------------------------------------ teammates (other human players)
@@ -997,6 +998,7 @@ class Bot {
     this.pos = new V3(); this.tpos = new V3(); this.vel = new V3(); this.r = .38 * this.sc; this.h = 1.75 * this.sc; this.headY = 1.62 * this.sc; this.onGround = true; this.kills = 0; this.deaths = 0; this.tyaw = 0;
     this.yaw = rnd(0, 6.28); this.wp = null; this.alertT = 0; this.lastSeen = new V3(); this.saw = false; this.reactT = 0; this.cd = 0; this.burst = 0; this.pause = 0; this.strafe = Math.random() < .5 ? 1 : -1; this.strafeT = 0; this.stuckT = 0; this.lastP = new V3(); this.flashT = 0; this.barT = 0; this.invT = 0; this.alive = false; this.respT = rnd(.2, 1.5); this.m.g.visible = false;
     this.nadeT = 8; this.blindT = 0; this.hp = this.maxHp = this.D.hp; this.removeT = 0; this.tgt = null; this.blindP = false; this.alertP = false; this.windT = 0; this.hold = 0; this.holdYaw = 0; this.lz = 0; this.lastBy = null; this.frozen = false; this.legsFrozen = false; this.role = 'skirm'; this.kickCD = 0; this.suit = !!(M && M.zerog); this.suitC = this.ally ? 0x2ee6ff : 0xff9a4a; if (this.suit) applySuit(this);
+    if (this.ally && this.m.marker && M && M.team) { const mk = this.m.marker; mk.material.depthTest = false; mk.renderOrder = 15; mk.scale.setScalar(M.zerog ? 2.6 : 1.8); if (M.zerog) mk.material.color.setHex(0x7dff5a); }   // your teammates carry a big bright diamond you can see through walls and stars
     botById.set(id, this);
   }
   eye() { return new V3(this.pos.x, this.pos.y + 1.55 * this.sc, this.pos.z); }
@@ -1036,7 +1038,7 @@ class Bot {
     m.g.position.copy(this.pos); m.body.rotation.y = this.yaw;
     m.legL.rotation.x = Math.sin(ph) * .8 * Math.min(1, sp / 3); m.legR.rotation.x = -Math.sin(ph) * .8 * Math.min(1, sp / 3); m.body.position.y = Math.abs(Math.sin(ph)) * .06 * Math.min(1, sp / 3); if (this.suit) { m.legL.rotation.x = .2; m.legR.rotation.x = -.1; m.body.position.y = 0; }   // floating: no walking legs
     m.arm.rotation.x = this.alertP ? 0 : -.15; m.head.rotation.z = blind ? Math.sin(time * 9) * .3 : 0;
-    const f = this.flashT > 0, hot = thermalView && !this.ally; m.torso.material.emissive.setHex(f ? 0xffffff : hot ? 0xffb050 : this.suit ? (this.frozen ? 0x10141c : this.suitC) : 0); m.torso.material.emissiveIntensity = f ? 1.2 : hot ? 1.6 : this.suit ? (this.frozen ? .1 : .7) : 0;   // thermal scope: enemies glow
+    const f = this.flashT > 0, hot = thermalView && !this.ally; m.torso.material.emissive.setHex(f ? 0xffffff : hot ? 0xffb050 : this.suit ? (this.frozen ? 0x10141c : this.suitC) : 0); m.torso.material.emissiveIntensity = f ? 1.2 : hot ? 1.6 : this.suit ? (this.frozen ? .1 : 1.1) : 0;   // thermal scope: enemies glow
     m.eyeM.color.setHex(this.suit ? (this.frozen ? 0x4a5570 : this.suitC) : blind ? 0xffffff : this.alertP ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
     m.bar.visible = this.boss || this.ally || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
   }
@@ -1101,7 +1103,7 @@ class Bot {
     const m = this.m; m.g.position.copy(this.pos); m.body.rotation.y = this.yaw; const sp = Math.hypot(this.vel.x, this.vel.z), ph = time * (6 + sp * 1.4);
     m.legL.rotation.x = Math.sin(ph) * .8 * Math.min(1, sp / 3); m.legR.rotation.x = -Math.sin(ph) * .8 * Math.min(1, sp / 3); m.body.position.y = Math.abs(Math.sin(ph)) * .06 * Math.min(1, sp / 3); if (this.suit) { m.legL.rotation.x = .2; m.legR.rotation.x = -.1; m.body.position.y = 0; }   // floating: no walking legs
     m.arm.rotation.x = sees ? clamp(Math.atan2(tEye.y - eye.y, dist), -.5, .5) : -.15; m.head.rotation.z = blind ? Math.sin(time * 9) * .3 : 0;
-    const f = this.flashT > 0, hot = thermalView && !this.ally; m.torso.material.emissive.setHex(f ? 0xffffff : hot ? 0xffb050 : this.suit ? (this.frozen ? 0x10141c : this.suitC) : 0); m.torso.material.emissiveIntensity = f ? 1.2 : hot ? 1.6 : this.suit ? (this.frozen ? .1 : .7) : 0;   // thermal scope: enemies glow
+    const f = this.flashT > 0, hot = thermalView && !this.ally; m.torso.material.emissive.setHex(f ? 0xffffff : hot ? 0xffb050 : this.suit ? (this.frozen ? 0x10141c : this.suitC) : 0); m.torso.material.emissiveIntensity = f ? 1.2 : hot ? 1.6 : this.suit ? (this.frozen ? .1 : 1.1) : 0;   // thermal scope: enemies glow
     m.eyeM.color.setHex(this.suit ? (this.frozen ? 0x4a5570 : this.suitC) : blind ? 0xffffff : this.alertT > 0 ? (this.ally ? 0xffe14a : 0xff4a4a) : (this.ally ? 0x4aff8a : 0x2ee6ff));
     m.bar.visible = this.boss || this.ally || this.barT > 0; if (m.bar.visible) { m.bar.quaternion.copy(camera.quaternion); const r = clamp(this.hp / this.maxHp, .001, 1); m.fg.scale.x = r; m.fg.position.x = -(1 - r) * .43; }
   }
@@ -1129,7 +1131,7 @@ class Bot {
   zgIdle(dt) {   // Battle Room: before the start everybody is held at the wall; frozen soldiers (and everyone after the battle) drift on
     if (M.bPhase === 'ready') { this.vel.set(0, 0, 0); this.yaw += angDiff(Math.atan2(this.pos.x, this.pos.z), this.yaw) * .1; } else { this.blocked = false; moveEntity(this, dt); }
     const m = this.m; m.g.visible = true; m.g.position.copy(this.pos); m.body.rotation.y = this.yaw; m.arm.rotation.x = this.frozen ? 0 : -.15; m.legL.rotation.x = .2; m.legR.rotation.x = -.1; m.body.position.y = 0; m.bar.visible = false;
-    m.torso.material.emissive.setHex(this.frozen ? 0x10141c : this.suitC); m.torso.material.emissiveIntensity = this.frozen ? .1 : .7; m.eyeM.color.setHex(this.frozen ? 0x4a5570 : this.suitC);
+    m.torso.material.emissive.setHex(this.frozen ? 0x10141c : this.suitC); m.torso.material.emissiveIntensity = this.frozen ? .1 : 1.1; m.eyeM.color.setHex(this.frozen ? 0x4a5570 : this.suitC);
   }
   zgSteer(dt, T, sees) {   // there is nothing to push against in mid-air: soldiers coast until they touch something, then kick off toward where they want to go
     this.kickCD -= dt; if (this.legsFrozen || this.kickCD > 0 || this.vel.length() > 4) return;
@@ -1160,9 +1162,10 @@ const holdFacing = b => Math.abs(b.pos.x) + Math.abs(b.pos.z) < 8 ? (b.ally === 
 
 // ------------------------------------------------------------------ Battle Room (Ender's Game)
 const ZDIRS = [new V3(1, 0, 0), new V3(-1, 0, 0), new V3(0, 1, 0), new V3(0, -1, 0), new V3(0, 0, 1), new V3(0, 0, -1)];
-function applySuit(b) {   // flash suit: pale with your army's colour glowing; frozen = dull, dark and stiff
+function applySuit(b) {   // flash suit: the whole suit glows in your army's bright colour (blue = your army, orange = the enemy); frozen = dull grey and dark
   const m = b.m, f = b.frozen;
-  m.mat.color.setHex(f ? 0x7f8aa6 : 0xe8eef8); m.mat.emissive.setHex(f ? 0x10141c : b.suitC); m.mat.emissiveIntensity = f ? .1 : .7; m.eyeM.color.setHex(f ? 0x4a5570 : b.suitC);
+  m.mat.color.setHex(f ? 0x7f8aa6 : b.ally ? 0x1fa8ff : 0xff6a1a); m.mat.emissive.setHex(f ? 0x10141c : b.suitC); m.mat.emissiveIntensity = f ? .1 : 1.1;
+  m.head.material.color.setHex(f ? 0xaab4c8 : b.ally ? 0xd8f4ff : 0xffe2cc); m.eyeM.color.setHex(f ? 0x4a5570 : b.suitC);
 }
 function zgFreeze(e, zone, head) {   // a hit in the body or head freezes the whole suit, a hit in the legs freezes the legs (two leg hits = frozen)
   if (e.frozen) return false;
@@ -1419,7 +1422,7 @@ function beginLocal() {
   myScope = null; updateScopeUI(); const st0 = M && M.snipe ? SNIPE_START : 0; for (const w of W) { w.owned = WDEF.indexOf(w.d) === st0; w.rar = 0; applyRarity(w); } slots.fill(null); slots[0] = { gun: st0 }; selSlot = 0; clearHold(); adsTog = false;
   score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = st0; wantSwap = -1; swapT = 0; selectWeapon(st0, true); G = M && M.zerog ? 0 : M && M.grav ? 5.5 : 22; if (M && M.ladder) { M.myTier = -1; applyLoadout(true); }
   clearStormVis(); specI = 0; $('team').style.display = M.pvp ? 'none' : ''; for (const rp of remotes.values()) rp.tag.material.depthTest = !!M.pvp;
-  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT ROCKS TO CLIMB · HOLD JUMP AT SPIRES AND TREES · TREETOPS HIDE YOU', '#7cecff'); if (M && M.zerog) hint('SPACE = PUSH OFF THE WAY YOU LOOK · SHIFT = BRAKE · CLICK = FREEZE GUN', '#7cecff');
+  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT ROCKS TO CLIMB · HOLD JUMP AT SPIRES AND TREES · TREETOPS HIDE YOU', '#7cecff'); if (M && M.zerog) hint('BLUE + GREEN DIAMOND = YOUR ARMY · ORANGE = ENEMY · SPACE = PUSH OFF · SHIFT = BRAKE · CLICK = FREEZE', '#7cecff');
 }
 function hostSetupMode() {
   const D = DIFF[M.diff];
@@ -1922,7 +1925,7 @@ function updateHUD(dt) {
   for (const p of PADS) dot(p.x, p.z, '#2ee6ff', 5);
   for (const f of fires) dot(f.pos.x, f.pos.z, 'rgba(255,120,30,.8)', 7);
   for (const s of smokes) dot(s.c.x, s.c.z, 'rgba(230,236,246,.8)', 8);
-  for (const b of bots) if (b.alive) { if (b.ally) dot(b.pos.x, b.pos.z, '#4affc8', 6); else if (!(M && M.team) || b.alertT > 0 || b.alertP || b.pos.distanceTo(P.pos) < 42) dot(b.pos.x, b.pos.z, b.boss ? '#ff2a4a' : '#ff5a6a', b.boss ? 9 : 6); }   // Sniper's Alley: far-away enemies only show up once they spot someone
+  for (const b of bots) if (b.alive) { if (b.ally) dot(b.pos.x, b.pos.z, M && M.zerog ? '#2ee6ff' : '#4affc8', M && M.zerog ? 7 : 6); else if (!(M && M.team) || b.alertT > 0 || b.alertP || b.pos.distanceTo(P.pos) < 42) dot(b.pos.x, b.pos.z, b.boss ? '#ff2a4a' : '#ff5a6a', b.boss ? 9 : 6); }   // Sniper's Alley: far-away enemies only show up once they spot someone
   for (const rp of remotes.values()) if (rp.alive && rp.seen) { if (!(M && M.pvp)) dot(rp.pos.x, rp.pos.z, hex(rp.color), 6); else if (Math.hypot(rp.pos.x - P.pos.x, rp.pos.z - P.pos.z) < 16) dot(rp.pos.x, rp.pos.z, '#ff5a6a', 6); }
   x.fillStyle = '#2ee6ff'; x.beginPath(); x.moveTo(0, -9); x.lineTo(7, 7); x.lineTo(-7, 7); x.closePath(); x.fill(); x.restore();
 }
