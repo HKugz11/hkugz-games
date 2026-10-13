@@ -316,7 +316,7 @@ MAPS.push(
     dmg: [[2.6, 2.2, -2.6], [-2.6, 2.2, 2.6]],
   },
   {
-    id: 'moon', name: 'Moonbase Alpha', half: 74, br: true,
+    id: 'moon', name: 'Moonbase Alpha', half: 74, br: true, wallH: 30,
     blurb: 'Battle Royale only. A quiet moon base, deep craters and glowing crystals under the stars.',
     swatch: ['#02010a', '#2a1a78', '#7cecff'],
     theme: { sky: [0x02010a, 0x140a3a, 0x4a3aa8], sunStr: .3, fog: [0x1a1038, 40, 170], floor: ['#9aa0c8', '#868cb8', 'rgba(140,180,255,.35)'], ground: 0x40466a, wall: 0x30305a,
@@ -354,7 +354,7 @@ MAPS.push(
 // `perches` are spots on top of the peaks (x, z, height) where sniper bots like to set up.
 // ---------------------------------------------------------------------------------------------
 const hexMix = (a, b, t) => { const ch = s => (a >> s & 255) + ((b >> s & 255) - (a >> s & 255)) * t; return (Math.round(ch(16)) << 16) | (Math.round(ch(8)) << 8) | Math.round(ch(0)); };
-const shades = (n, c0, c1) => Array.from({ length: n }, (_, i) => hexMix(c0, c1, n > 1 ? Math.pow(i / (n - 1), 1.9) : 0));   // mostly stone, with snow only near the top
+const shades = (n, c0, c1) => Array.from({ length: n }, (_, i) => hexMix(c0, c1, n > 1 ? Math.pow(i / (n - 1), 1.9) : 0));   // mostly mossy, with bare earth near the top
 const turn = ([x, z, ...rest]) => [-x, -z, ...rest];   // the same spot after a half turn of the map
 const PEAK = {
   center: [0, 0, 6.6],
@@ -368,22 +368,22 @@ const PK_ROCKS = [[-8, 21, 4, 2.4, 3], [9, 22, 3, 1.8, 3], [-24, 31, 3, 2, 3], [
 const PK_WALLS = [[16, 21, 6, 1.2], [-8, 38, 8, 1.2], [8, 38, 8, 1.2], [-39, 28, 1.2, 6]];
 const PK_SPIRES = [[-14, 22], [20, 10]];
 const PK_PADS = [[0, 19.5, 0, 6.6, .8, 1.5], [-22, 27.5, -28, 4.4, 14, 1.5], [20, 30.5, 30, 3.3, 30, 1.2], [37.5, 12, 44.5, 3.3, 12, 1.05]];
-const PK_WOODS = [[28.5, 9.5, 11, 16], [-27.5, 31.5, 11, 14]];
+const PK_TREE_N = 120, PK_BUSH_N = 170;   // jungle: trees and bushes per half of the map (each one has a twin after a half turn)
 // watchtowers in the four corners: climb the yellow ladder column (hold jump toward it), jump on the pad, or walk up from a perch. Platform top is at 9 m.
 const PK_TOWERS = [[44, 33], [-44, -33], [-44, 33], [44, -33]];
 const PK_TPADS = [[44, 25, 44, 9, 33, 1.7], [-44, -25, -44, 9, -33, 1.7], [-44, 25, -44, 9, 33, 1.7], [44, -25, 44, 9, -33, 1.7]];   // pads in front of each tower
 const tower = (b, cx, cz) => {
-  const s = Math.sign(cz), H = 9, STONE = 0x7a6a58, DECK = 0xa8b4cc, RAIL = 0x8896b4;
+  const s = Math.sign(cz), H = 9, STONE = 0x8a6a32, DECK = 0xb08a40, RAIL = 0x6a5026;
   for (const dx of [-3.4, 3.4]) for (const dz of [-3.4, 3.4]) b.box(cx + dx, H / 2, cz + dz, 1.2, H, 1.2, STONE);   // legs
   b.box(cx, H - .3, cz, 8, .6, 8, DECK);                                                                           // the deck
   b.box(cx, H + .5, cz - s * 3.85, 8, 1, .3, RAIL); b.box(cx - 3.85, H + .5, cz, .3, 1, 8, RAIL); b.box(cx + 3.85, H + .5, cz, .3, 1, 8, RAIL);   // low walls to hide behind
   for (const dx of [-2.4, 2.4]) b.box(cx + dx, H + .5, cz + s * 3.85, 3.2, 1, .3, RAIL);                           // outer wall with a gap in the middle
-  b.box(cx, H / 2, cz + s * 4.6, 1, H, 1, 0xf0c040);                                                              // the ladder column
+  b.box(cx, H / 2, cz + s * 4.6, 1, H, 1, 0xe0c050);                                                              // the ladder column
   for (const dx of [-3.4, 3.4]) b.glow(cx + dx, H + 2.4, cz - s * 3.4, .25, 2.8, .25, 0x2ee6ff);                  // beacons
 };   // forests: x, z, radius, trees (each one has a twin after a half turn)
 const padTurn = ([x, z, tx, ty, tz, T]) => [-x, -z, -tx, ty, -tz, T];
 // the footprints of the peaks, ridges, terraces and bunkers: [x, z, width, depth] (both halves)
-const PK_RECTS = (() => { const o = [], both = (x, z, w, d) => o.push([x, z, w, d], [-x, -z, w, d]); both(0, 0, 30, 30); both(-28, 14, 20, 20); both(30, 30, 16, 16); both(0, 31, 30, 8); both(44.5, 0, 9, 46); both(-28, 44, 12, 8); both(28, 44, 12, 8); both(44, 33, 10, 10); both(-44, 33, 10, 10); return o; })();
+const PK_RECTS = (() => { const o = [], both = (x, z, w, d) => o.push([x, z, w, d], [-x, -z, w, d]); both(0, 0, 30, 30); both(-28, 14, 20, 20); both(30, 30, 16, 16); both(0, 31, 30, 8); both(44.5, 0, 9, 46); both(-28, 44, 12, 8); both(28, 44, 12, 8); both(44, 33, 12, 12); both(-44, 33, 12, 12); return o; })();
 const inRects = (x, z, m) => PK_RECTS.some(([cx, cz, w, d]) => Math.abs(x - cx) < w / 2 + m && Math.abs(z - cz) < d / 2 + m);
 // everything else that is already standing somewhere: [x, z, radius] (both halves), so new rocks and trees stay out of the way
 const PK_OCC = (() => {
@@ -391,25 +391,36 @@ const PK_OCC = (() => {
   PK_ROCKS.forEach(([x, z, sx, , sz]) => both(x, z, Math.max(sx, sz) / 2 + 2.5));
   PK_WALLS.forEach(([x, z, sx, sz]) => both(x, z, Math.max(sx, sz) / 2 + 2.2));
   PK_SPIRES.forEach(([x, z]) => both(x, z, 5));
-  PK_PADS.forEach(([x, z]) => both(x, z, 4.2)); for (const [x, z] of PK_TPADS) o.push([x, z, 4.2]);
+  PK_PADS.forEach(([x, z]) => both(x, z, 3.4)); for (const [x, z] of PK_TPADS) o.push([x, z, 3.4]);
   for (const x of [-20, -10, 0, 10, 20]) both(x, 46, 5.5); both(0, 42, 6); both(-38, 47, 5); both(38, 45, 5);
   return o;
 })();
-// the trees of both forests (and their twins), picked once so every player gets the same map
+// keep the flight path of every jump pad free of treetops (the low leaves would block you in the air)
+const PK_PADLIST = [...PK_PADS, ...PK_PADS.map(padTurn), ...PK_TPADS];
+const segDist = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2)); return Math.hypot(px - ax - dx * t, pz - az - dz * t); };
+const padBlocked = (x, z) => PK_PADLIST.some(([ax, az, tx, , tz]) => { const d = Math.hypot(tx - ax, tz - az) || 1, k = Math.min(d, 10) / d; return segDist(x, z, ax, az, ax + (tx - ax) * k, az + (tz - az) * k) < 4.6; });
+// the jungle: trees all over (and their twins), picked once so every player gets the same map
 const PK_TREES = (() => {
-  const R = rng(8801), out = [];
-  for (const [cx, cz, rad, n] of PK_WOODS) {
-    const mine = [];
-    for (let t = 0; mine.length < n && t < n * 80; t++) {
-      const a = R() * 6.283, r = Math.sqrt(R()) * rad, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, s = .85 + R() * .4, c = Math.floor(R() * 3);
-      if (inRects(x, z, 2.6) || PK_OCC.some(([ax, az, ar]) => Math.hypot(x - ax, z - az) < ar) || mine.some(([px, pz]) => Math.hypot(x - px, z - pz) < 3.7)) continue;
-      mine.push([x, z, s, c]);
-    }
-    for (const [x, z, s, c] of mine) out.push([x, z, s, c], [-x, -z, s, c]);
+  const R = rng(8801), mine = [], out = [];
+  for (let t = 0; mine.length < PK_TREE_N && t < PK_TREE_N * 70; t++) {
+    const x = (R() * 2 - 1) * 49, z = R() * 49 + 1, s = .8 + R() * .5, c = Math.floor(R() * 3);
+    if (Math.hypot(2 * x, 2 * z) < 4 || inRects(x, z, 2.6) || padBlocked(x, z) || PK_OCC.some(([ax, az, ar]) => Math.hypot(x - ax, z - az) < ar) || mine.some(([px, pz]) => Math.hypot(x - px, z - pz) < 3.5 || Math.hypot(x + px, z + pz) < 3.5)) continue;
+    mine.push([x, z, s, c]);
   }
+  for (const [x, z, s, c] of mine) out.push([x, z, s, c], [-x, -z, s, c]);
   return out;
 })();
-PK_WOODS.forEach(([x, z, r]) => PK_OCC.push([x, z, r + 1.5], [-x, -z, r + 1.5]));
+// undergrowth: bushes you can crouch in to sneak (they are soft, so you can walk through them)
+const PK_BUSHES = (() => {
+  const R = rng(8803), mine = [], out = [];
+  for (let t = 0; mine.length < PK_BUSH_N && t < PK_BUSH_N * 40; t++) {
+    const x = (R() * 2 - 1) * 49, z = R() * 49 + 1, r = .9 + R() * .5;
+    if (Math.hypot(2 * x, 2 * z) < 4 || inRects(x, z, r) || PK_OCC.some(([ax, az, ar]) => Math.hypot(x - ax, z - az) < Math.min(ar, 3.2) + r * .5) || PK_TREES.some(([tx, tz]) => Math.hypot(x - tx, z - tz) < 1.3 + r * .5) || mine.some(([px, pz]) => Math.hypot(x - px, z - pz) < 2.2 || Math.hypot(x + px, z + pz) < 2.2)) continue;
+    mine.push([x, z, r]);
+  }
+  for (const [x, z, r] of mine) out.push([x, z, r], [-x, -z, r]);
+  return out;
+})();
 // extra boulders in the open (one half is picked, the other half is its twin)
 const PK_BOULDERS = (() => {
   const R = rng(8802), out = [];
@@ -420,36 +431,42 @@ const PK_BOULDERS = (() => {
   }
   return out;
 })();
-const PK_TREE_COL = [0x2f8a3e, 0x3a9a4a, 0x2a7a52], PK_TREE_TOP = [0x3aa84a, 0x4ab85a, 0x34986a], PK_ROCK_COL = [0x7a88a6, 0x6f7d9a, 0x8794b0, 0x93a0ba];
-MAPS.push({
-  id: 'peaks', name: 'Highline Peaks', half: 52, sn: true, radar: 62,
-  blurb: "Sniper's Alley only. Snowy peaks you can climb or jump-pad up, two forests, watchtowers in the corners, long ledges, spires and boulders to hide behind. Climb high, stay low, line it up.",
-  swatch: ['#2a78ff', '#9fd0ff', '#86c874'],
-  theme: { sky: [0x2a78ff, 0x9fd0ff, 0xf4faff], sunStr: 1.2, fog: [0xd6ebff, 80, 250], floor: ['#86c874', '#78bc68', 'rgba(30,80,50,.3)'], ground: 0x6aa86a, wall: 0x4a6288,
-    strips: [0x2ee6ff, 0xffffff, 0x4aa8ff, 0x8aa8ff], hemi: [0xe8f4ff, 0x9ab4d8, 1.1], sun: [0xfff6e0, 2.4], exposure: 1.1, clouds: 0xffffff, deco: 'none' },
+const PK_TREE_COL = [0x1f6a2e, 0x2a7a36, 0x1a5a34], PK_TREE_TOP = [0x2f8a3e, 0x3a9a48, 0x268a50], PK_ROCK_COL = [0x66765e, 0x58684f, 0x76806a, 0x848a6c], PK_BUSH_COL = [0x2f8a3a, 0x3a9a44, 0x28783a, 0x4aa850];
+const PEAKS_DEF = {
+  id: 'peaks', name: 'Jungle Highlands', half: 52, sn: true, radar: 62,
+  blurb: "Sniper's Alley only. A Vietnam-style jungle: thick trees you can climb into, bushes to sneak through, mossy hills and needle spires to climb, bamboo watchtowers and jump pads. Stay low, stay quiet, line it up.",
+  swatch: ['#2f6a3a', '#a9cf98', '#3d7a3a'],
+  theme: { sky: [0x4f8f86, 0xa9cf98, 0xf2e8b5], sunStr: 1, fog: [0x8fb98a, 22, 150], floor: ['#3d7a3a', '#35702f', 'rgba(8,40,14,.45)'], ground: 0x2c5a2a, wall: 0x2a4a2a,
+    strips: [0x7ad87a, 0xd8f0a0, 0x4ab870, 0xf0e090], hemi: [0xcfe8c0, 0x2a4a2a, 1], sun: [0xffe6a8, 2.1], exposure: 1.05, clouds: 0xe6f0d0, deco: 'none' },
   build(b) {
-    const STONE = 0x6a7a9a, SNOW = 0xffffff, DARK = 0x46557a;
+    const STONE = 0x3d6a36, SNOW = 0x93845f, DARK = 0x3a4a30;
     mesa(b, 0, 0, 30, 30, 12, shades(12, STONE, SNOW), 1.2);                                          // the big middle peak (top at 6.6)
     for (const sg of [1, -1]) {
-      mesa(b, sg * -28, sg * 14, 20, 20, 8, shades(8, 0x7585a5, SNOW), 1.1);                          // flank peaks (top at 4.4)
-      mesa(b, sg * 30, sg * 30, 16, 16, 6, shades(6, 0x7585a5, SNOW), 1.2);                           // forward peaks (top at 3.3)
-      mesa(b, 0, sg * 31, 30, 8, 3, shades(3, 0x8090b0, 0xdfe8f4), 1.3);                              // long low ridges (top at 1.65)
-      mesa(b, sg * 44.5, 0, 9, 46, 6, shades(6, 0x8896b4, 0xd8e2f0), .7);                             // terraces along the edges: long ledges to run along (top at 3.3)
-      for (const dx of [-28, 28]) mesa(b, dx, sg * 44, 12, 8, 3, shades(3, 0x8090b0, 0xdfe8f4), 1.3);   // base bunkers
-      for (const [x, z] of PK_SPIRES) { mesa(b, sg * x, sg * z, 6, 6, 16, shades(16, DARK, 0xb8c6e0), .14); b.glow(sg * x, 8.95, sg * z, 1, .3, 1, 0x2ee6ff); }   // needle spires: a thin staircase you can climb (top at 8.8)
+      mesa(b, sg * -28, sg * 14, 20, 20, 8, shades(8, 0x4a7a3c, SNOW), 1.1);                          // flank peaks (top at 4.4)
+      mesa(b, sg * 30, sg * 30, 16, 16, 6, shades(6, 0x4a7a3c, SNOW), 1.2);                           // forward peaks (top at 3.3)
+      mesa(b, 0, sg * 31, 30, 8, 3, shades(3, 0x4a7038, 0x8f8060), 1.3);                              // long low ridges (top at 1.65)
+      mesa(b, sg * 44.5, 0, 9, 46, 6, shades(6, 0x557a40, 0x8a7a58), .7);                             // terraces along the edges: long ledges to run along (top at 3.3)
+      for (const dx of [-28, 28]) mesa(b, dx, sg * 44, 12, 8, 3, shades(3, 0x4a7038, 0x8f8060), 1.3);   // base bunkers
+      for (const [x, z] of PK_SPIRES) { mesa(b, sg * x, sg * z, 6, 6, 16, shades(16, DARK, 0xa09a78), .14); b.glow(sg * x, 8.95, sg * z, 1, .3, 1, 0xd8f0a0); }   // needle spires: a thin staircase you can climb (top at 8.8)
       for (const [x, z, sx, sy, sz] of PK_ROCKS) b.box(sg * x, sy / 2, sg * z, sx, sy, sz, PK_ROCK_COL[0]);   // rocks to stand behind
-      for (const [x, z, sx, sz] of PK_WALLS) b.box(sg * x, .6, sg * z, sx, 1.2, sz, 0xa6b2cc);         // low walls to crouch behind
+      for (const [x, z, sx, sz] of PK_WALLS) b.box(sg * x, .6, sg * z, sx, 1.2, sz, 0x8a8466);         // low walls to crouch behind
     }
     for (const [x, z, bw, bh, bd, c, st] of PK_BOULDERS) for (const sg of [1, -1]) {                  // more boulders, some with a smaller rock on top
       b.box(sg * x, bh / 2, sg * z, bw, bh, bd, PK_ROCK_COL[c]);
       if (st) b.box(sg * (x + bw * .12), bh + bh * .28, sg * (z - bd * .1), bw * .6, bh * .56, bd * .6, PK_ROCK_COL[(c + 1) % 4]);
     }
-    for (const [x, z, s, c] of PK_TREES) {                                                            // the forests: you can hide behind a trunk, and the low leaves block the view from above
-      b.box(x, 1.6, z, .9, 3.2, .9, 0x7a5230);
-      b.box(x, 3.9, z, 4 * s, 1.4, 4 * s, PK_TREE_COL[c]);
-      b.box(x, 5.2, z, 2.8 * s, 1.2, 2.8 * s, PK_TREE_TOP[c], { solid: false });
-      b.box(x, 6.3, z, 1.6 * s, 1.1, 1.6 * s, PK_TREE_TOP[(c + 1) % 3], { solid: false });
+    for (const [x, z, s, c] of PK_TREES) {                                                            // jungle trees: hide behind a trunk, climb in (jump at it), and the low leaves block the view from above
+      b.box(x, 1.6, z, .9, 3.2, .9, 0x5e4026);
+      b.box(x, 3.9, z, 4 * s, 1.4, 4 * s, PK_TREE_COL[c], { leaf: true });
+      b.box(x, 5.2, z, 2.8 * s, 1.2, 2.8 * s, PK_TREE_TOP[c], { leaf: true, solid: false });
+      b.box(x, 6.3, z, 1.6 * s, 1.1, 1.6 * s, PK_TREE_TOP[(c + 1) % 3], { leaf: true, solid: false });
+      b.box(x + 1.5 * s, 2.55, z + 1.3 * s, .12, 1.9, .12, 0x2e7a34, { leaf: true, solid: false, edges: false });   // hanging vines
+      b.box(x - 1.6 * s, 2.75, z - 1.1 * s, .12, 1.5, .12, 0x2e7a34, { leaf: true, solid: false, edges: false });
     }
+    PK_BUSHES.forEach(([x, z, r], i) => {                                                             // undergrowth
+      b.box(x, .55, z, 2 * r, 1.1, 2 * r, PK_BUSH_COL[i % 4], { leaf: true, solid: false });
+      b.box(x + r * .4, .4, z - r * .3, r * 1.3, .8, r * 1.3, PK_BUSH_COL[(i + 1) % 4], { leaf: true, solid: false });
+    });
     for (const [cx, cz] of PK_TOWERS) tower(b, cx, cz);   // watchtowers in the corners
   },
   spawnsA: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [-38, 47], [38, 45]],
@@ -458,8 +475,13 @@ MAPS.push({
   perches: [PEAK.center, ...PEAK.flank, ...PEAK.flank.map(turn), ...PEAK.fwd, ...PEAK.fwd.map(turn), ...PEAK.ridge, ...PEAK.ridge.map(turn), ...PEAK.terr, ...PEAK.terr.map(turn), [44.5, 15, 3.3], [-44.5, -15, 3.3], [44.5, -15, 3.3], [-44.5, 15, 3.3], ...PEAK.bunk, ...PEAK.bunk.map(turn), ...PK_SPIRES.map(([x, z]) => [x, z, 8.8]), ...PK_SPIRES.map(([x, z]) => [-x, -z, 8.8]), ...PK_TOWERS.map(([x, z]) => [x, z, 9])],
   pads: [...PK_PADS, ...PK_PADS.map(padTurn), ...PK_TPADS],
   trees: PK_TREES.map(([x, z, s]) => [x, z, s]),
+  bushes: PK_BUSHES,
   loot: [...PK_TOWERS.flatMap(([x, z]) => [[x, z, 9], [x + 2, z + 2, 9]]), [-14, 22, 8.8], [20, 10, 8.8], [14, -22, 8.8], [-20, -10, 8.8], [-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42],
     ...[[-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42]].map(turn),
     [0, 0, 6.6], [-28, 14, 4.4], [28, -14, 4.4], [30, 30, 3.3], [-30, -30, 3.3], [44.5, 0, 3.3], [-44.5, 0, 3.3], [0, 31, 1.65], [0, -31, 1.65]],
   dmg: [[0, 6.6, 1.2], [0, 6.6, -1.2]],
-});
+};
+MAPS.push(PEAKS_DEF);
+// the XL version: the same map built 3 times along each side (9 copies, about 8x bigger than the original), teams start at the two far ends
+MAPS.push(Object.assign({}, PEAKS_DEF, { id: 'peaksxl', name: 'Jungle Highlands XL', tiles: 3, radar: 105,
+  blurb: "Sniper's Alley only. EIGHT TIMES bigger: a huge jungle of nine joined hills, towers and forests. Team spawns are at opposite ends, so plan your route, grab armour and a ghillie suit, and get to the high ground." }));
