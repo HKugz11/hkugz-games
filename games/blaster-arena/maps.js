@@ -374,7 +374,7 @@ const PK_TOWERS = [[44, 33], [-44, -33], [-44, 33], [44, -33]];
 const PK_TPADS = [[44, 25, 44, 9, 33, 1.7], [-44, -25, -44, 9, -33, 1.7], [-44, 25, -44, 9, 33, 1.7], [44, -25, 44, 9, -33, 1.7]];   // pads in front of each tower
 const tower = (b, cx, cz) => {
   const s = Math.sign(cz), H = 9, STONE = 0x8a6a32, DECK = 0xb08a40, RAIL = 0x6a5026;
-  for (const dx of [-3.3, 3.3]) for (const dz of [-3.3, 3.3]) b.box(cx + dx, H / 2, cz + dz, 1, H, 1, STONE);   // legs (tucked in under the deck so no faces line up with its edge)
+  for (const dx of [-3.3, 3.3]) for (const dz of [-3.3, 3.3]) b.box(cx + dx, (H - .3) / 2, cz + dz, 1, H - .3, 1, STONE);   // legs (tucked in under the deck so no faces line up with its edge)
   b.box(cx, H - .3, cz, 8, .6, 8, DECK);                                                                           // the deck
   b.box(cx, H + .5, cz - s * 3.85, 7.4, 1, .3, RAIL); b.box(cx - 3.85, H + .5, cz, .3, 1, 8, RAIL); b.box(cx + 3.85, H + .5, cz, .3, 1, 8, RAIL);   // low walls to hide behind
   for (const dx of [-2.25, 2.25]) b.box(cx + dx, H + .5, cz + s * 3.85, 2.9, 1, .3, RAIL);                           // outer wall with a gap in the middle
@@ -403,11 +403,11 @@ const padBlocked = (x, z) => PK_PADLIST.some(([ax, az, tx, , tz]) => { const d =
 const PK_TREES = (() => {
   const R = rng(8801), mine = [], out = [];
   for (let t = 0; mine.length < PK_TREE_N && t < PK_TREE_N * 70; t++) {
-    const x = (R() * 2 - 1) * 49, z = R() * 49 + 1, s = .8 + R() * .5, c = Math.floor(R() * 3);
+    const x = (R() * 2 - 1) * 49, z = R() * 49 + 1, s = .8 + R() * .5, c = Math.floor(R() * 3), o = (R() - .5) * .3;   // o: every tree gets its own canopy height so overlapping treetops never share a plane (that flickers)
     if (Math.hypot(2 * x, 2 * z) < 4 || inRects(x, z, 2.6) || padBlocked(x, z) || PK_OCC.some(([ax, az, ar]) => Math.hypot(x - ax, z - az) < ar) || mine.some(([px, pz]) => Math.hypot(x - px, z - pz) < 3.5 || Math.hypot(x + px, z + pz) < 3.5)) continue;
-    mine.push([x, z, s, c]);
+    mine.push([x, z, s, c, o]);
   }
-  for (const [x, z, s, c] of mine) out.push([x, z, s, c], [-x, -z, s, c]);
+  for (const [x, z, s, c, o] of mine) out.push([x, z, s, c, o], [-x, -z, s, c, o]);
   return out;
 })();
 // undergrowth: bushes you can crouch in to sneak (they are soft, so you can walk through them)
@@ -455,17 +455,18 @@ const PEAKS_DEF = {
       b.box(sg * x, bh / 2, sg * z, bw, bh, bd, PK_ROCK_COL[c]);
       if (st) b.box(sg * (x + bw * .12), bh + bh * .28, sg * (z - bd * .1), bw * .6, bh * .56, bd * .6, PK_ROCK_COL[(c + 1) % 4]);
     }
-    for (const [x, z, s, c] of PK_TREES) {                                                            // jungle trees: hide behind a trunk, climb in (jump at it), and the low leaves block the view from above
-      b.box(x, 1.6, z, .9, 3.2, .9, 0x5e4026);
-      b.box(x, 3.9, z, 4 * s, 1.4, 4 * s, PK_TREE_COL[c], { leaf: true });
-      b.box(x, 5.2, z, 2.8 * s, 1.2, 2.8 * s, PK_TREE_TOP[c], { leaf: true, solid: false });
-      b.box(x, 6.3, z, 1.6 * s, 1.1, 1.6 * s, PK_TREE_TOP[(c + 1) % 3], { leaf: true, solid: false });
+    for (const [x, z, s, c, o] of PK_TREES) {                                                            // jungle trees: hide behind a trunk, climb in (jump at it), and the low leaves block the view from above
+      b.box(x, 1.75, z, .9, 3.5, .9, 0x5e4026);
+      b.box(x, 3.9 + o, z, 4 * s, 1.4, 4 * s, PK_TREE_COL[c], { leaf: true });
+      b.box(x, 5.2 + o, z, 2.8 * s, 1.2, 2.8 * s, PK_TREE_TOP[c], { leaf: true, solid: false });
+      b.box(x, 6.3 + o, z, 1.6 * s, 1.1, 1.6 * s, PK_TREE_TOP[(c + 1) % 3], { leaf: true, solid: false });
       b.box(x + 1.5 * s, 2.55, z + 1.3 * s, .12, 1.9, .12, 0x2e7a34, { leaf: true, solid: false, edges: false });   // hanging vines
       b.box(x - 1.6 * s, 2.75, z - 1.1 * s, .12, 1.5, .12, 0x2e7a34, { leaf: true, solid: false, edges: false });
     }
     PK_BUSHES.forEach(([x, z, r], i) => {                                                             // undergrowth
-      b.box(x, .55, z, 2 * r, 1.1, 2 * r, PK_BUSH_COL[i % 4], { leaf: true, solid: false });
-      b.box(x + r * .4, .4, z - r * .3, r * 1.3, .8, r * 1.3, PK_BUSH_COL[(i + 1) % 4], { leaf: true, solid: false });
+      const hh = .9 + ((i * 7919) % 101) / 101 * .5;   // each bush has its own height so overlapping bushes never share a top plane
+      b.box(x, hh / 2, z, 2 * r, hh, 2 * r, PK_BUSH_COL[i % 4], { leaf: true, solid: false });
+      b.box(x + r * .4, hh * .35, z - r * .3, r * 1.3, hh * .7, r * 1.3, PK_BUSH_COL[(i + 1) % 4], { leaf: true, solid: false });
     });
     for (const [cx, cz] of PK_TOWERS) tower(b, cx, cz);   // watchtowers in the corners
   },
@@ -474,7 +475,7 @@ const PEAKS_DEF = {
   spawns: [[-18, 46], [-9, 46], [0, 46], [9, 46], [18, 46], [-4, 42], [4, 42], [18, -46], [9, -46], [0, -46], [-9, -46], [-18, -46], [4, -42], [-4, -42]],
   perches: [PEAK.center, ...PEAK.flank, ...PEAK.flank.map(turn), ...PEAK.fwd, ...PEAK.fwd.map(turn), ...PEAK.ridge, ...PEAK.ridge.map(turn), ...PEAK.terr, ...PEAK.terr.map(turn), [44.5, 15, 3.3], [-44.5, -15, 3.3], [44.5, -15, 3.3], [-44.5, 15, 3.3], ...PEAK.bunk, ...PEAK.bunk.map(turn), ...PK_SPIRES.map(([x, z]) => [x, z, 8.8]), ...PK_SPIRES.map(([x, z]) => [-x, -z, 8.8]), ...PK_TOWERS.map(([x, z]) => [x, z, 9])],
   pads: [...PK_PADS, ...PK_PADS.map(padTurn), ...PK_TPADS],
-  trees: PK_TREES.map(([x, z, s]) => [x, z, s]),
+  trees: PK_TREES.map(([x, z, s, , o]) => [x, z, s, 4.6 + o]),
   bushes: PK_BUSHES,
   loot: [...PK_TOWERS.flatMap(([x, z]) => [[x, z, 9], [x + 2, z + 2, 9]]), [-14, 22, 8.8], [20, 10, 8.8], [14, -22, 8.8], [-20, -10, 8.8], [-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42],
     ...[[-8, 24.5], [9, 25.5], [-24, 28], [24, 18], [0, 42], [-18, 43], [18, 43], [-34, 34], [36, 43], [-30, 0], [28, 6], [26, 6], [32, 14], [-30, 30], [-26, 38], [34, 4], [-34, 42]].map(turn),
@@ -485,3 +486,51 @@ MAPS.push(PEAKS_DEF);
 // the XL version: the same map built 3 times along each side (9 copies, about 8x bigger than the original), teams start at the two far ends
 MAPS.push(Object.assign({}, PEAKS_DEF, { id: 'peaksxl', name: 'Jungle Highlands XL', tiles: 3, radar: 105,
   blurb: "Sniper's Alley only. EIGHT TIMES bigger: a huge jungle of nine joined hills, towers and forests. Team spawns are at opposite ends, so plan your route, grab armour and a ghillie suit, and get to the high ground." }));
+
+// ---------------------------------------------------------------------------------------------
+// BATTLE ROOM (room: true, only for the Battle Room mode): a zero-gravity cube like in Ender's Game, 70 m on every side, with floating
+// "stars" (cubes, slabs, bars and stepped blocks) in the middle and a gate in the centre of each end wall. Each army starts around
+// its own gate. The stars are mirrored (turned upside down and around) so both armies get the same cover.
+// ---------------------------------------------------------------------------------------------
+const BR_Y0 = 35;   // height of the middle of the room
+const BR_STARS = (() => {
+  const R = rng(9101), kinds = ['cube', 'slab', 'bar', 'step', 'cube', 'slab', 'bar', 'step', 'cube', 'step', 'slab', 'bar'], half = [], all = [];
+  for (let t = 0; half.length < kinds.length && t < 4000; t++) {
+    const kind = kinds[half.length], x = (R() * 2 - 1) * 26, y = 9 + R() * 52, z = 2 + R() * 20, s = 3 + R() * 3.2;
+    if (2 * Math.hypot(x, y - BR_Y0, z) < 13) continue;
+    const tw = [-x, 2 * BR_Y0 - y, -z];
+    if (all.some(([px, py, pz]) => Math.hypot(x - px, y - py, z - pz) < 11.5 || Math.hypot(tw[0] - px, tw[1] - py, tw[2] - pz) < 11.5)) continue;
+    half.push([x, y, z, s, kind]); all.push([x, y, z], tw);
+  }
+  return half.flatMap(([x, y, z, s, kind]) => [[x, y, z, s, kind], [-x, 2 * BR_Y0 - y, -z, s, kind]]);
+})();
+const BR_SLOTS = []; for (const y of [26, 30, 40, 44]) for (const x of [-9, -3, 3, 9]) BR_SLOTS.push([x, y]);
+BR_SLOTS.sort((a, b) => Math.hypot(a[0], a[1] - BR_Y0) - Math.hypot(b[0], b[1] - BR_Y0));   // the nearest slots to the gate come first (that is where you start)   // where the soldiers wait for the start (around the gate)
+MAPS.push({
+  id: 'battleroom', name: 'Battle Room', half: 35, room: true, wallH: 70, radar: 50,
+  blurb: "Battle Room mode only. An Ender's Game zero-gravity cube: floating stars, a glowing gate for each army and nothing to stand on. Push off the walls and the stars and fly.",
+  swatch: ['#05060e', '#1a2250', '#8ab4ff'],
+  theme: { sky: [0x02030a, 0x080c24, 0x12204a], sunStr: 0, fog: [0x0a1030, 90, 230], floor: ['#2b3358', '#222a4a', 'rgba(138,180,255,.6)'], ground: 0x0a1030, wall: 0x2f3a68,
+    strips: [0xff9a4a, 0x2ee6ff, 0x4a62c8, 0x4a62c8], hemi: [0xdfe8ff, 0x8a98d0, 1.9], sun: [0xffffff, .35], exposure: 1.2, clouds: 0x1a2250, deco: 'stars' },
+  build(b) {
+    b.box(0, 70.5, 0, 74, 1, 74, 0x2a3358);   // the ceiling closes the cube
+    for (const y of [10, 20, 30, 40, 50, 60]) for (const [x, z, sx, sz] of [[0, -34.85, 70, .25], [0, 34.85, 70, .25], [-34.85, 0, .25, 70], [34.85, 0, .25, 70]]) b.glow(x, y, z, sx, .25, sz, 0x4a62c8);   // glowing grid on the walls
+    for (let u = -30; u <= 30; u += 10) { b.glow(u, 35, -34.85, .25, 70, .25, 0x4a62c8); b.glow(u, 35, 34.85, .25, 70, .25, 0x4a62c8); b.glow(-34.85, 35, u, .25, 70, .25, 0x4a62c8); b.glow(34.85, 35, u, .25, 70, .25, 0x4a62c8); b.glow(u, 69.85, 0, .25, .2, 70, 0x4a62c8); b.glow(0, 69.85, u, 70, .2, .25, 0x4a62c8); }
+    const SC = [0xdfe6f4, 0x9aa6c8, 0xffffff, 0x7f8ab0];
+    BR_STARS.forEach(([x, y, z, s, kind], i) => {   // the stars
+      const c = SC[i % 4], alt = (i & 2) !== 0;
+      if (kind === 'cube') b.box(x, y, z, s, s, s, c);
+      else if (kind === 'slab') alt ? b.box(x, y, z, s * 2.2, s * 2.2, .9, c) : b.box(x, y, z, s * 2.2, .9, s * 2.2, c);
+      else if (kind === 'bar') alt ? b.box(x, y, z, s * 3.2, 1.4, 1.4, c) : b.box(x, y, z, 1.4, 1.4, s * 3.2, c);
+      else for (let k = 0; k < 3; k++) b.box(x, y - s * .55 + k * s * .55, z, s * 1.8 * (1 - .28 * k), s * .55, s * 1.8 * (1 - .28 * k), c);
+    });
+    for (const [z, col, dim] of [[34.7, 0x2ee6ff, 0x123a52], [-34.7, 0xff9a4a, 0x52300f]]) {   // the two gates: a glowing doorway in the middle of each end wall
+      b.glow(0, BR_Y0, z, 8, 8, .1, dim); b.glow(0, BR_Y0 + 4.25, z * .999, 9, .5, .3, col); b.glow(0, BR_Y0 - 4.25, z * .999, 9, .5, .3, col); b.glow(-4.25, BR_Y0, z * .999, .5, 8.5, .3, col); b.glow(4.25, BR_Y0, z * .999, .5, 8.5, .3, col);
+    }
+  },
+  spawnsA: BR_SLOTS.map(([x, y]) => [x, 34, y]),
+  spawnsB: BR_SLOTS.map(([x, y]) => [-x, -34, 2 * BR_Y0 - y]),
+  spawns: [[-9, 34, 26], [9, 34, 44], [9, -34, 44], [-9, -34, 26]],
+  gate: { y: BR_Y0, z: 34 }, stars: BR_STARS.map(([x, y, z]) => [x, y, z]),
+  loot: [], dmg: [],
+});

@@ -35,6 +35,8 @@
   #hp .fill { height: 100%; width: 100%; background: linear-gradient(180deg, #7dffa0, #20c864); transition: width .15s; } #hp .fill.low { background: linear-gradient(180deg, #ff9a8a, #e63a3a); }
   #hp .num { font-size: 34px; font-weight: 900; text-shadow: 0 3px 0 rgba(0,0,0,.5); margin-bottom: 4px; }
   #armLine { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; } #armLine span { font-size: 12px; font-weight: 900; letter-spacing: .06em; padding: 2px 9px; border-radius: 9px; background: rgba(10,6,24,.62); border: 2px solid var(--c); color: var(--c); text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #brHud { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); font-weight: 900; font-size: 14px; letter-spacing: .08em; color: #cfe8ff; text-shadow: 0 2px 0 rgba(0,0,0,.6); background: rgba(10,6,24,.55); padding: 4px 14px; border-radius: 10px; display: none; white-space: nowrap; }
+  #frost { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s; background: radial-gradient(ellipse at 50% 50%, rgba(200,235,255,0) 28%, rgba(190,225,255,.5) 78%, rgba(235,246,255,.9) 100%); box-shadow: inset 0 0 170px 55px rgba(190,230,255,.75); } #frost.on { opacity: 1; }
   #bushes { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s; overflow: hidden; } #bushes.on { opacity: 1; } #bushes svg { display: block; }
   #ammo { position: absolute; right: 26px; bottom: 22px; text-align: right; text-shadow: 0 3px 0 rgba(0,0,0,.5); }
   #ammo .wrar { font-size: 12px; font-weight: 900; letter-spacing: .18em; } #ammo .wname { font-size: 20px; font-weight: 800; letter-spacing: .08em; color: var(--y); } #ammo .cnt { font-size: 60px; font-weight: 900; line-height: 1; } #ammo .cnt small { font-size: 24px; opacity: .7; } #ammo .rl { font-size: 15px; font-weight: 700; color: var(--c); height: 18px; }
@@ -75,6 +77,7 @@
   #items .it.empty { display: none; } #items .it.using { border-color: var(--y); transform: translateY(-6px); }
   #items .k { position: absolute; left: 4px; top: 0; font-size: 10px; font-weight: 900; opacity: .9; } #items .n { position: absolute; right: 4px; bottom: 0; font-size: 12px; font-weight: 900; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
   .ic { display: block; background: var(--c); border: 2px solid rgba(0,0,0,.5); position: relative; }
+  .ic-glider { width: 28px; height: 18px; clip-path: polygon(50% 0, 100% 100%, 0 100%); border: none; } .ic-sjump { width: 18px; height: 24px; clip-path: polygon(50% 0, 100% 42%, 72% 42%, 72% 100%, 28% 100%, 28% 42%, 0 42%); border: none; }
   .ic-bandage { width: 24px; height: 16px; border-radius: 4px; } .ic-medkit { width: 28px; height: 22px; border-radius: 5px; }
   .ic-bandage:after, .ic-medkit:after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font: 900 15px/1 sans-serif; color: #ff4a5a; } .ic-medkit:after { color: #fff; }
   .ic-mini { width: 14px; height: 14px; border-radius: 50%; } .ic-pot { width: 24px; height: 24px; border-radius: 50%; }
@@ -118,12 +121,12 @@
   }
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
-<meta name="description" content="A bouncy 3D robot shooter with 14 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
+<meta name="description" content="A bouncy 3D robot shooter with 15 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'48'%20fill%3D'%23fff'%2F%3E%3Cg%20fill%3D'none'%20stroke%3D'%238a9099'%20stroke-width%3D'4.6'%20stroke-linejoin%3D'round'%20stroke-linecap%3D'round'%3E%3Cpath%20d%3D'M16%2037H79Q84%2037%2084%2042V50H56L53%2056H47L44%2050H16Z'%2F%3E%3Cpath%20d%3D'M44%2050L36%2076H52L59%2056'%2F%3E%3Cpath%20d%3D'M53%2056Q62%2057%2059%2066'%2F%3E%3Cpath%20d%3D'M23%2037V32H29V37M73%2037V33H78V37'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <meta name="theme-color" content="#0a0618">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Blaster Arena - free browser game">
-<meta property="og:description" content="A bouncy 3D robot shooter with 14 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
+<meta property="og:description" content="A bouncy 3D robot shooter with 15 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/blaster-arena/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/blaster-arena.png">
 <meta name="twitter:card" content="summary_large_image">
 </head>
@@ -131,7 +134,7 @@
 <canvas id="view"></canvas>
 
 <div class="hud" id="hud">
-  <div id="vig"></div><div id="dir"></div><div id="bushes"></div>
+  <div id="vig"></div><div id="dir"></div><div id="bushes"></div><div id="brHud"></div><div id="frost"></div>
   <div id="scope" class="hide"><div id="scopeLens"></div><div id="scopeRet"></div></div>
   <div id="cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><i class="d"></i></div>
   <div id="hit"></div>
@@ -167,7 +170,7 @@
     <details class="keys-d"><summary>Controls</summary>
     <div class="keys">
       <div><b>WASD</b> move</div><div><b>Mouse</b> aim</div><div><b>Click</b> shoot</div><div><b>Right click</b> zoom</div>
-      <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div><div><b>Tab</b> sprint (hold + W)</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> pick a slot (guns + items)</div>
+      <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div><div><b>W W</b> double-tap W to sprint</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> pick a slot (guns + items)</div>
       <div><b>F</b> drink / use / throw what is in your hand</div><div><b>Z</b> toggle aim (handy on a trackpad)</div>
       <div><b>E</b> pick up / open chests</div>
       <div><b>T</b> scoreboard (hold)</div><div><b>I</b> inventory (hold)</div><div><b>Esc</b> pause</div><div><b>Reload</b> uses ammo boxes. Blasters come in 5 rarities!</div>
@@ -197,6 +200,7 @@
     <h1 style="font-size:64px" id="pauseT">PAUSED</h1>
     <label>Mouse sensitivity <input type="range" id="sens" min="0.3" max="2.5" step="0.05"> <span id="sensV"></span></label>
     <label>Field of view <input type="range" id="fovR" min="70" max="105" step="1"> <span id="fovV"></span></label>
+    <label>Jump height <input type="range" id="jumpR" min="1" max="6" step="0.25"> <span id="jumpV"></span></label>
     <label>Volume <input type="range" id="vol" min="0" max="1" step="0.05"> <span id="volV"></span></label>
     <p class="sub" id="perf" style="font-size:13px;margin:6px 0 0;opacity:.6"></p>
     <div class="row"><button id="resume" class="big">RESUME</button><button id="restart" class="alt">Restart match</button><button id="leaveBtn" class="alt">Quit to menu</button></div>
@@ -215,6 +219,6 @@
 <div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
 <a class="back" href="../../index.html">&larr; All games</a>
 <script src="vendor/peerjs.min.js"></script>
-<script type="module" src="game.js?v=5.7"></script>
+<script type="module" src="game.js?v=6.2"></script>
 </body>
 </html>
