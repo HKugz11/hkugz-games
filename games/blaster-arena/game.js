@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=6.3';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.3';
-import { TOUCH, initTouch } from './touch.js?v=6.3';
+import { MAPS } from './maps.js?v=6.4';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.4';
+import { TOUCH, initTouch } from './touch.js?v=6.4';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -24,7 +24,7 @@ const MODES = {
   gungame: { name: 'Gun Game', blurb: 'Free-for-all with a ladder of ten blasters. Every pop upgrades your gun to the next one and the last one is the Pop-Gun. First to finish the ladder wins!' },
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: super low gravity and huge jumps (the walls are way taller so nobody leaves), so fights happen high up in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun with unlimited ammo, but the whole map is full of armour, heals and utility. Armour up and pop away!' },
-  battleroom: { name: 'Battle Room', blurb: "Just like Ender's Game! A huge zero-gravity cube with floating stars. Your army (you plus bots) starts around your gate. Push off the wall with Space (the way you look) and drift, aim with the mouse, and freeze the enemy army with your Flasher: a hit in the body freezes a soldier solid, a hit in the legs freezes the legs. Win a battle by freezing everyone or by getting FOUR unfrozen soldiers to touch the enemy gate. First to 3 battles wins." },
+  battleroom: { name: 'Battle Room', blurb: "Just like Ender's Game! A huge zero-gravity cube with floating stars. Your army (you plus bots) starts around your gate. Push off the wall with Space (the way you look) and drift, aim with the mouse, and freeze the enemy army with your Flasher (it has a red dot sight: hold right mouse to aim through the box): a hit in the body freezes a soldier solid, a hit in the legs freezes the legs. Win a battle by freezing everyone or by getting FOUR unfrozen soldiers to touch the enemy gate. First to 3 battles wins." },
   snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high: jump at a rock to climb it, hold jump while pushing into a tall spire or wall (or a tree trunk) to climb it, or step on a jump pad. Bots cannot see you up in a tree. Line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
@@ -347,7 +347,12 @@ const GUNS = {
   hunt() { const g = new THREE.Group(); gbox(g, .07, .1, .6, 0x8a5a2a, 0, 0, .02); gcyl(g, .02, .62, 0x333a50, 0, .02, -.58); gcyl(g, .05, .34, 0x2a2a3a, 0, .13, -.02); gcyl(g, .045, .01, 0xffffff, 0, .13, -.2, true); gcyl(g, .045, .01, 0xffffff, 0, .13, .16, true); gbox(g, .02, .06, .1, 0xc8c8d8, .06, .03, .06); gbox(g, .09, .14, .3, 0x6a4020, 0, -.02, .42); gbox(g, .06, .15, .07, 0x2a2a3a, 0, -.12, .06, [.25, 0, 0]); return { g, muzzle: new V3(0, .02, -.9) }; },
   rail() { const g = new THREE.Group(); gbox(g, .1, .12, .5, 0x8a3aff, 0, 0, .02); for (let i = 0; i < 4; i++) gcyl(g, .06 + (i % 2) * .008, .03, 0x2ee6ff, 0, .02, -.2 - i * .12, true); gbox(g, .03, .03, .62, 0xff4fe0, .05, .06, -.36); gbox(g, .03, .03, .62, 0xff4fe0, -.05, .06, -.36); gcyl(g, .04, .22, 0x2a2a3a, 0, .13, .02); gcyl(g, .037, .01, 0xff4fe0, 0, .13, -.1, true); gbox(g, .09, .14, .28, 0x2a2a3a, 0, -.02, .4); gbox(g, .06, .15, .07, 0x2a2a3a, 0, -.12, .08, [.25, 0, 0]); return { g, muzzle: new V3(0, .03, -.7) }; },
   vip() { const g = new THREE.Group(); gbox(g, .075, .11, .5, 0x23242e, 0, 0, 0); gbox(g, .04, .04, .4, 0xff4a4a, 0, .075, -.02); gcyl(g, .02, .4, 0x4a4f63, 0, .02, -.45); gcyl(g, .034, .2, 0x1c1c26, 0, .125, -.02); gcyl(g, .032, .01, 0xff6a6a, 0, .125, -.12, true); gcyl(g, .09, .12, 0x3a3f55, 0, -.14, .06); gbox(g, .06, .15, .07, 0x1c1c26, 0, -.12, .2, [.3, 0, 0]); gbox(g, .08, .11, .22, 0x1c1c26, 0, -.01, .36); return { g, muzzle: new V3(0, .02, -.66) }; },
-  frz() { const g = new THREE.Group(); gbox(g, .06, .09, .4, 0xf2f6ff, 0, 0, 0); gcyl(g, .012, .3, 0x2ee6ff, 0, .05, -.04, true); gcyl(g, .025, .16, 0xdfe6f4, 0, .02, -.27); gcyl(g, .032, .02, 0x2ee6ff, 0, .02, -.36, true); gbox(g, .06, .14, .07, 0xdfe6f4, 0, -.11, .08, [.25, 0, 0]); gbox(g, .07, .1, .16, 0xdfe6f4, 0, -.01, .28); return { g, muzzle: new V3(0, .02, -.38) }; },
+  frz() { const g = new THREE.Group(); gbox(g, .06, .09, .4, 0xf2f6ff, 0, 0, 0); gcyl(g, .012, .3, 0x2ee6ff, 0, .05, -.04, true); gcyl(g, .025, .16, 0xdfe6f4, 0, .02, -.27); gcyl(g, .032, .02, 0x2ee6ff, 0, .02, -.36, true); gbox(g, .06, .14, .07, 0xdfe6f4, 0, -.11, .08, [.25, 0, 0]); gbox(g, .07, .1, .16, 0xdfe6f4, 0, -.01, .28);
+    const SY = .17, HC = 0x1f2029;   // red dot in a box: a mount, a four-sided frame, a glass window and a glowing red dot in the middle (aim = the dot sits on the middle of the screen)
+    gbox(g, .03, .05, .05, HC, 0, .085, -.03); gbox(g, .15, .02, .05, HC, 0, SY + .0525, -.03); gbox(g, .15, .02, .05, HC, 0, SY - .0525, -.03); gbox(g, .02, .085, .05, HC, -.065, SY, -.03); gbox(g, .02, .085, .05, HC, .065, SY, -.03);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(.11, .085), new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: .1, depthWrite: false, side: THREE.DoubleSide })); glass.position.set(0, SY, -.03); g.add(glass);
+    const rmat = new THREE.MeshBasicMaterial({ color: 0xff2a2a, depthWrite: false, side: THREE.DoubleSide }), dot = new THREE.Mesh(new THREE.CircleGeometry(.0045, 14), rmat); dot.position.set(0, SY, -.028); g.add(dot);
+    return { g, muzzle: new V3(0, .02, -.38) }; },
   mini() { const g = new THREE.Group(); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; gcyl(g, .018, .5, 0x9aa3b5, Math.cos(a) * .035, .03 + Math.sin(a) * .035, -.34); } gcyl(g, .07, .12, 0x6a7488, 0, .03, -.1); gbox(g, .12, .14, .3, 0xb03a3a, 0, 0, .1); gbox(g, .1, .12, .14, 0x2a2a3a, -.11, -.04, .1); gbox(g, .06, .15, .08, 0x2a2a3a, 0, -.14, .12, [.2, 0, 0]); gbox(g, .1, .1, .16, 0x2a2a3a, 0, -.02, .32); return { g, muzzle: new V3(0, .03, -.6) }; },
 };
 const WDEF = [
@@ -369,7 +374,7 @@ const WDEF = [
   { id: 'rail', at: 'heavy', name: 'RAILGUN', mag: 2, dmg: 130, rate: 1.9, auto: false, spread: 0, hip: .05, reload: 3.0, kick: .18, pellets: 1, hs: 1.4, zoom: 10, shake: .016, trace: 0xff4fe0 },
   { id: 'vip', at: 'medium', name: 'VIPER', mag: 20, dmg: 24, rate: .13, auto: true, spread: .0035, hip: .04, reload: 2.2, kick: .03, pellets: 1, hs: 1.5, zoom: 26, shake: .003, trace: 0xff6a6a },
   // 16: the Battle Room's freezing gun (it never hurts, a hit freezes the suit)
-  { id: 'frz', at: 'light', name: 'FLASHER', mag: 40, dmg: 0, rate: .2, auto: false, spread: .0015, reload: .1, kick: .02, pellets: 1, hs: 1, shake: .002, trace: 0x7cffff },
+  { id: 'frz', at: 'light', name: 'FLASHER', mag: 40, dmg: 0, rate: .2, auto: false, spread: .0015, reload: .1, kick: .02, pellets: 1, hs: 1, shake: .002, trace: 0x7cffff, holo: true, adsFov: 54, adsY: -.122, adsZ: -.35 },
 ];
 const VMS = .72;
 // rarity tiers: scale damage / magazine / fire rate / reload / spread
