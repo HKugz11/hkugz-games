@@ -14,7 +14,7 @@
 <body class="game">
 <div class="bar"><a href="../../index.html">&larr; All games</a><img class="logo" src="../../assets/logo.svg" alt="" width="28" height="28"><span class="title">Tower of Destiny</span><span class="hint">Click, tap or Space to jump</span><button class="fs" id="fs" type="button">Fullscreen</button></div>
 <div class="stage" id="stage">
-  <iframe id="gf" src="game/index.html" title="Tower of Destiny" width="800" height="480"
+  <iframe id="gf" title="Tower of Destiny" width="800" height="480"
     style="border:0; width:100%; max-width:960px; height:auto; aspect-ratio:5/3; display:block; background:#000; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,.6)"
     allow="fullscreen; autoplay" allowfullscreen></iframe>
   <button class="fsx" id="fsx" type="button">Exit fullscreen</button>
@@ -27,6 +27,7 @@
 <script>
 (function () {
   var stage = document.getElementById('stage'), btn = document.getElementById('fs'), gf = document.getElementById('gf'), fsx = document.getElementById('fsx');
+  gf.src = 'game/index.html' + location.search;   // so you can add ?res=1, ?res=2, ?res=3 or ?res=4 to this page's address to pick the picture sharpness
   var req = stage.requestFullscreen || stage.webkitRequestFullscreen, exit = document.exitFullscreen || document.webkitExitFullscreen;
   function isFs() { return document.fullscreenElement || document.webkitFullscreenElement; }
   function fake(on) { stage.classList.toggle('fake', on); label(); }   // fallback: the game fills the whole browser window (phones that cannot do real fullscreen, or a browser that says no)
