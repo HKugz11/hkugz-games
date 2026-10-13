@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=6.8';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.8';
-import { TOUCH, initTouch } from './touch.js?v=6.8';
+import { MAPS } from './maps.js?v=6.9';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.9';
+import { TOUCH, initTouch } from './touch.js?v=6.9';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -735,8 +735,8 @@ function updateChests(dt) {
 }
 // what you'd press E on right now (nearest pickup, or a chest when one is closer)
 // ------------------------------------------------------------------ Test Lab: a wall of buttons for every effect, blaster, utility and bot
-let labRar = 2; const labNext = { gun: 1, item: 0 };
-const LAB_Z = -23.9, LAB_COLS = 12;   // the button wall: its face is at z = -23.9 (see the Test Lab map)
+let labRar = 2, labNear = true, labDiff = Math.max(0, Object.keys(DIFF).indexOf('normal')); const labNext = { gun: 1, item: 0 };
+const LAB_Z = -17.4, LAB_COLS = 12;   // the button wall: its face is at z = -17.4 (see the Test Lab map)
 function setBag(n) {   // the Test Lab has a bigger bag (9 slots) so you can carry lots of things at once
   SLOTN = n; while (slots.length < n) slots.push(null);
   while (slots.length > n) { const e = slots.pop(); if (e && e.gun !== undefined) W[e.gun].owned = false; else if (e) { inv[e.item] = 0; if (holdItem === e.item) clearHold(); } }
@@ -756,7 +756,24 @@ function labItem(id) {
   let si = itemSlot(id); if (si < 0) { si = labSlot(); slots[si] = { item: id }; }
   inv[id] = ITEMS[id].max; refreshSlots(); refreshItems(); selectSlot(si); refreshAmmo();
 }
-function labList() {
+// bots: appear in front of you (or at the normal spawn points), at the level you pick; target dummies stand still and never shoot
+function labBotPos() {
+  const f = new V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), r = new V3(-f.z, 0, f.x);
+  for (let k = 0; k < 30; k++) { const d = rnd(10, 17), s = rnd(-7, 7), x = P.pos.x + f.x * d + r.x * s, zz = P.pos.z + f.z * d + r.z * s; if (Math.abs(x) < HALF - 3 && zz > -15 && zz < HALF - 3 && freeAt(x, zz, .8)) return { x, z: zz }; }
+  return null;
+}
+function mkBots(n, o = {}) {
+  if (!isHost()) { hint('ONLY THE HOST CAN ADD BOTS', '#ff8a8a'); return; }
+  for (let i = 0; i < n; i++) {
+    let D0 = DIFF[Object.keys(DIFF)[labDiff]] || DIFF.normal;
+    if (o.dummy) D0 = Object.assign({}, D0, { hp: 120, speed: 0, fire: 99, react: 99, nade: 99999, aim: 1 });
+    if (o.boss) D0 = Object.assign({}, D0, { hp: D0.hp * 8 });
+    const b = new Bot(M.nextBotId++, rint(0, 5), { D: D0, ally: !!o.ally, boss: !!o.boss, dummy: !!o.dummy }); bots.push(b); b.respawn();
+    if (labNear) { const p = labBotPos(); if (p) { b.pos.set(p.x, P.pos.y, p.z); b.vel.set(0, 0, 0); } }
+  }
+  hint('SPAWNED ' + n + ' ' + (o.dummy ? 'TARGET DUMMY' : o.ally ? 'FRIEND BOT' : o.boss ? 'BOSS BOT' : 'ENEMY BOT') + (n > 1 ? 'S' : ''), '#ffd34e');
+}
+function labList() {   // the middle of the wall
   const L = [], add = (sec, label, col, fn, state) => L.push({ sec, label, col, fn, state });
   for (const [nm, v] of [['NORMAL GRAVITY', 22], ['LIGHT GRAVITY', 11], ['MOON GRAVITY', 5.5], ['TINY GRAVITY', 2.5]]) add('EFFECTS', nm, '#6ab0ff', () => { G = v; }, () => G === v);
   for (const v of [1, 4, 12]) add('EFFECTS', 'JUMP x' + v, '#6ab0ff', () => { S.jump = v; const el = $('jumpR'); if (el) { el.value = v; $('jumpV').textContent = v + 'x'; } }, () => S.jump === v);
@@ -764,18 +781,10 @@ function labList() {
   add('EFFECTS', 'GOD MODE', '#6ab0ff', () => { M.god = !M.god; if (M.god) { P.hp = 100; P.shield = 100; } }, () => !!M.god);
   add('EFFECTS', 'INFINITE UTILITY', '#6ab0ff', () => { M.infUtil = !M.infUtil; }, () => !!M.infUtil);
   add('EFFECTS', 'HEAL', '#6ab0ff', () => { P.hp = 100; P.shield = 100; });
-  add('EFFECTS', 'TELEPORT BACK', '#6ab0ff', () => { P.pos.set(0, 0, 10); P.vel.set(0, 0, 0); });
-  const stats = () => DIFF[M.diff] || DIFF.normal;
-  const mkBots = (n, ally, boss) => { if (!isHost()) { hint('ONLY THE HOST CAN ADD BOTS', '#ff8a8a'); return; } for (let i = 0; i < n; i++) { const D0 = stats(), b = new Bot(M.nextBotId++, rint(0, 5), { D: boss ? Object.assign({}, D0, { hp: D0.hp * 8 }) : D0, ally, boss }); bots.push(b); b.respawn(); } };
-  add('BOTS', 'ENEMY BOT', '#ff6a6a', () => mkBots(1, false));
-  add('BOTS', '5 ENEMY BOTS', '#ff6a6a', () => mkBots(5, false));
-  add('BOTS', 'BOSS BOT', '#ff6a6a', () => mkBots(1, false, true));
-  add('BOTS', '3 FRIEND BOTS', '#ff6a6a', () => mkBots(3, true));
-  add('BOTS', 'REMOVE ALL BOTS', '#ff6a6a', () => { if (!isHost()) return; for (const b of bots) b.remove(); bots.length = 0; botById.clear(); });
+  add('EFFECTS', 'TELEPORT BACK', '#6ab0ff', () => { P.pos.set(0, 0, 11.5); P.vel.set(0, 0, 0); });
   for (const k of ARMOR_IDS) add('GEAR', ARMORS[k].name, '#ffd34e', () => applyLoot({ id: 'armor', at: k, qty: 1 }));
   for (const k of SCOPE_IDS) add('GEAR', SCOPES[k].name, '#ffd34e', () => applyLoot({ id: 'scope', at: k, qty: 1 }), () => myScope === k);
   add('GEAR', 'CLEAR GEAR', '#ffd34e', () => { P.armor = { body: null, helm: null }; myScope = null; updateScopeUI(); });
-  add('GUNS', () => 'RARITY: ' + RARITY[labRar].name, '#8aff3a', () => { labRar = (labRar + 1) % 5; });
   add('GUNS', 'ALL GUNS (MORE EACH PRESS)', '#8aff3a', () => { const n = WDEF.length; let guard = 0; while (guard++ < n && slots.indexOf(null) >= 0) { const gi = labNext.gun; labNext.gun = (labNext.gun + 1) % n; if (slotOf(gi) < 0) labGun(gi); } });
   add('GUNS', 'CLEAR BAG', '#8aff3a', () => { for (const w of W) w.owned = false; for (const id of ITEM_IDS) inv[id] = 0; clearHold(); slots.fill(null); slots[0] = { gun: 0 }; W[0].owned = true; selectWeapon(0, true); refreshSlots(); refreshItems(); refreshAmmo(); });
   WDEF.forEach((d, gi) => add('GUNS', d.name, '#8aff3a', () => labGun(gi)));
@@ -783,22 +792,38 @@ function labList() {
   for (const id of ITEM_IDS) add('UTILITY', ITEMS[id].name, '#ff9a4a', () => labItem(id));
   return L;
 }
+function labSides() {   // the far left: gun rarity. The far right: bots.
+  const rc = k => '#' + RARITY[k].col.toString(16).padStart(6, '0');
+  const left = [{ sec: 'GUNS', label: 'GUN RARITY', col: '#ffffff', head: true }];
+  RARITY.forEach((R, k) => left.push({ sec: 'RARITY', label: R.name, col: rc(k), state: () => labRar === k, fn: () => { labRar = k; for (const e of slots) if (e && e.gun !== undefined) { const w = W[e.gun]; w.rar = k; applyRarity(w); w.ammo = w.s.mag; } refreshAmmo(); refreshSlots(); } }));
+  const bt = (label, fn, state) => ({ sec: 'BOTS', label, col: '#ff6a6a', fn, state });
+  const A = [{ sec: 'BOTS', label: 'SPAWN BOTS', col: '#ff6a6a', head: true }, bt('ENEMY BOT', () => mkBots(1)), bt('5 ENEMY BOTS', () => mkBots(5)), bt('10 ENEMY BOTS', () => mkBots(10)), bt('BOSS BOT', () => mkBots(1, { boss: true })), bt('REMOVE ALL BOTS', () => { if (!isHost()) return; for (const b of bots) b.remove(); bots.length = 0; botById.clear(); })];
+  const B = [{ sec: 'BOTS', label: 'BOT SETTINGS', col: '#ff6a6a', head: true }, bt('TARGET DUMMY', () => mkBots(1, { dummy: true })), bt('5 TARGET DUMMIES', () => mkBots(5, { dummy: true })), bt('3 FRIEND BOTS', () => mkBots(3, { ally: true })),
+    bt(() => 'BOT LEVEL: ' + Object.keys(DIFF)[labDiff].toUpperCase(), () => { labDiff = (labDiff + 1) % Object.keys(DIFF).length; }), bt('SPAWN NEAR ME', () => { labNear = !labNear; }, () => labNear)];
+  return { left, right: A.map((b, r) => [b, 0, r]).concat(B.map((b, r) => [b, 1, r])) };
+}
 const labLabel = p => typeof p.label === 'function' ? p.label() : p.label;
 function labBuild() {
-  labClear(); const L = labList();
-  L.forEach((b, i) => {
-    const c = i % LAB_COLS, r = Math.floor(i / LAB_COLS), cv = document.createElement('canvas'); cv.width = 256; cv.height = 128;
+  labClear(); const rowY = r => 8.9 - r * 1.35;
+  const put = (b, x, y) => {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128;
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
     const mat = new THREE.MeshBasicMaterial({ map: tex }); mat.toneMapped = false;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.15), mat); mesh.position.set((c - (LAB_COLS - 1) / 2) * 2.8, 8.9 - r * 1.35, LAB_Z + .03); scene.add(mesh);
-    const p = Object.assign(b, { mesh, cv, tex, x: mesh.position.x, y: mesh.position.y, w: 2.3, h: 1.15 }); labPanels.push(p); labDraw(p);
-  });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.15), mat); mesh.position.set(x, y, LAB_Z + .03); scene.add(mesh);
+    const p = Object.assign(b, { mesh, cv, tex, x, y, w: 2.3, h: 1.15 }); labPanels.push(p); labDraw(p);
+  };
+  labList().forEach((b, i) => put(b, (i % LAB_COLS - (LAB_COLS - 1) / 2) * 2.8, rowY(Math.floor(i / LAB_COLS))));
+  const S = labSides(); S.left.forEach((b, r) => put(b, -18.8, rowY(r))); S.right.forEach(([b, c, r]) => put(b, 18.8 + c * 2.8, rowY(r)));
 }
 function labDraw(p) {
   const g2 = p.cv.getContext('2d'), on = p.state ? p.state() : false, W2 = 256, H2 = 128;
+  const words = labLabel(p).split(' '), lines = []; let cur = ''; for (const w of words) { const t = cur ? cur + ' ' + w : w; if (t.length > 14 && cur) { lines.push(cur); cur = w; } else cur = t; } if (cur) lines.push(cur);
+  if (p.head) {   // a heading: not a button
+    g2.fillStyle = '#0b0e1c'; g2.fillRect(0, 0, W2, H2); g2.fillStyle = p.col; g2.fillRect(0, H2 - 12, W2, 12); g2.font = 'bold 30px system-ui, Arial'; g2.textAlign = 'center';
+    lines.forEach((ln, k) => g2.fillText(ln, W2 / 2, 56 - (lines.length - 1) * 17 + k * 36)); p.tex.needsUpdate = true; return;
+  }
   g2.fillStyle = on ? p.col : '#161a2c'; g2.fillRect(0, 0, W2, H2); g2.strokeStyle = p.col; g2.lineWidth = 8; g2.strokeRect(4, 4, W2 - 8, H2 - 8);
   g2.fillStyle = on ? '#10131f' : p.col; g2.font = 'bold 15px system-ui, Arial'; g2.textAlign = 'left'; g2.fillText(p.sec, 14, 26);
-  const words = labLabel(p).split(' '), lines = []; let cur = ''; for (const w of words) { const t = cur ? cur + ' ' + w : w; if (t.length > 14 && cur) { lines.push(cur); cur = w; } else cur = t; } if (cur) lines.push(cur);
   g2.fillStyle = on ? '#10131f' : '#ffffff'; g2.font = 'bold ' + (lines.length > 2 ? 22 : 28) + 'px system-ui, Arial'; g2.textAlign = 'center';
   const top = 76 - (lines.length - 1) * 15; lines.forEach((ln, k) => g2.fillText(ln, W2 / 2, top + k * 30));
   if (p.state) { g2.font = 'bold 15px system-ui, Arial'; g2.textAlign = 'right'; g2.fillStyle = on ? '#10131f' : '#8a93b0'; g2.fillText(on ? 'ON' : 'OFF', W2 - 14, 26); }
@@ -807,10 +832,10 @@ function labDraw(p) {
 function labAim() {   // the button under the crosshair (the wall faces south, so look north at it)
   if (!labPanels.length) return null; const o = eyePos(), d = aimDir(0); if (d.z > -.01) return null;
   const t = (LAB_Z - o.z) / d.z; if (t < 0 || t > 70) return null; const x = o.x + d.x * t, y = o.y + d.y * t;
-  for (const p of labPanels) if (Math.abs(x - p.x) < p.w / 2 && Math.abs(y - p.y) < p.h / 2) return p;
+  for (const p of labPanels) if (!p.head && Math.abs(x - p.x) < p.w / 2 && Math.abs(y - p.y) < p.h / 2) return p;
   return null;
 }
-function labPress(p) { sfx('pick'); try { p.fn(p); } catch (e) {} for (const q of labPanels) labDraw(q); }
+function labPress(p) { if (!p.fn) return; sfx('pick'); try { p.fn(p); } catch (e) {} for (const q of labPanels) labDraw(q); }
 function labClick() { if (!P.alive) return false; const p = labAim(); if (!p) return false; labPress(p); return true; }
 function labTick(dt) {
   if (M.infUtil) for (const e of slots) if (e && e.item && inv[e.item] < ITEMS[e.item].max) inv[e.item] = ITEMS[e.item].max;
@@ -1589,7 +1614,7 @@ function hostSetupMode() {
   else if (BRAWLISH(M.mode)) { const n = Math.max(2, 6 - M.np); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter(M.mode === 'gungame' ? 'GUN GAME! Pop to upgrade' : M.mode === 'moon' ? 'MOON BRAWL! Jump high' : 'BRAWL! Everyone is an enemy', '#ff9a4a'); }
   else if (M.zerog) { const size = D.bots + 3, na = Math.max(1, size - M.np), mk = (ally, n) => { for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D, ally }); b.role = i < 2 ? 'runner' : i === n - 1 ? 'defend' : 'skirm'; bots.push(b); } }; mk(true, na); mk(false, size); startBattle(); }   // two armies of the same size
   else if (M.team) { const xl = curMap && curMap.tiles ? 2 : 1, n = Math.min(9 * xl, (D.bots + 2 * (M.np - 1)) * xl), na = Math.max(2, n - M.np - 1); for (let i = 0; i < na; i++) { const b = new Bot(M.nextBotId++, i, { D, ally: true }); b.respT = .2 + i * .5; bots.push(b); } for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .3 + i * .5; bots.push(b); } showCenter("SNIPER'S ALLEY! Climb high, stay low", '#7cecff'); }
-  else if (M.mode === 'lab') { showCenter('TEST LAB: click the buttons on the wall!', '#7cecff'); hint('AIM AT A BUTTON AND CLICK (OR PRESS E) · THE BAG HAS 9 SLOTS', '#7cecff'); }
+  else if (M.mode === 'lab') { showCenter('TEST LAB: click the buttons on the wall!', '#7cecff'); hint('AIM AT A BUTTON AND CLICK (OR PRESS E) · RARITY IS ON THE FAR LEFT · BOTS ARE ON THE FAR RIGHT', '#7cecff'); }
   else { const n = Math.min(10, D.bots + 2 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } }
 }
 function startSolo() { NET.role = 'solo'; NET.me = 0; NET.roster = [{ pid: 0, name: myName(), color: PLAYER_COLORS[0] }]; syncRemotes(); M = newMatch(CFG, 1); loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); beginLocal(); }

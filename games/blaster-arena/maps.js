@@ -33,14 +33,14 @@ export const MAPS = [
     theme: { sky: [0xdfe9f7, 0xf2f7ff, 0xffffff], sunStr: 1, fog: [0xeaf1fb, 80, 260], floor: ['#f4f7fc', '#dfe7f4', 'rgba(70,100,150,.25)'], ground: 0xcdd8ec, wall: 0xa9b9d8,
       strips: [0x2ee6ff, 0xff4fa8, 0xffd31a, 0x8aff3a], hemi: [0xffffff, 0xa9b9d8, 1.1], sun: [0xffffff, 2.2], exposure: 1.1, clouds: 0xffffff, deco: 'balloons' },
     build(b) {
-      b.box(0, 5, -24.6, 52, 10, 1.4, 0x7d8fb8);   // the button wall (its face is at z = -23.9)
+      b.box(0, 5, -18.1, 52, 10, 1.4, 0x7d8fb8);   // the button wall (its face is at z = -17.4)
       [[1, 0x2ee6ff], [2, 0xff4fa8], [4, 0xffd31a], [8, 0x8aff3a], [16, 0xb06bff]].forEach(([h, c], i) => b.box(21, h / 2, -8 + i * 4, 3, h, 3, c));   // jump pillars: 1, 2, 4, 8 and 16 metres
       for (let i = 0; i < 10; i++) b.box(-21, (i + 1) * .55 / 2, -8 + i * 1.2, 4, (i + 1) * .55, 1.2, 0xdfe6f4);   // stairs up to a platform 5.5 high
       b.box(-21, 2.75, 9.3, 4, 5.5, 5, 0xcfd9ec);
       b.box(-8, 1, 4, 3, 2, 3, 0xff6a5a); b.box(8, 1, 4, 3, 2, 3, 0x6ab0ff); b.box(0, .75, 8, 6, 1.5, 2, 0xffd34e);   // cover to test grenades against
       b.box(-8, 1.5, -8, 8, 3, .8, 0xffffff); b.box(8, 1.5, -8, 8, 3, .8, 0xffffff);   // low walls
     },
-    spawns: [[0, 10], [-8, 10], [8, 10], [-4, 12], [4, 12]],
+    spawns: [[0, 11.5], [-8, 11.5], [8, 11.5], [-4, 13], [4, 13]],
     loot: [[-12, 8], [12, 8], [-12, -4], [12, -4], [0, -10], [-16, 14], [16, 14], [0, 20]],   // nothing lies around here; these just give the bots paths to walk
     dmg: [],
   },
