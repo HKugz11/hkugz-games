@@ -6,6 +6,8 @@
 <title>Tower of Destiny</title>
 <style>
   html, body { height: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; -ms-touch-action: none; touch-action: none; -webkit-user-select: none; user-select: none; }
+  /* the game draws at 800x480 pixel art; when the window is bigger, stretch it with crisp pixels instead of blurry smoothing */
+  canvas { image-rendering: -moz-crisp-edges !important; image-rendering: crisp-edges !important; image-rendering: pixelated !important; }
 </style>
 </head>
 <body>
