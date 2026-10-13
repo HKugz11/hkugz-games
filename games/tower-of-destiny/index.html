@@ -1,0 +1,49 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tower of Destiny</title>
+<meta name="description" content="Climb the tower, open chests, dodge traps and stomp monsters in this one-button classic by DrDerico. Free in your browser, shared with the developer's permission.">
+<link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#0b0720">
+<meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
+<meta property="og:title" content="Tower of Destiny - free browser game">
+<meta property="og:description" content="Climb the tower, open chests, dodge traps and stomp monsters in this one-button classic by DrDerico.">
+<meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/tower-of-destiny/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/tower.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../assets/site.css">
+<body class="game">
+<div class="bar"><a href="../../index.html">&larr; All games</a><img class="logo" src="../../assets/logo.svg" alt="" width="28" height="28"><span class="title">Tower of Destiny</span><span class="hint">Click, tap or Space to jump</span><button class="fs" id="fs" type="button">Fullscreen</button></div>
+<div class="stage" id="stage">
+  <iframe id="gf" src="game/index.html" title="Tower of Destiny" width="800" height="480"
+    style="border:0; width:100%; max-width:960px; height:auto; aspect-ratio:5/3; display:block; background:#000; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,.6)"
+    allow="fullscreen; autoplay" allowfullscreen></iframe>
+  <button class="fsx" id="fsx" type="button">Exit fullscreen</button>
+</div>
+<div class="credit">
+  <b>Tower of Destiny</b> was made by <b>DrDerico</b> (&copy; 2016). It is shown here for free, with the developer's permission.<br>
+  Are you the developer or the owner and want something changed or removed? Please <a href="https://github.com/HKugz11/hkugz-games/issues" target="_blank" rel="noopener">open an issue</a> and it will be taken care of right away.<br><br>
+  Controls: click, tap or Space = jump. Press F or the Fullscreen button for fullscreen. Your progress is saved in this browser.
+</div>
+<script>
+(function () {
+  var stage = document.getElementById('stage'), btn = document.getElementById('fs'), gf = document.getElementById('gf'), fsx = document.getElementById('fsx');
+  var req = stage.requestFullscreen || stage.webkitRequestFullscreen, exit = document.exitFullscreen || document.webkitExitFullscreen;
+  function isFs() { return document.fullscreenElement || document.webkitFullscreenElement; }
+  function fake(on) { stage.classList.toggle('fake', on); label(); }   // fallback: the game fills the whole browser window (phones that cannot do real fullscreen, or a browser that says no)
+  function label() { var on = isFs() || stage.classList.contains('fake'); btn.textContent = on ? 'Exit fullscreen' : 'Fullscreen'; try { gf.contentWindow.focus(); } catch (err) {} }
+  function toggle() {
+    if (isFs()) { exit.call(document); return; }
+    if (stage.classList.contains('fake')) { fake(false); return; }
+    if (!req) { fake(true); return; }
+    var p; try { p = req.call(stage); } catch (err) { fake(true); return; }
+    if (p && p.catch) p.catch(function () { fake(true); });
+    else setTimeout(function () { if (!isFs()) fake(true); }, 400);
+  }
+  function isF(e) { return (e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey; }
+  function onKey(e) { if (isF(e)) toggle(); else if (e.key === 'Escape' && stage.classList.contains('fake')) fake(false); }
+  btn.addEventListener('click', toggle); fsx.addEventListener('click', toggle);
+  document.addEventListener('keydown', onKey);
+  gf.addEventListener('load', function () { try { gf.contentWindow.addEventListener('keydown', onKey); } catch (err) {} });
+  document.addEventListener('fullscreenchange', label); document.addEventListener('webkitfullscreenchange', label);
+})();
+</script>
