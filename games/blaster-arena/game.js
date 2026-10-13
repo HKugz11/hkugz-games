@@ -1,16 +1,16 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=6.4';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.4';
-import { TOUCH, initTouch } from './touch.js?v=6.4';
+import { MAPS } from './maps.js?v=6.6';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.6';
+import { TOUCH, initTouch } from './touch.js?v=6.6';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
 const rnd = (a, b) => a + Math.random() * (b - a), rint = (a, b) => Math.floor(rnd(a, b + 1)), clamp = (v, a, b) => Math.max(a, Math.min(b, v)), pick = a => a[Math.floor(Math.random() * a.length)];
 const load = (k, d) => { try { const v = localStorage.getItem('ba.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem('ba.' + k, JSON.stringify(v)); } catch (e) {} };
-const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7), jump: Math.max(1, Math.min(6, +load('jump', 1) || 1)) };   // jump: how many times higher you jump (a slider in the pause menu, works on every map and mode)
+const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7), jump: Math.max(1, Math.min(12, +load('jump', 1) || 1)) };   // jump: how many times higher you jump (a slider in the pause menu, works on every map and mode)
 const CFG = { mode: load('mode', 'tdm'), map: load('map', 'plaza'), diff: load('diff', 'normal'), rarity: load('rarity', 2), fp: load('fp', 'dummy') };
 const mapOK = (m, mode) => m.br ? mode === 'royale' : m.sn ? mode === 'snipers' : m.room ? mode === 'battleroom' : mode !== 'battleroom';   // Battle Royale maps only in Battle Royale, sniper maps only in Sniper's Alley
 { const cm = MAPS.find(m => m.id === CFG.map); if (!cm || !mapOK(cm, CFG.mode)) CFG.map = CFG.mode === 'battleroom' ? 'battleroom' : CFG.mode === 'snipers' ? 'peaksxl' : 'plaza'; }
@@ -24,12 +24,13 @@ const MODES = {
   gungame: { name: 'Gun Game', blurb: 'Free-for-all with a ladder of ten blasters. Every pop upgrades your gun to the next one and the last one is the Pop-Gun. First to finish the ladder wins!' },
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: super low gravity and huge jumps (the walls are way taller so nobody leaves), so fights happen high up in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun with unlimited ammo, but the whole map is full of armour, heals and utility. Armour up and pop away!' },
+  utility: { name: 'Utility Blitz', blurb: 'Team deathmatch where the whole map is covered in armour, bandages and utility (frags, flashes, smokes, mollys, sticky bombs, cluster bombs and toxic gas) and there are no blasters to find. You only carry a weak Pop-Gun, so throw everything!' },
   battleroom: { name: 'Battle Room', blurb: "Just like Ender's Game! A huge zero-gravity cube with floating stars. Your army (you plus bots) starts around your gate. Push off the wall with Space (the way you look) and drift, aim with the mouse, and freeze the enemy army with your Flasher (it has a red dot sight: hold right mouse to aim through the box): a hit in the body freezes a soldier solid, a hit in the legs freezes the legs. Win a battle by freezing everyone or by getting FOUR unfrozen soldiers to touch the enemy gate. First to 3 battles wins." },
   snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high: jump at a rock to climb it, hold jump while pushing into a tall spire or wall (or a tree trunk) to climb it, or step on a jump pad. Bots cannot see you up in a tree. Line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
-const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'snipers' || m === 'battleroom';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
-const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], battleroom: [16] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
+const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'utility' || m === 'snipers' || m === 'battleroom';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
+const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], utility: [0], battleroom: [16] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
 const DIFF = {
   easy:   { bots: 4, hp: 70,  aim: 0.085, react: 0.75, dmg: 5,  speed: 3.6, fire: 0.36, turn: 5, nade: 22, nades: ['frag'], sn: { dmg: 42, cd: 2.8, wind: .9, aim: .02 } },
   normal: { bots: 5, hp: 100, aim: 0.05,  react: 0.45, dmg: 7,  speed: 4.4, fire: 0.25, turn: 7, nade: 13, nades: ['frag', 'frag', 'molly', 'flash'], sn: { dmg: 58, cd: 2.0, wind: .65, aim: .012 } },
@@ -280,6 +281,7 @@ SFX.ar = v => { tone(1100, 240, .08, 'square', .2 * v); tone(300, 120, .05, 'saw
 SFX.rev = v => { tone(500, 90, .16, 'sawtooth', .34 * v); noise(.14, .5 * v, 3200); };
 SFX.tac = v => { tone(240, 70, .16, 'sawtooth', .3 * v); noise(.16, .5 * v, 2800); };
 SFX.burst = v => { tone(1000, 300, .06, 'square', .2 * v); noise(.05, .25 * v, 5000); };
+SFX.rpg = v => { tone(140, 40, .3, 'sawtooth', .4 * v); noise(.3, .5 * v, 900); tone(600, 200, .15, 'square', .12 * v, .02); };
 SFX.glau = v => { tone(200, 60, .22, 'triangle', .35 * v); noise(.16, .4 * v, 1500); tone(900, 300, .1, 'square', .1 * v, .02); };
 SFX.mini = v => { tone(700, 300, .04, 'square', .12 * v); noise(.03, .18 * v, 4500); };
 SFX.scout = v => { tone(1500, 120, .22, 'sawtooth', .24 * v); noise(.2, .35 * v, 6000); };
@@ -342,6 +344,7 @@ const GUNS = {
   tac() { const g = new THREE.Group(); gbox(g, .09, .1, .42, 0x1f9a8a, 0, 0, 0); gcyl(g, .03, .5, 0x1c2a3a, 0, .035, -.42); gcyl(g, .04, .26, 0xffc233, 0, -.045, -.3); gbox(g, .08, .15, .09, 0x1c2a3a, 0, -.12, .08, [.3, 0, 0]); gbox(g, .09, .11, .24, 0x1c2a3a, 0, -.02, .34); return { g, muzzle: new V3(0, .035, -.66) }; },
   burst() { const g = new THREE.Group(); gbox(g, .07, .1, .5, 0xffc233, 0, 0, 0); gbox(g, .05, .035, .3, 0x23242e, 0, .075, -.04); gcyl(g, .02, .24, 0x23242e, 0, .02, -.36); gbox(g, .02, .04, .02, 0xff4a4a, 0, .115, -.22); gbox(g, .02, .04, .02, 0xff4a4a, 0, .115, .08); gbox(g, .065, .16, .08, 0x23242e, 0, -.125, 0, [.1, 0, 0]); gbox(g, .07, .15, .07, 0x23242e, 0, -.1, .14, [.3, 0, 0]); gbox(g, .075, .1, .2, 0x23242e, 0, -.01, .34); return { g, muzzle: new V3(0, .02, -.5) }; },
   glau() { const g = new THREE.Group(); gcyl(g, .075, .5, 0x6a8a3a, 0, .03, -.1); gcyl(g, .09, .14, 0x3a4a22, 0, .03, -.38); gcyl(g, .085, .16, 0x2a2a3a, 0, .03, .05); gbox(g, .07, .15, .09, 0x2a2a3a, 0, -.12, .1, [.25, 0, 0]); gbox(g, .09, .1, .2, 0x2a2a3a, 0, -.02, .3); gbox(g, .03, .06, .05, 0xffc233, 0, .115, -.1); return { g, muzzle: new V3(0, .03, -.5) }; },
+  rpg() { const g = new THREE.Group(); gcyl(g, .075, .75, 0x4a5a3a, 0, .02, -.12); gcyl(g, .1, .2, 0x2a2a3a, 0, .02, -.52); gcyl(g, .12, .24, 0xff6a3a, 0, .02, -.7); gbox(g, .07, .15, .09, 0x2a2a3a, 0, -.13, .14, [.25, 0, 0]); gbox(g, .09, .1, .2, 0x2a2a3a, 0, -.02, .34); gbox(g, .03, .06, .05, 0xffc233, 0, .13, -.1); return { g, muzzle: new V3(0, .02, -.85) }; },
   scout() { const g = new THREE.Group(); gbox(g, .055, .09, .42, 0xff9a3a, 0, 0, .02); gcyl(g, .015, .46, 0x333a50, 0, .02, -.4); gcyl(g, .032, .2, 0x2a2a3a, 0, .095, -.02); gcyl(g, .03, .01, 0xffd070, 0, .095, -.13, true); gbox(g, .06, .12, .22, 0xffffff, 0, -.02, .3); gbox(g, .05, .13, .06, 0x2a2a3a, 0, -.11, .05, [.25, 0, 0]); return { g, muzzle: new V3(0, .02, -.64) }; },
   dmr() { const g = new THREE.Group(); gbox(g, .08, .11, .5, 0x2e8aff, 0, 0, 0); gcyl(g, .02, .36, 0x333a50, 0, .02, -.43); gcyl(g, .036, .22, 0x23242e, 0, .125, -.02); gcyl(g, .034, .01, 0x8ac8ff, 0, .125, -.14, true); gbox(g, .06, .2, .07, 0x23242e, 0, -.15, .02, [.08, 0, 0]); gbox(g, .06, .14, .08, 0x23242e, 0, -.12, .16, [.3, 0, 0]); gbox(g, .085, .11, .22, 0x23242e, 0, -.01, .36); return { g, muzzle: new V3(0, .02, -.62) }; },
   hunt() { const g = new THREE.Group(); gbox(g, .07, .1, .6, 0x8a5a2a, 0, 0, .02); gcyl(g, .02, .62, 0x333a50, 0, .02, -.58); gcyl(g, .05, .34, 0x2a2a3a, 0, .13, -.02); gcyl(g, .045, .01, 0xffffff, 0, .13, -.2, true); gcyl(g, .045, .01, 0xffffff, 0, .13, .16, true); gbox(g, .02, .06, .1, 0xc8c8d8, .06, .03, .06); gbox(g, .09, .14, .3, 0x6a4020, 0, -.02, .42); gbox(g, .06, .15, .07, 0x2a2a3a, 0, -.12, .06, [.25, 0, 0]); return { g, muzzle: new V3(0, .02, -.9) }; },
@@ -375,6 +378,8 @@ const WDEF = [
   { id: 'vip', at: 'medium', name: 'VIPER', mag: 20, dmg: 24, rate: .13, auto: true, spread: .0035, hip: .04, reload: 2.2, kick: .03, pellets: 1, hs: 1.5, zoom: 26, shake: .003, trace: 0xff6a6a },
   // 16: the Battle Room's freezing gun (it never hurts, a hit freezes the suit)
   { id: 'frz', at: 'light', name: 'FLASHER', mag: 40, dmg: 0, rate: .2, auto: false, spread: .0015, reload: .1, kick: .02, pellets: 1, hs: 1, shake: .002, trace: 0x7cffff, holo: true, adsFov: 54, adsY: -.122, adsZ: -.35 },
+  // 17: the rare RPG: three rockets in a wide fan, a huge blast, a long reload
+  { id: 'rpg', at: 'rockets', name: 'RPG', mag: 1, dmg: 400, rate: 1.6, auto: false, spread: 0, reload: 3.8, kick: .3, pellets: 3, proj: true, pspread: .12, radius: 9, self: 60, hs: 1, shake: .03 },
 ];
 const VMS = .72;
 // rarity tiers: scale damage / magazine / fire rate / reload / spread
@@ -516,19 +521,24 @@ function resetReserve() { for (const k in reserve) reserve[k] = 0; if (!(M && M.
 
 // ------------------------------------------------------------------ items: heals, shields, throwables
 const ITEMS = {
-  bandage: { name: 'BANDAGE', desc: '+15 HP (up to 75) · 1.3s',     code: 'KeyZ', key: 'Z', max: 8, use: 1.3, col: 0xffffff, kind: 'heal',   amt: 15,  cap: 75,  w: 22 },
-  medkit:  { name: 'MEDKIT', desc: 'Heal to full · 3.2s',      code: 'KeyX', key: 'X', max: 2, use: 3.2, col: 0xff4a5a, kind: 'heal',   amt: 100, cap: 100, w: 8 },
-  mini:    { name: 'MINI SHIELD', desc: '+25 shield (up to 50) · 1.6s', code: 'KeyV', key: 'V', max: 5, use: 1.6, col: 0x4ad0ff, kind: 'shield', amt: 25,  cap: 50,  w: 20 },
-  pot:     { name: 'BIG POT', desc: '+50 shield (up to 100) · 3s',     code: 'KeyB', key: 'B', max: 2, use: 3.0, col: 0x3a62ff, kind: 'shield', amt: 50,  cap: 100, w: 8 },
-  chug:    { name: 'CHUG JUG', desc: 'Full health and shield · 5s', code: 'KeyN', key: 'N', max: 1, use: 5, col: 0x9a5aff, kind: 'chug', w: 3 },
-  slurp:   { name: 'SLURP JUICE', desc: '+35 HP and +25 shield · 2.5s', code: 'KeyM', key: 'M', max: 3, use: 2.5, col: 0x4aeaa0, kind: 'slurp', w: 7 },
-  soda:    { name: 'SPEED SODA', desc: 'Run 35% faster for 20s · 1.2s', code: 'KeyJ', key: 'J', max: 3, use: 1.2, col: 0xffa24a, kind: 'buff', w: 7 },
-  frag:    { name: 'FRAG', desc: 'One-shot kill within 3.4m, 2s fuse',        code: 'KeyG', key: 'G', max: 4, col: 0x58c24a, kind: 'nade', w: 14 },
-  flash:   { name: 'FLASH', desc: 'Blinds bots (and you!)',       code: 'KeyF', key: 'F', max: 4, col: 0xfff27a, kind: 'nade', w: 10 },
-  smoke:   { name: 'SMOKE', desc: 'Blocks vision for everyone',       code: 'KeyQ', key: 'Q', max: 3, col: 0xc8d0dc, kind: 'nade', w: 8 },
-  molly:   { name: 'MOLLY', desc: 'Burning fire zone',       code: 'KeyC', key: 'C', max: 3, col: 0xff8a1a, kind: 'nade', w: 10 },
-  glider:  { name: 'GLIDER', desc: 'Jump, then use it in the air: float down and fly forward for 25s (Shift or landing closes it)', code: 'KeyK', key: 'K', max: 2, use: 0, col: 0x7ad8ff, kind: 'glider', w: 6 },
-  sjump:   { name: 'SUPER JUMP', desc: 'Jump 4x higher for 25s · 1s', code: 'KeyL', key: 'L', max: 3, use: 1.0, col: 0xb6ff3a, kind: 'sjump', w: 7 },
+  bandage: { name: 'BANDAGE', desc: '+15 HP (up to 75) · 1.3s',     code: 'KeyZ', key: 'Z', max: 10, use: 1.3, col: 0xffffff, kind: 'heal',   amt: 15,  cap: 75,  w: 22 },
+  medkit:  { name: 'MEDKIT', desc: 'Heal to full · 3.2s',      code: 'KeyX', key: 'X', max: 10, use: 3.2, col: 0xff4a5a, kind: 'heal',   amt: 100, cap: 100, w: 8 },
+  mini:    { name: 'MINI SHIELD', desc: '+25 shield (up to 50) · 1.6s', code: 'KeyV', key: 'V', max: 10, use: 1.6, col: 0x4ad0ff, kind: 'shield', amt: 25,  cap: 50,  w: 20 },
+  pot:     { name: 'BIG POT', desc: '+50 shield (up to 100) · 3s',     code: 'KeyB', key: 'B', max: 10, use: 3.0, col: 0x3a62ff, kind: 'shield', amt: 50,  cap: 100, w: 8 },
+  chug:    { name: 'CHUG JUG', desc: 'Full health and shield · 5s', code: 'KeyN', key: 'N', max: 10, use: 5, col: 0x9a5aff, kind: 'chug', w: 3 },
+  slurp:   { name: 'SLURP JUICE', desc: '+35 HP and +25 shield · 2.5s', code: 'KeyM', key: 'M', max: 10, use: 2.5, col: 0x4aeaa0, kind: 'slurp', w: 7 },
+  soda:    { name: 'SPEED SODA', desc: 'Run 35% faster for 20s · 1.2s', code: 'KeyJ', key: 'J', max: 10, use: 1.2, col: 0xffa24a, kind: 'buff', w: 7 },
+  frag:    { name: 'FRAG', desc: 'Huge blast: one-shot kill within 6m, 2s fuse',        code: 'KeyG', key: 'G', max: 10, col: 0x58c24a, kind: 'nade', w: 30 },
+  flash:   { name: 'FLASH', desc: 'Blinds everyone nearby for a long time (even you!)',       code: 'KeyF', key: 'F', max: 10, col: 0xfff27a, kind: 'nade', w: 24 },
+  smoke:   { name: 'SMOKE', desc: 'Giant cloud that blocks vision for everyone',       code: 'KeyQ', key: 'Q', max: 10, col: 0xc8d0dc, kind: 'nade', w: 20 },
+  molly:   { name: 'MOLLY', desc: 'Huge, hot fire zone',       code: 'KeyC', key: 'C', max: 10, col: 0xff8a1a, kind: 'nade', w: 24 },
+  sticky:  { name: 'STICKY BOMB', desc: 'Sticks where it lands, then a huge blast · 2s', code: 'KeyH', key: 'H', max: 10, col: 0x39e6c8, kind: 'nade', w: 14 },
+  cluster: { name: 'CLUSTER', desc: 'Blasts, then 6 bomblets scatter and blast too', code: 'KeyU', key: 'U', max: 10, col: 0xff5ac8, kind: 'nade', w: 12 },
+  gas:     { name: 'TOXIC GAS', desc: 'A huge poison cloud that hurts everyone inside', code: 'KeyY', key: 'Y', max: 10, col: 0x8aff3a, kind: 'nade', w: 12 },
+  c4:      { name: 'C4 CHARGES', desc: 'Throw it: it sticks anywhere. Needs the REMOTE (2 slots)', code: 'KeyO', key: 'O', max: 10, col: 0xd8c890, kind: 'nade', w: 12 },
+  remote:  { name: 'REMOTE', desc: 'Hold it and press F: every C4 you placed blows up', code: 'KeyP', key: 'P', max: 1, col: 0xff4a4a, kind: 'remote', w: 6 },
+  glider:  { name: 'GLIDER', desc: 'Jump, then use it in the air: float down and fly forward for 25s (Shift or landing closes it)', code: 'KeyK', key: 'K', max: 10, use: 0, col: 0x7ad8ff, kind: 'glider', w: 6 },
+  sjump:   { name: 'SUPER JUMP', desc: 'Jump 4x higher for 25s · 1s', code: 'KeyL', key: 'L', max: 10, use: 1.0, col: 0xb6ff3a, kind: 'sjump', w: 7 },
 };
 const ITEM_IDS = Object.keys(ITEMS), BY_CODE = {}; for (const id of ITEM_IDS) BY_CODE[ITEMS[id].code] = id;
 const inv = {};
@@ -538,7 +548,8 @@ function resetInv() {
   if (M && M.mode === 'royale') return;   // battle royale: you land with nothing but your pistol
   if (M && M.free) { putItem('bandage', ITEMS.bandage.max); putItem('mini', ITEMS.mini.max); putItem('frag', ITEMS.frag.max); return; }
   if (M && M.mode === 'battleroom') return;   // the Battle Room: just your Flasher
-  if (M && M.mode === 'pistols') { putItem('bandage', 4); putItem('mini', 3); putItem('frag', 2); putItem('smoke', 2); return; }   // Pop-Gun Party starts stocked up
+  if (M && M.mode === 'pistols') { putItem('bandage', 4); putItem('mini', 3); putItem('frag', 2); putItem('smoke', 2); return; }
+  if (M && M.mode === 'utility') { putItem('bandage', 6); putItem('frag', 3); putItem('smoke', 2); return; }   // Utility Blitz: bandages and a few grenades, one slot left free   // Pop-Gun Party starts stocked up
   putItem('bandage', 1); putItem('frag', 1);
 }
 resetInv();
@@ -546,17 +557,17 @@ const LOOT_TOTAL = ITEM_IDS.reduce((s, id) => s + ITEMS[id].w, 0);
 const SNIPERS = [11, 4, 12, 13, 14, 15], SNIPE_W = [22, 18, 18, 16, 6, 14], SNIPE_START = 11;   // the sniper rifles (indexes into WDEF), how common each one is, and the one you start with
 const GUN_W = [8, 20, 18, 12, 12, 8, 12, 14, 14, 8, 6], GUN_TOTAL = GUN_W.reduce((a, b) => a + b, 0), RAR_TOTAL = RARITY.reduce((a, r) => a + r.w, 0);
 function rollRarity() { let r = Math.random() * RAR_TOTAL; for (let i = 0; i < RARITY.length; i++) { r -= RARITY[i].w; if (r <= 0) return i; } return 0; }
-function rollGun(gi) { if (gi === undefined && M && M.snipe) { let r = Math.random() * SNIPE_W.reduce((a, b) => a + b, 0); gi = SNIPERS[0]; for (let i = 0; i < SNIPERS.length; i++) { r -= SNIPE_W[i]; if (r <= 0) { gi = SNIPERS[i]; break; } } } if (gi === undefined) { let r = Math.random() * GUN_TOTAL; gi = 0; for (let i = 0; i < GUN_W.length; i++) { r -= GUN_W[i]; if (r <= 0) { gi = i; break; } } } return { id: 'gun', qty: 1, gi, rar: rollRarity() }; }
+function rollGun(gi) { if (gi === undefined && !(M && (M.snipe || M.ladder)) && Math.random() < .035) gi = WDEF.findIndex(x => x.id === 'rpg'); if (gi === undefined && M && M.snipe) { let r = Math.random() * SNIPE_W.reduce((a, b) => a + b, 0); gi = SNIPERS[0]; for (let i = 0; i < SNIPERS.length; i++) { r -= SNIPE_W[i]; if (r <= 0) { gi = SNIPERS[i]; break; } } } if (gi === undefined) { let r = Math.random() * GUN_TOTAL; gi = 0; for (let i = 0; i < GUN_W.length; i++) { r -= GUN_W[i]; if (r <= 0) { gi = i; break; } } } return { id: 'gun', qty: 1, gi, rar: rollRarity() }; }
 function rollAmmo() {
   const own = {}; for (const w of W) if (w.owned) own[w.d.at] = (own[w.d.at] || 0) + 3; const types = M && M.snipe ? ['heavy', 'medium'] : Object.keys(AMMO), ws = types.map(t => 1 + (own[t] || 0)); let r = Math.random() * ws.reduce((a, b) => a + b, 0), at = types[0];
   for (let i = 0; i < types.length; i++) { r -= ws[i]; if (r <= 0) { at = types[i]; break; } } const b = AMMO[at].box; return { id: 'ammo', at, qty: rint(b[0], b[1]) };
 }
 function rollLoot() {
   const p = M && M.mode === 'royale' ? .3 : .2, q = Math.random(); if (!(M && M.ladder)) { if (q < p) return rollGun(); if (q < p + .2) return rollAmmo(); }   // forced-blaster modes: no guns or ammo on the floor
-  const lo = M && M.ladder ? 0 : p + .2, armP = M && M.mode === 'pistols' ? .26 : M && M.snipe ? .09 : .07;   // armour lies around in every mode
+  const lo = M && M.ladder ? 0 : p + .2, armP = M && (M.mode === 'pistols' || M.mode === 'utility') ? .26 : M && M.snipe ? .09 : .07;   // armour lies around in every mode
   if (q >= lo && q < lo + armP) return rollArmor();
   if (M && M.snipe && q >= lo + armP && q < lo + armP + .1) return rollScope();   // Sniper's Alley: scopes lie around too
-  let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return bumpQty({ id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }); } return { id: 'bandage', qty: 1 };
+  let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return bumpQty({ id, qty: ITEMS[id].kind === 'nade' ? rint(2, 4) : id === 'bandage' ? rint(2, 5) : id === 'mini' ? rint(1, 3) : (id === 'medkit' || id === 'pot' || id === 'slurp' || id === 'soda') ? rint(1, 2) : 1 }); } return { id: 'bandage', qty: 1 };
 }
 
 function itemModel(id) {
@@ -572,6 +583,11 @@ function itemModel(id) {
     case 'flash': add(C(.15, .15, .42), 0xfff27a); add(C(.16, .16, .06), 0x2a2a3a, 0, .22, 0); add(C(.16, .16, .06), 0x2a2a3a, 0, -.22, 0); add(C(.155, .155, .05), 0x2a2a3a); break;
     case 'smoke': add(C(.17, .17, .5), 0xc8d0dc); add(C(.12, .17, .08), 0x2a2a3a, 0, .29, 0); add(C(.175, .175, .1), 0x7a869a, 0, -.05, 0); break;
     case 'molly': add(C(.17, .21, .34), 0xff8a1a); add(C(.06, .1, .2), 0xffb04a, 0, .26, 0); add(B(.06, .16, .02), 0xffffff, .02, .42, 0); add(Sp(.08), 0xffd34e, 0, .54, 0, true); break;
+    case 'sticky': add(Sp(.2), 0x39e6c8); add(B(.14, .12, .14), 0x2a2a3a, 0, .22, 0); add(Sp(.06), 0xff4a4a, 0, .3, 0, true); add(B(.4, .05, .05), 0xffffff, 0, 0, .2); break;
+    case 'cluster': add(Sp(.22), 0xff5ac8); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; add(Sp(.09), 0xffd34e, Math.cos(a) * .22, 0, Math.sin(a) * .22); } add(C(.06, .06, .1), 0x2a2a3a, 0, .26, 0); break;
+    case 'gas': add(C(.16, .16, .46), 0x8aff3a); add(C(.12, .16, .08), 0x2a2a3a, 0, .27, 0); add(C(.168, .168, .1), 0x2a2a3a, 0, 0, 0); add(Sp(.07), 0xe8ffb0, 0, .1, .17, true); break;
+    case 'c4': add(B(.46, .16, .3), 0xd8c890); add(B(.1, .06, .22), 0x2a2a3a, -.12, .11, 0); add(B(.1, .06, .22), 0x2a2a3a, .12, .11, 0); add(Sp(.04), 0xff3030, 0, .12, .1, true); add(B(.4, .02, .02), 0x2a2a3a, 0, .09, -.12); break;
+    case 'remote': add(B(.2, .34, .08), 0x2a2f44); add(C(.014, .014, .22), 0x9aa3b5, .06, .3, 0); add(Sp(.07), 0xff3030, 0, .1, .05, true); add(B(.14, .06, .02), 0x7a869a, 0, -.08, .05); break;
     case 'chug': add(C(.2, .22, .46), 0x9a5aff); add(C(.1, .12, .1), 0x9a5aff, 0, .28, 0); add(C(.11, .11, .06), 0xb87a3a, 0, .36, 0); add(new THREE.TorusGeometry(.1, .025, 6, 12), 0xffd34e, .22, .05, 0, false, [0, 0, 0]); add(B(.18, .02, .02), 0xffffff, 0, .06, .22, true); break;
     case 'slurp': add(C(.14, .1, .36), 0x4aeaa0); add(C(.15, .15, .05), 0xffffff, 0, .21, 0); add(C(.015, .015, .26), 0xff4a8a, .03, .3, 0, false, [0, 0, -.2]); add(Sp(.07), 0xffd34e, 0, .1, .12, true); break;
     case 'soda': add(C(.11, .11, .34), 0xffa24a); add(C(.1, .11, .04), 0xdfe6ee, 0, .19, 0); add(C(.112, .112, .1), 0xffffff, 0, 0, 0); add(B(.1, .02, .02), 0xff4a4a, 0, .02, .115, true); break;
@@ -640,7 +656,7 @@ function hostRollPickups(np) {
   clearPickups(); if (M && M.noloot) return []; if (M && M.free) return freeplayLoot(); let forced = 0; const br = M && M.mode === 'royale', nForce = br ? 4 + np : (M && M.snipe ? 7 : 5) + (np - 1); if (M && M.ladder) forced = 99;
   const spots = br ? LOOT_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 14 + 5 * np) : curMap && curMap.tiles ? LOOT_SPOTS.filter(() => Math.random() < .4) : LOOT_SPOTS;   // battle royale: big map, only a little loot
   for (const [x, z, y] of spots) addPickup(forced < nForce ? rollGun(M && M.snipe ? SNIPERS[forced++ % SNIPERS.length] : 1 + (forced++ % (GUN_W.length - 1))) : rollLoot(), x, y, z);
-  if (M && M.mode === 'pistols') for (let i = 0; i < 36; i++) { const w = pick(WAYPOINTS); addPickup(rollLoot(), w.x, 0, w.z); }   // Pop-Gun Party: heals, utility and armour all over the place
+  if (M && (M.mode === 'pistols' || M.mode === 'utility')) for (let i = 0; i < (M.mode === 'utility' ? 48 : 36); i++) { const w = pick(WAYPOINTS); addPickup(rollLoot(), w.x, 0, w.z); }   // Pop-Gun Party: heals, utility and armour all over the place
   for (const [x, y, z] of (br ? DMG_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 2) : DMG_SPOTS)) addPickup({ id: 'dmg' }, x, y, z, { fixed: 'dmg' });
   buildChests(); return pickups.map(wirePk);
 }
@@ -696,10 +712,10 @@ function addChest(x, z, nid, open) {
 const chestWire = () => chests.map(c => [c.nid, c.x, c.z, c.open ? 1 : 0]);
 function buildChestsFromWire(list) { for (const c of chests) { scene.remove(c.g); disposeObj(c.g); } chests.length = 0; chestById.clear(); for (const [n, x, z, o] of list || []) addChest(x, z, n, o); }
 function buildChests() { const spots = M && M.mode === 'royale' ? CHEST_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 4 + (M.np || 1)) : curMap && curMap.tiles ? CHEST_SPOTS.filter(() => Math.random() < .5) : CHEST_SPOTS; for (const [x, z] of spots) addChest(x, z, nextCh++, false); }
-const bumpQty = l => M && M.mode === 'pistols' ? { id: l.id, qty: Math.max(l.qty, Math.ceil(ITEMS[l.id].max * .6)) } : l;   // Pop-Gun Party: big stacks
-function rollConsumable() { let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return bumpQty({ id, qty: id === 'bandage' ? rint(1, 3) : (id === 'mini' || id === 'frag') ? rint(1, 2) : 1 }); } return { id: 'bandage', qty: 1 }; }
+const bumpQty = l => M && (M.mode === 'pistols' || M.mode === 'utility') ? { id: l.id, qty: Math.max(l.qty, Math.ceil(ITEMS[l.id].max * .6)) } : l;   // Pop-Gun Party: big stacks
+function rollConsumable() { let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return bumpQty({ id, qty: ITEMS[id].kind === 'nade' ? rint(2, 4) : id === 'bandage' ? rint(2, 5) : id === 'mini' ? rint(1, 3) : (id === 'medkit' || id === 'pot' || id === 'slurp' || id === 'soda') ? rint(1, 2) : 1 }); } return { id: 'bandage', qty: 1 }; }
 function chestLoot() {
-  if (M && M.ladder) return [rollArmor(), rollConsumable(), rollConsumable(), rollConsumable(), ...(M.mode === 'pistols' ? [rollArmor(), rollConsumable()] : [])];   // forced-blaster modes: no guns or ammo in chests
+  if (M && M.ladder) return [rollArmor(), rollConsumable(), rollConsumable(), rollConsumable(), ...(M.mode === 'pistols' || M.mode === 'utility' ? [rollArmor(), rollConsumable()] : [])];   // forced-blaster modes: no guns or ammo in chests
   const gun = rollGun(); gun.rar = Math.min(4, rollRarity() + (Math.random() < .55 ? 1 : 0)); return [gun, rollAmmo(), rollConsumable(), Math.random() < .35 ? rollArmor() : Math.random() < .5 ? rollConsumable() : (M && M.snipe && Math.random() < .55 ? rollScope() : rollAmmo())];
 }
 function openChestFx(ch) { ch.open = true; const c = new V3(ch.x, .8, ch.z); burst(c, 0xffd34e, 22, 6, .16, .9, 8, 4); burst(c, 0xffffff, 10, 5, .1, .6, 8, 3); sfxAt('medal', c); }
@@ -755,7 +771,12 @@ function giveGun(gi, rar) {
   if (!FREE()) reserve[w.d.at] = Math.min(AMMO[w.d.at].max, reserve[w.d.at] + w.s.mag);
   return 'new';
 }
-function giveItem(id, qty) {
+function giveItem(id, qty) {   // C4 charges need the remote, so a pickup of charges brings a remote along if you have a free slot (that is why C4 takes 2 slots)
+  const got = giveItem0(id, qty);
+  if (id === 'c4' && itemSlot('remote') < 0) { const si = slots.indexOf(null); if (si >= 0) { slots[si] = { item: 'remote' }; inv.remote = 1; refreshSlots(); refreshItems(); hint('C4 COMES WITH A REMOTE (2 SLOTS)', '#ffd34e'); } else hint('NEEDS A REMOTE: FREE A SLOT (C4 TAKES 2)', '#ff8a8a'); }
+  return got;
+}
+function giveItem0(id, qty) {
   const it = ITEMS[id]; let si = itemSlot(id);
   if (si >= 0) { const n = Math.min(it.max - inv[id], qty); inv[id] += n; if (holdItem === id) refreshAmmo(); refreshSlots(); return n; }
   si = slots.indexOf(null); const swapped = si < 0; if (swapped) { si = selSlot; dropSlot(si); }
@@ -846,12 +867,12 @@ const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100, v3
 const sfxAt = (k, pos) => sfx(k, clamp(1 - pos.distanceTo(P.pos) / 55, .12, 1));
 function groundY(x, z, ymax) { let y = 0; for (const b of world) if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ && b.maxY <= ymax + .3 && b.maxY > y) y = b.maxY; return y; }
 function spawnNade(id, pos, vel, owner) {
-  const m = itemModel(id); m.scale.setScalar(1.1); m.position.copy(pos); scene.add(m);
-  nades.push({ id, m, pos: pos.clone(), vel: vel.clone(), owner, r: .17, age: 0, fuse: id === 'frag' ? 2.1 : id === 'flash' ? 1.3 : id === 'smoke' ? 1.7 : 3, spin: new V3(rnd(-9, 9), rnd(-9, 9), rnd(-9, 9)) });
+  const m = itemModel(id); m.scale.setScalar(id === 'bomblet' ? .55 : 1.1); m.position.copy(pos); scene.add(m);
+  nades.push({ id, m, pos: pos.clone(), vel: vel.clone(), owner, r: .17, age: 0, fuse: id === 'frag' ? 2.1 : id === 'flash' ? 1.3 : id === 'smoke' ? 1.7 : id === 'sticky' ? 2.2 : id === 'cluster' ? 1.8 : id === 'gas' ? 1.6 : id === 'bomblet' ? .75 : id === 'c4' ? 120 : 3, spin: new V3(rnd(-9, 9), rnd(-9, 9), rnd(-9, 9)) });
 }
 function updateNades(dt) {
   for (let i = nades.length - 1; i >= 0; i--) {
-    const n = nades[i]; n.fuse -= dt; n.age += dt; let impact = 0; n.vel.y -= G * dt;
+    const n = nades[i]; n.fuse -= dt; n.age += dt; let impact = 0; if (!n.stuck) n.vel.y -= G * dt;
     for (const ax of ['x', 'y', 'z']) {
       const old = n.pos[ax]; n.pos[ax] += n.vel[ax] * dt;
       for (const b of world) if (n.pos.x > b.minX - n.r && n.pos.x < b.maxX + n.r && n.pos.y > b.minY - n.r && n.pos.y < b.maxY + n.r && n.pos.z > b.minZ - n.r && n.pos.z < b.maxZ + n.r) {
@@ -863,7 +884,9 @@ function updateNades(dt) {
     if (rolling) { const f = Math.max(0, 1 - 2.4 * dt); n.vel.x *= f; n.vel.z *= f; }
     const sp = n.vel.length(), sk = Math.min(1, sp / 6); n.m.position.copy(n.pos); n.m.rotation.x += n.spin.x * dt * sk; n.m.rotation.y += n.spin.y * dt * sk; n.m.rotation.z += n.spin.z * dt * sk;
     if (impact > 3 && n.age > .05) sfxAt('clink', n.pos);
+    if ((n.id === 'sticky' || n.id === 'c4') && !n.stuck && impact > 1.2 && n.age > .05) { n.stuck = true; n.vel.set(0, 0, 0); }   // sticky bombs stay where they land
     let boom = n.fuse <= 0;
+    if (n.id === 'gas' && n.age > .5 && rolling && Math.hypot(n.vel.x, n.vel.z) < .8) boom = true;
     if (n.id === 'molly' && impact > 2.5 && n.age > .08) boom = true;
     if (n.id === 'shell' && impact > 1.5 && n.age > .06) boom = true;
     if (n.id === 'smoke' && n.age > .5 && rolling && Math.hypot(n.vel.x, n.vel.z) < .8) boom = true;
@@ -871,14 +894,29 @@ function updateNades(dt) {
   }
 }
 function detonate(id, p, owner) {
-  if (id === 'frag') explodeAt(p, 6.5, 120, 75, owner, owner instanceof Bot ? 2.2 : 3.4);
+  if (id === 'frag') explodeAt(p, 11, 220, 80, owner, owner instanceof Bot ? 3.2 : 6);
   else if (id === 'flash') flashAt(p, owner);
   else if (id === 'smoke') deploySmoke(p);
   else if (id === 'shell') explodeAt(p, 4.8, 90, 40, owner);
+  else if (id === 'sticky') explodeAt(p, 9, 260, 70, owner, owner instanceof Bot ? 3 : 4.5);
+  else if (id === 'cluster') { explodeAt(p, 5, 80, 30, owner, 0); const base = ((p.x * 7.3 + p.z * 3.1) % 1 + 1) % 1 * 6.283; for (let k = 0; k < 6; k++) { const a = base + k * 1.0472; spawnNade('bomblet', p.clone().add(new V3(0, .4, 0)), new V3(Math.cos(a) * 7, 7.5, Math.sin(a) * 7), owner); } }
+  else if (id === 'bomblet') explodeAt(p, 6.5, 120, 45, owner, 2.6);
+  else if (id === 'gas') releaseGas(p, owner);
+  else if (id === 'c4') explodeAt(p, 10, 420, 90, owner, owner instanceof Bot ? 3 : 5);
   else ignite(p, owner);
 }
 // tell everyone else about something I did (clients -> host -> everyone else; the host -> everyone)
 function netEvent(msg) { if (!isMP() || !NET.net) return; if (NET.role === 'client') NET.net.clientSend(msg); else NET.net.hostBroadcast(Object.assign({ o: 0 }, msg)); }
+// C4: every charge you placed blows up when you use the remote
+function detonateC4(owner) {
+  let n = 0;
+  for (let i = nades.length - 1; i >= 0; i--) { const c = nades[i]; if (c.id !== 'c4' || c.owner !== owner) continue; const p = c.pos.clone(); scene.remove(c.m); disposeObj(c.m); nades.splice(i, 1); detonate('c4', p, owner); n++; }
+  return n;
+}
+function triggerC4() {
+  const n = detonateC4(null); if (!n) { hint('NO C4 PLACED', '#ff8a8a'); sfx('empty'); return; }
+  netEvent({ t: 'c4x' });
+}
 function playerThrow(id) {
   if (state !== 'play' || !P.alive) return;
   if (use || throwCD > 0 || swapT > 0) return;
@@ -887,7 +925,7 @@ function playerThrow(id) {
   const o = eyePos(), d = aimDir(0); let s = o.clone().addScaledVector(d, .7); s.y -= .15;
   if (worldT(o, d, .8) < .8) s = o.clone();
   const v = d.clone().multiplyScalar(19).add(new V3(P.vel.x * .5, 3.8, P.vel.z * .5));
-  spawnNade(id, s, v, null); netEvent({ t: 'th', id, p: v3a(s), v: v3a(v) });
+  spawnNade(id, s, v, null); netEvent({ t: 'th', id, p: v3a(s), v: v3a(v) }); if (id === 'c4') hint('C4 PLACED: HOLD THE REMOTE (P) AND PRESS F', '#ffd34e');
 }
 function botThrow(b, id, tgt) {
   const from = new V3(b.pos.x, b.pos.y + 1.4 * b.sc, b.pos.z), sc = 1.1 + Math.hypot(tgt.x - from.x, tgt.z - from.z) * .07;
@@ -896,15 +934,15 @@ function botThrow(b, id, tgt) {
   b.yaw = Math.atan2(-hx, -hz); const s = from.add(new V3(hx * .6, 0, hz * .6)), vel = new V3(hx * v * c, v * c, hz * v * c);
   spawnNade(id, s, vel, b); sfxAt('throw', b.pos); if (isMP()) NET.net.hostBroadcast({ t: 'th', id, p: v3a(s), v: v3a(vel), ob: b.id });
 }
-function spawnRocket(pos, vel, dmg, owner) {
+function spawnRocket(pos, vel, dmg, owner, R = 5.5, selfD = 35) {
   const m = new THREE.Mesh(new THREE.IcosahedronGeometry(.2, 1), new THREE.MeshBasicMaterial({ color: 0xff4fe0 })); m.position.copy(pos); scene.add(m); outline(m, 1.3);
-  projs.push({ m, v: vel.clone(), life: 4, dmg, owner });
+  projs.push({ m, v: vel.clone(), life: 4, dmg, owner, R, selfD });
 }
 function updateProjs(dt) {
   for (let i = projs.length - 1; i >= 0; i--) {
     const p = projs[i]; p.life -= dt; const step = p.v.clone().multiplyScalar(dt), len = step.length(), dir = step.clone().normalize(); const tw = worldT(p.m.position, dir, len + .3);
     let hitB = null; for (const b of bots) if (b.alive && b.invT <= 0 && !b.ally) { const h = hitEntity(p.m.position, dir, b, b.headY); if (h && h.t < len + .3) hitB = b; }
-    if (tw < len + .3 || hitB || p.life <= 0 || p.m.position.y < .1) { explodeAt(p.m.position.clone().addScaledVector(dir, Math.min(tw, len) * .9), 5.5, p.dmg, 35, p.owner); scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); projs.splice(i, 1); }
+    if (tw < len + .3 || hitB || p.life <= 0 || p.m.position.y < .1) { explodeAt(p.m.position.clone().addScaledVector(dir, Math.min(tw, len) * .9), p.R || 5.5, p.dmg, p.selfD || 35, p.owner); scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); projs.splice(i, 1); }
     else { p.m.position.add(step); if (Math.random() < .6) burst(p.m.position, 0xff9ad8, 1, 1, .08, .3, 0); }
   }
 }
@@ -930,13 +968,13 @@ function explodeAt(pos, R, botDmg, selfDmg, owner, lethal = 0) {
   }
 }
 function flashAt(pos, owner) {
-  blast(pos, 3.2, 0xffffff); burst(pos, 0xffffff, 20, 9, .12, .5, 4, 1); sfx('flashbang', clamp(1 - pos.distanceTo(P.pos) / 60, .3, 1));
+  blast(pos, 6, 0xffffff); burst(pos, 0xffffff, 36, 11, .14, .6, 4, 1); sfx('flashbang', clamp(1 - pos.distanceTo(P.pos) / 60, .3, 1));
   const lp = pos.clone(), op = ownerPid(owner); lp.y += .3;
-  const power = (eye, fwd) => { const to = lp.clone().sub(eye), d = to.length(); if (d > 45) return 0; to.divideScalar(Math.max(d, .01)); if (d > 1 && worldT(eye, to, d) < d - .4) return 0; const f = fwd.dot(to); return (f > 0 ? .35 + .65 * f : .12) * clamp(1.15 - d / 42, .2, 1); };
-  if (P.alive) { const p = power(eyePos(), aimDir(0)) * (owner instanceof RemotePlayer && !(M && M.pvp) ? .6 : 1); if (p > .05) { P.blindMax = 4.4 * p + .4; P.blindT = Math.max(P.blindT, P.blindMax); } }
+  const power = (eye, fwd) => { const to = lp.clone().sub(eye), d = to.length(); if (d > 70) return 0; to.divideScalar(Math.max(d, .01)); if (d > 1 && worldT(eye, to, d) < d - .4) return 0; const f = fwd.dot(to); return (f > 0 ? .35 + .65 * f : .12) * clamp(1.15 - d / 65, .25, 1); };
+  if (P.alive) { const p = power(eyePos(), aimDir(0)) * (owner instanceof RemotePlayer && !(M && M.pvp) ? .6 : 1); if (p > .05) { P.blindMax = 6.6 * p + .6; P.blindT = Math.max(P.blindT, P.blindMax); } }
   if (isHost() && op >= 0) {
     let n = 0;
-    for (const b of bots) { if (!b.alive || b.ally) continue; const f = new V3(-Math.sin(b.yaw), 0, -Math.cos(b.yaw)), p = power(b.eye(), f); if (p > .08) { b.blindT = Math.max(b.blindT, 4.2 * p + .5); b.alertT = Math.max(b.alertT, 2); n++; } }
+    for (const b of bots) { if (!b.alive || b.ally) continue; const f = new V3(-Math.sin(b.yaw), 0, -Math.cos(b.yaw)), p = power(b.eye(), f); if (p > .08) { b.blindT = Math.max(b.blindT, 6.3 * p + .7); b.alertT = Math.max(b.alertT, 2); n++; } }
     if (n && op === NET.me) { feed(`<b style="color:#fff27a">Flashed ${n} bot${n > 1 ? 's' : ''}!</b>`); showHit(''); sfx('hit'); }
   }
 }
@@ -944,8 +982,8 @@ const puffGeo = new THREE.SphereGeometry(1, 14, 10);
 function deploySmoke(pos) {
   const y = groundY(pos.x, pos.z, pos.y + .4), g = new THREE.Group(), puffs = [];
   const mat = new THREE.MeshToonMaterial({ color: 0xeaeef7, gradientMap: gradient, transparent: true, opacity: .94, depthWrite: false, side: THREE.DoubleSide });
-  for (let i = 0; i < 11; i++) { const m = new THREE.Mesh(puffGeo, mat), a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * 2.6; m.position.set(Math.cos(a) * r, rnd(.4, 3.4), Math.sin(a) * r); m.userData = { s: rnd(1.5, 2.5), ph: rnd(0, 6.28) }; puffs.push(m); g.add(m); }
-  g.position.set(pos.x, y, pos.z); scene.add(g); smokes.push({ g, mat, puffs, c: new V3(pos.x, y + 1.7, pos.z), R: 4.0, t: 0, life: 14 });
+  for (let i = 0; i < 26; i++) { const m = new THREE.Mesh(puffGeo, mat), a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * 5.4; m.position.set(Math.cos(a) * r, rnd(.5, 6), Math.sin(a) * r); m.userData = { s: rnd(2.6, 4.2), ph: rnd(0, 6.28) }; puffs.push(m); g.add(m); }
+  g.position.set(pos.x, y, pos.z); scene.add(g); smokes.push({ g, mat, puffs, c: new V3(pos.x, y + 2.8, pos.z), R: 8.0, t: 0, life: 18 });
   sfxAt('smokePop', pos);
 }
 function updateSmokes(dt) {
@@ -962,13 +1000,36 @@ function smokeBlocks(a, b) {
 }
 const discGeo = new THREE.CircleGeometry(1, 28), coneGeo = new THREE.ConeGeometry(.32, 1, 7);
 function ignite(pos, owner) {
-  const y = groundY(pos.x, pos.z, pos.y + .4), R = 3.3, g = new THREE.Group(); g.position.set(pos.x, y, pos.z);
+  const y = groundY(pos.x, pos.z, pos.y + .4), R = 7, g = new THREE.Group(); g.position.set(pos.x, y, pos.z);
   const mk = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
   const m1 = mk(0xff5a14, .5), m2 = mk(0xffb02a, .4), f1 = mk(0xff5a14, .92), f2 = mk(0xffb02a, .92), f3 = mk(0xffe46a, .92);
   const d1 = new THREE.Mesh(discGeo, m1), d2 = new THREE.Mesh(discGeo, m2); d1.rotation.x = d2.rotation.x = -Math.PI / 2; d1.scale.set(R, R, 1); d2.scale.set(R * .62, R * .62, 1); d1.position.y = .04; d2.position.y = .05; g.add(d1, d2);
-  const flames = []; for (let i = 0; i < 18; i++) { const c = new THREE.Mesh(coneGeo, [f1, f2, f3][i % 3]), a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * R * .92; c.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); c.userData = { ph: rnd(0, 6.28), h: rnd(.9, 1.8) }; flames.push(c); g.add(c); }
-  scene.add(g); fires.push({ g, pos: new V3(pos.x, y, pos.z), R, t: 0, life: 7.5, owner, tick: 0, ember: 0, snd: 0, flames, mats: [m1, m2, f1, f2, f3], d: [m1, m2] });
+  const flames = []; for (let i = 0; i < 40; i++) { const c = new THREE.Mesh(coneGeo, [f1, f2, f3][i % 3]), a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * R * .92; c.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); c.userData = { ph: rnd(0, 6.28), h: rnd(.9, 1.8) }; flames.push(c); g.add(c); }
+  scene.add(g); fires.push({ g, pos: new V3(pos.x, y, pos.z), R, t: 0, life: 9, owner, tick: 0, ember: 0, snd: 0, flames, mats: [m1, m2, f1, f2, f3], d: [m1, m2] });
   burst(new V3(pos.x, y + .4, pos.z), 0xffa030, 16, 6, .16, .7, 6, 3); sfxAt('glass', pos);
+}
+// toxic gas: a big green cloud that poisons everyone inside it
+const gases = [];
+function releaseGas(pos, owner) {
+  const y = groundY(pos.x, pos.z, pos.y + .4), R = 8, g = new THREE.Group(); g.position.set(pos.x, y, pos.z);
+  const dm = new THREE.MeshBasicMaterial({ color: 0x6aff2a, transparent: true, opacity: .28, depthWrite: false, side: THREE.DoubleSide }), pm = new THREE.MeshToonMaterial({ color: 0x9aff4a, gradientMap: gradient, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide });
+  const d = new THREE.Mesh(discGeo, dm); d.rotation.x = -Math.PI / 2; d.scale.set(R, R, 1); d.position.y = .05; g.add(d);
+  const puffs = []; for (let i = 0; i < 22; i++) { const m = new THREE.Mesh(puffGeo, pm), a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * R * .85; m.position.set(Math.cos(a) * r, rnd(.3, 3.2), Math.sin(a) * r); m.userData = { s: rnd(1.6, 2.8), ph: rnd(0, 6.28) }; puffs.push(m); g.add(m); }
+  scene.add(g); gases.push({ g, pos: new V3(pos.x, y, pos.z), R, t: 0, life: 10, owner, tick: 0, puffs, mats: [dm, pm], dm, pm }); sfxAt('smokePop', pos);
+}
+function updateGases(dt) {
+  if (!M && gases.length) { for (const s of gases) { scene.remove(s.g); for (const m of s.mats) m.dispose(); } gases.length = 0; return; }
+  for (let i = gases.length - 1; i >= 0; i--) {
+    const s = gases[i]; s.t += dt; const grow = 1 - Math.pow(1 - Math.min(1, s.t / 1), 3), fade = s.t > s.life - 2 ? Math.max(0, (s.life - s.t) / 2) : 1;
+    s.dm.opacity = .28 * fade; s.pm.opacity = .55 * fade; for (const p of s.puffs) p.scale.setScalar(p.userData.s * grow * (.9 + .1 * Math.sin(time * 1.6 + p.userData.ph)) * (.7 + .3 * fade));
+    s.tick += dt; const op = ownerPid(s.owner);
+    while (s.tick >= .25) {
+      s.tick -= .25;
+      if (isHost() && op >= 0) for (const b of bots) { if (!b.alive || b.ally) continue; if (Math.hypot(b.pos.x - s.pos.x, b.pos.z - s.pos.z) < s.R * grow + b.r * .5 && b.pos.y < s.pos.y + 4 && b.pos.y > s.pos.y - 1) { const kd = b.hurt(7, false, op); if (op === NET.me) showHit(kd ? 'kill' : ''); } }
+      if (P.alive && Math.hypot(P.pos.x - s.pos.x, P.pos.z - s.pos.z) < s.R * grow && P.pos.y < s.pos.y + 4 && P.pos.y > s.pos.y - 1) damagePlayer(7 * (s.owner instanceof RemotePlayer && !(M && M.pvp) ? .4 : 1), s.owner, s.owner === null);
+    }
+    if (s.t >= s.life) { scene.remove(s.g); for (const m of s.mats) m.dispose(); gases.splice(i, 1); }
+  }
 }
 function updateFires(dt) {
   for (let i = fires.length - 1; i >= 0; i--) {
@@ -980,8 +1041,8 @@ function updateFires(dt) {
     f.tick += dt; const op = ownerPid(f.owner);
     while (f.tick >= .25) {
       f.tick -= .25;
-      if (isHost() && op >= 0) for (const b of bots) { if (!b.alive || b.ally) continue; if (Math.hypot(b.pos.x - f.pos.x, b.pos.z - f.pos.z) < f.R + b.r * .5 && b.pos.y < f.pos.y + 1.4 && b.pos.y > f.pos.y - .8) { const kd = b.hurt(5, false, op); if (op === NET.me) showHit(kd ? 'kill' : ''); } }
-      if (P.alive && Math.hypot(P.pos.x - f.pos.x, P.pos.z - f.pos.z) < f.R && P.pos.y < f.pos.y + 1.4 && P.pos.y > f.pos.y - .8) damagePlayer(5 * (f.owner instanceof RemotePlayer && !(M && M.pvp) ? .4 : 1), f.owner, f.owner === null);
+      if (isHost() && op >= 0) for (const b of bots) { if (!b.alive || b.ally) continue; if (Math.hypot(b.pos.x - f.pos.x, b.pos.z - f.pos.z) < f.R + b.r * .5 && b.pos.y < f.pos.y + 1.4 && b.pos.y > f.pos.y - .8) { const kd = b.hurt(9, false, op); if (op === NET.me) showHit(kd ? 'kill' : ''); } }
+      if (P.alive && Math.hypot(P.pos.x - f.pos.x, P.pos.z - f.pos.z) < f.R && P.pos.y < f.pos.y + 1.4 && P.pos.y > f.pos.y - .8) damagePlayer(9 * (f.owner instanceof RemotePlayer && !(M && M.pvp) ? .4 : 1), f.owner, f.owner === null);
     }
     if (f.t >= f.life) { scene.remove(f.g); for (const m of f.mats) m.dispose(); fires.splice(i, 1); }
   }
@@ -1294,7 +1355,8 @@ function hostOnMsg(pid, m) {
     case 'pl': if (rp && Array.isArray(m.p) && m.p.length >= 12 && m.p.every(n => Number.isFinite(n))) rp.setState(m.p); break;
     case 'hit': { const b = botById.get(m.b | 0); if (b && b.alive && !b.ally && rp && rp.alive && Number.isFinite(m.d)) b.hurt(clamp(m.d, 0, 200), !!m.h, pid, null, +m.z); break; }
     case 'th': if (rp && okVec(m.p) && okVec(m.v) && (m.id === 'shell' || (ITEMS[m.id] && ITEMS[m.id].kind === 'nade'))) { spawnNade(m.id, v3(m.p), v3(m.v), rp); NET.net.hostBroadcast({ t: 'th', id: m.id, p: m.p, v: m.v, o: pid }, pid); } break;
-    case 'rk': if (rp && okVec(m.p) && okVec(m.v) && Number.isFinite(m.d)) { spawnRocket(v3(m.p), v3(m.v), clamp(m.d, 0, 200), rp); NET.net.hostBroadcast({ t: 'rk', p: m.p, v: m.v, d: m.d, o: pid }, pid); } break;
+    case 'c4x': if (rp) { detonateC4(rp); NET.net.hostBroadcast({ t: 'c4x', o: pid }, pid); } break;
+    case 'rk': if (rp && okVec(m.p) && okVec(m.v) && Number.isFinite(m.d)) { spawnRocket(v3(m.p), v3(m.v), clamp(m.d, 0, 600), rp, clamp(+m.r || 5.5, 3, 12)); NET.net.hostBroadcast({ t: 'rk', p: m.p, v: m.v, d: m.d, r: m.r, o: pid }, pid); } break;
     case 'sh': if (rp && okVec(m.a) && okVec(m.b)) { rp.revealT = 2.5; shotFx(m, rp); NET.net.hostBroadcast({ t: 'sh', a: m.a, b: m.b, w: m.w, r: m.r, o: pid }, pid); } break;
     case 'claim': { const pk = pkById.get(m.n | 0); if (pk && pk.on && rp && Math.hypot(rp.tpos.x - pk.x, rp.tpos.z - pk.z) < 6) hostGrant(pk, pid); break; }
     case 'pd': if (M && !M.over) hostPlayerDied(pid, m.by | 0, m.tm | 0, !!m.self, !!m.env); break;
@@ -1361,7 +1423,8 @@ function clientOnMsg(_, m) {
     case 'rs': setLocalRespawn(+m.d); break;
     case 'pdx': { const rp = remotes.get(m.pid | 0); if (rp) playerDeathFx(rp); break; }
     case 'th': if (okVec(m.p) && okVec(m.v) && (m.id === 'shell' || (ITEMS[m.id] && ITEMS[m.id].kind === 'nade'))) spawnNade(m.id, v3(m.p), v3(m.v), m.ob !== undefined ? (botById.get(m.ob) || remotes.get(0)) : (remotes.get(m.o | 0) || remotes.get(0))); break;
-    case 'rk': if (okVec(m.p) && okVec(m.v)) spawnRocket(v3(m.p), v3(m.v), +m.d || 0, remotes.get(m.o | 0) || remotes.get(0)); break;
+    case 'c4x': detonateC4(remotes.get(m.o | 0) || remotes.get(0)); break;
+    case 'rk': if (okVec(m.p) && okVec(m.v)) spawnRocket(v3(m.p), v3(m.v), +m.d || 0, remotes.get(m.o | 0) || remotes.get(0), clamp(+m.r || 5.5, 3, 12)); break;
     case 'sh': if (okVec(m.a) && okVec(m.b)) shotFx(m, remotes.get(m.o | 0)); break;
     case 'pkt': { const pk = pkById.get(m.n | 0); if (pk && pk.on) { takePickupFx(pk); pk.on = false; } break; }
     case 'pks': { const w = m.w; if (w) { const pk = pkById.get(w.n); if (pk) setPickup(pk, lootFromWire(w)); else addPickup(lootFromWire(w), w.x, w.y, w.z, { nid: w.n, fixed: w.f ? w.id : null }); } break; }
@@ -1622,7 +1685,7 @@ function spawnPlayer(initial) {
   let best = null; const pool = M && M.team && SPAWNS_A.length ? SPAWNS_A : SPAWNS;   // Sniper's Alley: your team starts at its own end of the map
   if (initial && M && M.mode === 'royale') best = brSpawn(NET.me); else if (initial) best = pool[(NET.me * 3) % pool.length];
   else { let bd = -1; for (const s of pool) { let md = 1e9; for (const b of bots) if (b.alive && !(M && M.team && b.ally)) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
-  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.mant = null; P.climb = null; P.revealT = 0; P.sjT = 0; P.glide = 0; P.frozen = P.legsFrozen = false; P.hp = 100; P.shield = 0; P.armor = { body: M && M.mode === 'pistols' ? { k: 'vest1', dur: ARMORS.vest1.dur } : null, helm: null }; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
+  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.mant = null; P.climb = null; P.revealT = 0; P.sjT = 0; P.glide = 0; P.frozen = P.legsFrozen = false; P.hp = 100; P.shield = 0; P.armor = { body: M && (M.mode === 'pistols' || M.mode === 'utility') ? { k: 'vest1', dur: ARMORS.vest1.dur } : null, helm: null }; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
   for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) cur = slots.find(e => e && e.gun !== undefined).gun; W.forEach((w, k) => w.g.visible = k === cur); selSlot = slotOf(cur); reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); clearHold(); resetInv(); resetReserve(); adsTog = false; P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo(); if (M && M.ladder) applyLoadout(true);
 }
 function clearHazards() {
@@ -1649,6 +1712,7 @@ function cycleWeapon(dir) { const have = []; slots.forEach((e, i) => { if (e) ha
 // F: drink / use / throw whatever is in your hand
 function useHeld() {
   if (!holdItem || !P.alive || state !== 'play') return; const id = holdItem, it = ITEMS[id];
+  if (it.kind === 'remote') { triggerC4(); return; }
   if (it.kind === 'nade') { playerThrow(id); afterSpent(id); return; } startUse(id);
 }
 function afterSpent(id) {
@@ -1681,14 +1745,14 @@ function muzzleWorld() { const w = W[cur], p = new V3(w.muzzle.x, w.muzzle.y, w.
 let vmBase = new V3(.27, -.25, -.5);
 function fire(follow = false) {
   const w = W[cur], d = w.d, st = w.s; w.ammo--; if (!follow) { w.cd = st.rate; if (d.burst) { burstLeft = d.burst - 1; burstT = d.burstGap || .075; } } vmKick = d.kick * 4; flash.material.opacity = 1; flashLight.intensity = 6; setTimeout(() => flashLight.intensity = 0, 50); sfx(d.id); refreshAmmo();
-  const dmgMul = P.buffT > 0 ? 2 : 1; const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
+  const dmgMul = (P.buffT > 0 ? 2 : 1) * (M && M.mode === 'utility' ? .5 : 1); const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
   recP += rnd(.5, 1) * d.kick * .3 * (adsK > .5 ? .6 : 1); recY += rnd(-.5, .5) * d.kick * .12; P.shakeT = Math.max(P.shakeT, .08);
   if (M && M.zerog) P.vel.addScaledVector(aimDir(0), -d.kick * 8);   // no gravity: every shot nudges you backwards
   P.revealT = 2.5;   // shooting gives away your spot in the trees
   if (isHost()) for (const b of bots) if (b.alive && !b.ally && b.pos.distanceTo(P.pos) < 38) { b.alertT = Math.max(b.alertT, 3); b.lastSeen.copy(P.pos); }
   const mz = muzzleWorld();
   if (d.launch) { const dir = aimDir(0), vel = dir.multiplyScalar(26); vel.y += 2.4; spawnNade('shell', mz, vel, null); netEvent({ t: 'th', id: 'shell', p: v3a(mz), v: v3a(vel) }); return; }
-  if (d.proj) { const dir = aimDir(0), vel = dir.multiplyScalar(30); spawnRocket(mz, vel, st.dmg, null); netEvent({ t: 'rk', p: v3a(mz), v: v3a(vel), d: r1(st.dmg) }); return; }
+  if (d.proj) { for (let i = 0; i < (d.pellets || 1); i++) { const dir = aimDir(d.pspread || 0), vel = dir.multiplyScalar(30); spawnRocket(mz, vel, st.dmg, null, d.radius || 5.5, d.self || 35); netEvent({ t: 'rk', p: v3a(mz), v: v3a(vel), d: r1(st.dmg), r: d.radius || 5.5 }); } return; }
   let shotEnd = null;
   for (let i = 0; i < d.pellets; i++) {
     const dir = aimDir(sp); let tw = worldT(o, dir), hit = null, hb = null;
@@ -1697,7 +1761,7 @@ function fire(follow = false) {
     const end = hit ? hit.t : Math.min(tw, 120), endP = o.clone().addScaledVector(dir, end); if (!shotEnd) shotEnd = endP;
     if (i < 3 || d.pellets === 1) tracer(mz, endP, d.trace || (w.rar >= 3 ? RARITY[w.rar].col : 0xfff2a0), d.zoom ? .22 : .08);
     if (hit) {
-      const fall = d.pellets > 1 ? 1 - clamp((hit.t - 7) / 22, 0, .75) : 1; const dmg = st.dmg * dmgMul * fall * (hit.head ? d.hs : 1); let killed = false;
+      const fall = d.pellets > 1 ? (hit.t < 7 ? 1 + (7 - hit.t) / 7 * .9 : 1 - clamp((hit.t - 7) / 18, 0, .85)) : 1; const dmg = st.dmg * dmgMul * fall * (hit.head ? d.hs : 1); let killed = false;
       if (hb instanceof RemotePlayer) sendPlayerHit(hb, dmg, hit.head); else if (isHost()) killed = hb.hurt(dmg, hit.head, NET.me, null, (o.y + dir.y * hit.t - hb.pos.y) / (hb.h || 1.75)); else { NET.net.clientSend({ t: 'hit', b: hb.id, d: r1(dmg), h: hit.head ? 1 : 0, z: r2((o.y + dir.y * hit.t - hb.pos.y) / (hb.h || 1.75)) }); hb.flashT = .1; hb.barT = 2.5; }
       burst(endP, hit.head ? 0xffd34e : 0xffffff, 6, 5, .1, .4, 10); showHit(killed ? 'kill' : hit.head ? 'head' : ''); if (!killed) sfx(hit.head ? 'head' : 'hit');
     } else if (tw < 200) { burst(endP, 0xfff2a0, 4, 3, .08, .3, 8); }
@@ -1957,7 +2021,7 @@ function step(dt) {
     updatePlayer(dt);
     if (isHost()) hostTick(dt); else for (const b of bots) b.update(dt);
     for (const rp of remotes.values()) rp.update(dt);
-    updateNades(dt); updateSmokes(dt); updateFires(dt); updateProjs(dt); updateStormVis(dt); netTick(dt);
+    updateNades(dt); updateSmokes(dt); updateFires(dt); updateGases(dt); updateProjs(dt); updateStormVis(dt); netTick(dt);
   } else if (state === 'menu' || state === 'lobby' || state === 'over') {
     const a = time * .12, r = HALF * .78; P.pos.set(Math.cos(a) * r, 7, Math.sin(a) * r); P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = -.22; P.alive = true; P.vel.set(0, 0, 0);
     if (M && state === 'over') for (const rp of remotes.values()) rp.update(dt);
@@ -2114,6 +2178,6 @@ for (const key of ['t', 'b', 'l', 'r']) $('cross').querySelector('.' + key).id =
 buildItems(); refreshItems(); refreshSlots(); refreshAmmo();
 loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); renderPickers();
 buildBushOverlay();
-window.__ba = { brTick, startBattle, endBattle, zgFreeze, zgKick, applySuit, gateTouch, pickZ, S, ARMORS, stealthR, BUSHES, P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
+window.__ba = { gases, projs, detonateC4, triggerC4, giveItem, spawnNade, detonate, slots, brTick, startBattle, endBattle, zgFreeze, zgKick, applySuit, gateTouch, pickZ, S, ARMORS, stealthR, BUSHES, P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
   get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck, TREES, treeHidden, SCOPES, updateScopeUI, get myScope() { return myScope; }, set myScope(v) { myScope = v; }, get thermalView() { return thermalView; } };
 requestAnimationFrame(loop);

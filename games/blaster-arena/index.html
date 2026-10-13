@@ -81,7 +81,7 @@
   .ic-bandage { width: 24px; height: 16px; border-radius: 4px; } .ic-medkit { width: 28px; height: 22px; border-radius: 5px; }
   .ic-bandage:after, .ic-medkit:after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font: 900 15px/1 sans-serif; color: #ff4a5a; } .ic-medkit:after { color: #fff; }
   .ic-mini { width: 14px; height: 14px; border-radius: 50%; } .ic-pot { width: 24px; height: 24px; border-radius: 50%; }
-  .ic-frag { width: 18px; height: 18px; border-radius: 50%; } .ic-flash { width: 14px; height: 22px; border-radius: 4px; } .ic-smoke { width: 14px; height: 22px; border-radius: 7px; } .ic-molly { width: 16px; height: 22px; border-radius: 4px 4px 9px 9px; }
+  .ic-frag { width: 18px; height: 18px; border-radius: 50%; } .ic-flash { width: 14px; height: 22px; border-radius: 4px; } .ic-smoke { width: 14px; height: 22px; border-radius: 7px; } .ic-molly { width: 16px; height: 22px; border-radius: 4px 4px 9px 9px; } .ic-sticky { width: 18px; height: 18px; border-radius: 5px; } .ic-cluster { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 3px rgba(0, 0, 0, .35); } .ic-gas { width: 15px; height: 22px; border-radius: 8px 8px 4px 4px; } .ic-c4 { width: 20px; height: 13px; border-radius: 2px; } .ic-remote { width: 12px; height: 22px; border-radius: 4px; }
   #useBar { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); width: 280px; text-align: center; }
   #useBar .lbl { font-weight: 900; letter-spacing: .1em; font-size: 14px; text-shadow: 0 2px 0 rgba(0,0,0,.6); margin-bottom: 4px; } #useBar .trk { height: 14px; border-radius: 8px; background: rgba(10,6,24,.6); border: 3px solid rgba(255,255,255,.3); overflow: hidden; } #useFill { height: 100%; width: 0; background: linear-gradient(180deg, #ffe98a, #ffb02a); }
   #prompt { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); display: none; align-items: center; gap: 10px; background: rgba(10,6,24,.7); padding: 8px 16px; border-radius: 14px; font-weight: 900; letter-spacing: .05em; border: 2px solid rgba(255,255,255,.22); white-space: nowrap; } #prompt kbd { background: #fff; color: #1a0c00; border-radius: 7px; padding: 2px 10px; font-weight: 900; font-family: inherit; box-shadow: 0 3px 0 #999; }
@@ -121,12 +121,12 @@
   }
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
-<meta name="description" content="A bouncy 3D robot shooter with 15 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
+<meta name="description" content="A bouncy 3D robot shooter with 15 maps, 11 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#0a0618">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Blaster Arena - free browser game">
-<meta property="og:description" content="A bouncy 3D robot shooter with 15 maps, 10 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
+<meta property="og:description" content="A bouncy 3D robot shooter with 15 maps, 11 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/blaster-arena/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/blaster-arena.png">
 <meta name="twitter:card" content="summary_large_image">
 </head>
@@ -200,7 +200,7 @@
     <h1 style="font-size:64px" id="pauseT">PAUSED</h1>
     <label>Mouse sensitivity <input type="range" id="sens" min="0.3" max="2.5" step="0.05"> <span id="sensV"></span></label>
     <label>Field of view <input type="range" id="fovR" min="70" max="105" step="1"> <span id="fovV"></span></label>
-    <label>Jump height <input type="range" id="jumpR" min="1" max="6" step="0.25"> <span id="jumpV"></span></label>
+    <label>Jump height <input type="range" id="jumpR" min="1" max="12" step="0.5"> <span id="jumpV"></span></label>
     <label>Volume <input type="range" id="vol" min="0" max="1" step="0.05"> <span id="volV"></span></label>
     <p class="sub" id="perf" style="font-size:13px;margin:6px 0 0;opacity:.6"></p>
     <div class="row"><button id="resume" class="big">RESUME</button><button id="restart" class="alt">Restart match</button><button id="leaveBtn" class="alt">Quit to menu</button></div>
@@ -219,6 +219,6 @@
 <div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
 <a class="back" href="../../index.html">&larr; All games</a>
 <script src="vendor/peerjs.min.js"></script>
-<script type="module" src="game.js?v=6.4"></script>
+<script type="module" src="game.js?v=6.6"></script>
 </body>
 </html>
