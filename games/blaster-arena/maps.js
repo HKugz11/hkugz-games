@@ -374,12 +374,12 @@ const PK_TOWERS = [[44, 33], [-44, -33], [-44, 33], [44, -33]];
 const PK_TPADS = [[44, 25, 44, 9, 33, 1.7], [-44, -25, -44, 9, -33, 1.7], [-44, 25, -44, 9, 33, 1.7], [44, -25, 44, 9, -33, 1.7]];   // pads in front of each tower
 const tower = (b, cx, cz) => {
   const s = Math.sign(cz), H = 9, STONE = 0x8a6a32, DECK = 0xb08a40, RAIL = 0x6a5026;
-  for (const dx of [-3.4, 3.4]) for (const dz of [-3.4, 3.4]) b.box(cx + dx, H / 2, cz + dz, 1.2, H, 1.2, STONE);   // legs
+  for (const dx of [-3.3, 3.3]) for (const dz of [-3.3, 3.3]) b.box(cx + dx, H / 2, cz + dz, 1, H, 1, STONE);   // legs (tucked in under the deck so no faces line up with its edge)
   b.box(cx, H - .3, cz, 8, .6, 8, DECK);                                                                           // the deck
-  b.box(cx, H + .5, cz - s * 3.85, 8, 1, .3, RAIL); b.box(cx - 3.85, H + .5, cz, .3, 1, 8, RAIL); b.box(cx + 3.85, H + .5, cz, .3, 1, 8, RAIL);   // low walls to hide behind
-  for (const dx of [-2.4, 2.4]) b.box(cx + dx, H + .5, cz + s * 3.85, 3.2, 1, .3, RAIL);                           // outer wall with a gap in the middle
+  b.box(cx, H + .5, cz - s * 3.85, 7.4, 1, .3, RAIL); b.box(cx - 3.85, H + .5, cz, .3, 1, 8, RAIL); b.box(cx + 3.85, H + .5, cz, .3, 1, 8, RAIL);   // low walls to hide behind
+  for (const dx of [-2.25, 2.25]) b.box(cx + dx, H + .5, cz + s * 3.85, 2.9, 1, .3, RAIL);                           // outer wall with a gap in the middle
   b.box(cx, H / 2, cz + s * 4.6, 1, H, 1, 0xe0c050);                                                              // the ladder column
-  for (const dx of [-3.4, 3.4]) b.glow(cx + dx, H + 2.4, cz - s * 3.4, .25, 2.8, .25, 0x2ee6ff);                  // beacons
+  for (const dx of [-3.85, 3.85]) b.glow(cx + dx, H + 3.2, cz - s * 3.85, .1, 4.4, .1, 0xd8f0a0);                   // thin beacons you can see from far away
 };   // forests: x, z, radius, trees (each one has a twin after a half turn)
 const padTurn = ([x, z, tx, ty, tz, T]) => [-x, -z, -tx, ty, -tz, T];
 // the footprints of the peaks, ridges, terraces and bunkers: [x, z, width, depth] (both halves)

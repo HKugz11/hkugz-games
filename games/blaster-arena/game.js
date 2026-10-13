@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=5.6';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=5.6';
-import { TOUCH, initTouch } from './touch.js?v=5.6';
+import { MAPS } from './maps.js?v=5.7';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=5.7';
+import { TOUCH, initTouch } from './touch.js?v=5.7';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -62,7 +62,7 @@ function resize() { const w = innerWidth, h = innerHeight; renderer.setPixelRati
 addEventListener('resize', resize); resize();
 const hemis = [new THREE.HemisphereLight(0xcfeaff, 0x8a6ad0, 1.05), new THREE.HemisphereLight(0xcfeaff, 0x8a6ad0, 1.05)]; scene.add(hemis[0]); vmScene.add(hemis[1]);
 const sun = new THREE.DirectionalLight(0xfff1d0, 2.3); sun.position.set(30, 50, 20); sun.castShadow = QL.shadow > 0; sun.shadow.mapSize.set(QL.shadow || 512, QL.shadow || 512);
-Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 140 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = .04; scene.add(sun); scene.add(sun.target);
+Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 140 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = .06; scene.add(sun); scene.add(sun.target);
 const vmSun = new THREE.DirectionalLight(0xffffff, 2.2); vmSun.position.set(1, 2, 1); vmScene.add(vmSun);
 
 // toon look
@@ -99,14 +99,17 @@ const BOX_FACES = [[[1, 0, 0], [[1, -1, 1], [1, -1, -1], [1, 1, -1], [1, 1, 1]]]
   [[0, -1, 0], [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]]], [[0, 0, 1], [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]]], [[0, 0, -1], [[1, -1, -1], [-1, -1, -1], [-1, 1, -1], [1, 1, -1]]]];
 const BOX_CORNERS = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]], BOX_EDGES = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
 const leafU = { uCam: { value: new V3() }, uNear: { value: 1.7 } };   // leaves closer than this to your eyes fade away, so you can see out of a tree or a bush
-function leafMaterial() {
+const LFB = THREE.ShaderChunk.lights_fragment_begin.replace('directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ]', 'directLight.color *= ( directLight.visible && receiveShadow && dot( geometryNormal, directLight.direction ) > 0.05 ) ? getShadow( directionalShadowMap[ i ]');   // faces turned away from the sun (or at a grazing angle) skip the shadow lookup, which is what caused the stripy diamond "acne" on walls
+function mapMaterial(leaf) {
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
   m.onBeforeCompile = sh => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_begin>', LFB);
+    if (!leaf) return;
     sh.uniforms.uCam = leafU.uCam; sh.uniforms.uNear = leafU.uNear;
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = 'varying vec3 vWP; uniform vec3 uCam; uniform float uNear;\n' + sh.fragmentShader.replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n float dN = distance(vWP, uCam); if (dN < uNear && fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) > dN / uNear) discard;');
   };
-  m.customProgramCacheKey = () => 'leafnear';
+  m.customProgramCacheKey = () => leaf ? 'leafnear2' : 'mapsolid2';
   return m;
 }
 function mergeBoxes(list, mat, shadow, edges) {
@@ -127,8 +130,8 @@ function mergeBoxes(list, mat, shadow, edges) {
 }
 function flushBatch() {
   if (!batch) return; const b = batch; batch = null;
-  mergeBoxes(b.rock, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient }), true, QL.edges);
-  mergeBoxes(b.leaf, leafMaterial(), true, QL.edges);
+  mergeBoxes(b.rock, mapMaterial(false), true, QL.edges);
+  mergeBoxes(b.leaf, mapMaterial(true), true, QL.edges);
   mergeBoxes(b.glow, new THREE.MeshBasicMaterial({ vertexColors: true }), false, false);
 }
 // spatial grid: collisions and rays only look at the boxes near them (matters on the big maps)
