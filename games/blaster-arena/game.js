@@ -1,16 +1,16 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=6.9';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=6.9';
-import { TOUCH, initTouch } from './touch.js?v=6.9';
+import { MAPS } from './maps.js?v=7.1';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.1';
+import { TOUCH, initTouch } from './touch.js?v=7.1';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
 const rnd = (a, b) => a + Math.random() * (b - a), rint = (a, b) => Math.floor(rnd(a, b + 1)), clamp = (v, a, b) => Math.max(a, Math.min(b, v)), pick = a => a[Math.floor(Math.random() * a.length)];
 const load = (k, d) => { try { const v = localStorage.getItem('ba.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem('ba.' + k, JSON.stringify(v)); } catch (e) {} };
-const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7), jump: Math.max(1, Math.min(12, +load('jump', 1) || 1)) };   // jump: how many times higher you jump (a slider in the pause menu, works on every map and mode)
+const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7), jump: Math.max(1, Math.min(12, +load('jump', 1) || 1)), smoke: Math.max(5, Math.min(600, +load('smoke', 180) || 180)) };   // smoke: how many seconds a smoke cloud stays (a slider in the pause menu)   // jump: how many times higher you jump (a slider in the pause menu, works on every map and mode)
 const CFG = { mode: load('mode', 'tdm'), map: load('map', 'plaza'), diff: load('diff', 'normal'), rarity: load('rarity', 2), fp: load('fp', 'dummy') };
 const mapOK = (m, mode) => m.br ? mode === 'royale' : m.sn ? mode === 'snipers' : m.room ? mode === 'battleroom' : m.lab ? mode === 'lab' : mode !== 'battleroom' && mode !== 'lab';   // Battle Royale maps only in Battle Royale, sniper maps only in Sniper's Alley
 { const cm = MAPS.find(m => m.id === CFG.map); if (!cm || !mapOK(cm, CFG.mode)) CFG.map = CFG.mode === 'battleroom' ? 'battleroom' : CFG.mode === 'lab' ? 'lab' : CFG.mode === 'snipers' ? 'peaksxl' : 'plaza'; }
@@ -683,7 +683,8 @@ function lootUseful(l) {
   if (l.id === 'gun') { const w = W[l.gi]; return !(w.owned && l.rar <= w.rar); }
   if (l.id === 'dmg') return true;
   if (l.id === 'ammo') return !FREE() && reserve[l.at] < AMMO[l.at].max;
-  return itemSlot(l.id) >= 0 ? inv[l.id] < ITEMS[l.id].max : true;   // a new stack needs a free slot, or swaps with the slot in your hand
+  const st = stackSlots(l.id); if (!st.length) return true;   // a first stack needs a free slot, or swaps with the slot in your hand
+  return inv[l.id] < st.length * ITEMS[l.id].max || (slots.indexOf(null) >= 0 && st.length < maxStacks(l.id));   // a full stack needs a free slot for another stack
 }
 function whyNot(l) {
   if (time - fullHintT < 1.2) return; fullHintT = time;
@@ -739,12 +740,13 @@ let labRar = 2, labNear = true, labDiff = Math.max(0, Object.keys(DIFF).indexOf(
 const LAB_Z = -17.4, LAB_COLS = 12;   // the button wall: its face is at z = -17.4 (see the Test Lab map)
 function setBag(n) {   // the Test Lab has a bigger bag (9 slots) so you can carry lots of things at once
   SLOTN = n; while (slots.length < n) slots.push(null);
-  while (slots.length > n) { const e = slots.pop(); if (e && e.gun !== undefined) W[e.gun].owned = false; else if (e) { inv[e.item] = 0; if (holdItem === e.item) clearHold(); } }
+  while (slots.length > n) { const e = slots.pop(); if (e && e.gun !== undefined) W[e.gun].owned = false; }
+  for (const id of ITEM_IDS) { inv[id] = Math.min(inv[id], stackSlots(id).length * ITEMS[id].max); if (holdItem === id && !inv[id]) clearHold(); }
   if (selSlot >= n) selSlot = 0;
 }
 function labSlot() {   // a free slot, or the slot in your hand when the bag is full (nothing drops in the lab)
   let si = slots.indexOf(null); if (si >= 0) return si; si = selSlot; const e = slots[si];
-  if (e) { if (e.gun !== undefined) W[e.gun].owned = false; else { inv[e.item] = 0; if (holdItem === e.item) clearHold(); } slots[si] = null; }
+  if (e) { if (e.gun !== undefined) W[e.gun].owned = false; else takeStack(si); slots[si] = null; }
   return si;
 }
 function labGun(gi) {
@@ -752,9 +754,11 @@ function labGun(gi) {
   if (si < 0) { si = labSlot(); slots[si] = { gun: gi }; w.owned = true; w.cd = 0; }
   w.rar = labRar; applyRarity(w); w.ammo = w.s.mag; selectWeapon(gi); refreshSlots(); refreshAmmo();
 }
-function labItem(id) {
-  let si = itemSlot(id); if (si < 0) { si = labSlot(); slots[si] = { item: id }; }
-  inv[id] = ITEMS[id].max; refreshSlots(); refreshItems(); selectSlot(si); refreshAmmo();
+function labItem(id) {   // press an item again for another full stack
+  const it = ITEMS[id]; let st = stackSlots(id);
+  if (!st.length) { const si = labSlot(); slots[si] = { item: id }; inv[id] = 0; st = [si]; }
+  if (inv[id] >= st.length * it.max && st.length < maxStacks(id)) { const fi = slots.indexOf(null); if (fi >= 0) { slots[fi] = { item: id }; st.push(fi); } }
+  inv[id] = Math.min(inv[id] + it.max, st.length * it.max); refreshSlots(); refreshItems(); selectSlot(st[0]); refreshAmmo();
 }
 // bots: appear in front of you (or at the normal spawn points), at the level you pick; target dummies stand still and never shoot
 function labBotPos() {
@@ -773,10 +777,13 @@ function mkBots(n, o = {}) {
   }
   hint('SPAWNED ' + n + ' ' + (o.dummy ? 'TARGET DUMMY' : o.ally ? 'FRIEND BOT' : o.boss ? 'BOSS BOT' : 'ENEMY BOT') + (n > 1 ? 'S' : ''), '#ffd34e');
 }
+const fmtT = s => s < 60 ? s + 's' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 function labList() {   // the middle of the wall
   const L = [], add = (sec, label, col, fn, state) => L.push({ sec, label, col, fn, state });
   for (const [nm, v] of [['NORMAL GRAVITY', 22], ['LIGHT GRAVITY', 11], ['MOON GRAVITY', 5.5], ['TINY GRAVITY', 2.5]]) add('EFFECTS', nm, '#6ab0ff', () => { G = v; }, () => G === v);
   for (const v of [1, 4, 12]) add('EFFECTS', 'JUMP x' + v, '#6ab0ff', () => { S.jump = v; const el = $('jumpR'); if (el) { el.value = v; $('jumpV').textContent = v + 'x'; } }, () => S.jump === v);
+  for (const v of [10, 30, 60, 180, 600]) add('EFFECTS', 'SMOKE ' + (v < 60 ? v + ' SEC' : v / 60 + ' MIN'), '#6ab0ff', () => { S.smoke = v; const el = $('smokeR'); if (el) { el.value = v; $('smokeV').textContent = fmtT(v); } }, () => S.smoke === v);
+  add('EFFECTS', 'CLEAR SMOKE & FIRE', '#6ab0ff', () => { clearHazards(); });
   add('EFFECTS', 'SUPER SPEED', '#6ab0ff', () => { P.speedT = P.speedT > 1000 ? 0 : 1e9; }, () => P.speedT > 1000);
   add('EFFECTS', 'GOD MODE', '#6ab0ff', () => { M.god = !M.god; if (M.god) { P.hp = 100; P.shield = 100; } }, () => !!M.god);
   add('EFFECTS', 'INFINITE UTILITY', '#6ab0ff', () => { M.infUtil = !M.infUtil; }, () => !!M.infUtil);
@@ -784,7 +791,7 @@ function labList() {   // the middle of the wall
   add('EFFECTS', 'TELEPORT BACK', '#6ab0ff', () => { P.pos.set(0, 0, 11.5); P.vel.set(0, 0, 0); });
   for (const k of ARMOR_IDS) add('GEAR', ARMORS[k].name, '#ffd34e', () => applyLoot({ id: 'armor', at: k, qty: 1 }));
   for (const k of SCOPE_IDS) add('GEAR', SCOPES[k].name, '#ffd34e', () => applyLoot({ id: 'scope', at: k, qty: 1 }), () => myScope === k);
-  add('GEAR', 'CLEAR GEAR', '#ffd34e', () => { P.armor = { body: null, helm: null }; myScope = null; updateScopeUI(); });
+  add('GEAR', 'CLEAR GEAR', '#ffd34e', () => { P.armor = { body: null, helm: null }; P.stealth = 0; P.hidden = false; myScope = null; scopeKey = ''; updateScopeUI(); hc.arm = null; updateArmHUD(); refreshAmmo(); hint('ARMOUR, HELMET AND SCOPE CLEARED', '#ffd34e'); });
   add('GUNS', 'ALL GUNS (MORE EACH PRESS)', '#8aff3a', () => { const n = WDEF.length; let guard = 0; while (guard++ < n && slots.indexOf(null) >= 0) { const gi = labNext.gun; labNext.gun = (labNext.gun + 1) % n; if (slotOf(gi) < 0) labGun(gi); } });
   add('GUNS', 'CLEAR BAG', '#8aff3a', () => { for (const w of W) w.owned = false; for (const id of ITEM_IDS) inv[id] = 0; clearHold(); slots.fill(null); slots[0] = { gun: 0 }; W[0].owned = true; selectWeapon(0, true); refreshSlots(); refreshItems(); refreshAmmo(); });
   WDEF.forEach((d, gi) => add('GUNS', d.name, '#8aff3a', () => labGun(gi)));
@@ -838,7 +845,7 @@ function labAim() {   // the button under the crosshair (the wall faces south, s
 function labPress(p) { if (!p.fn) return; sfx('pick'); try { p.fn(p); } catch (e) {} for (const q of labPanels) labDraw(q); }
 function labClick() { if (!P.alive) return false; const p = labAim(); if (!p) return false; labPress(p); return true; }
 function labTick(dt) {
-  if (M.infUtil) for (const e of slots) if (e && e.item && inv[e.item] < ITEMS[e.item].max) inv[e.item] = ITEMS[e.item].max;
+  if (M.infUtil) for (const id of ITEM_IDS) { const n = stackSlots(id).length; if (n && inv[id] < n * ITEMS[id].max) inv[id] = n * ITEMS[id].max; }
   labTick.t = (labTick.t || 0) + dt; if (labTick.t > .5) { labTick.t = 0; for (const q of labPanels) if (q.state && q.sec === 'EFFECTS') labDraw(q); }
 }
 function labClear() { for (const p of labPanels) { scene.remove(p.mesh); p.tex.dispose(); p.mesh.material.dispose(); p.mesh.geometry.dispose(); } labPanels.length = 0; }
@@ -883,21 +890,38 @@ function giveGun(gi, rar) {
   if (!FREE()) reserve[w.d.at] = Math.min(AMMO[w.d.at].max, reserve[w.d.at] + w.s.mag);
   return 'new';
 }
+// stacks: you can carry several slots of the same utility (5 slots of frags = 50 frags). inv[id] is the total; each slot holds up to ITEMS[id].max, filled in slot order
+function stackSlots(id) { const r = []; for (let i = 0; i < slots.length; i++) if (slots[i] && slots[i].item === id) r.push(i); return r; }
+function maxStacks(id) { return ITEMS[id].kind === 'remote' ? 1 : SLOTN; }   // one remote is plenty
+function stackCount(id, si) { const idx = stackSlots(id).indexOf(si); return idx < 0 ? 0 : clamp(inv[id] - idx * ITEMS[id].max, 0, ITEMS[id].max); }
+function takeStack(si) {   // take one stack out of the bag; returns how many were in it
+  const e = slots[si]; if (!e || e.item === undefined) return 0; const id = e.item, idx = stackSlots(id).indexOf(si), cnt = clamp(inv[id] - idx * ITEMS[id].max, 0, ITEMS[id].max);
+  inv[id] -= cnt; slots[si] = null; const rest = stackSlots(id); if (holdItem === id && selSlot === si) { if (rest.length) selSlot = rest[0]; else clearHold(); }
+  return cnt;
+}
 function giveItem(id, qty) {   // C4 charges need the remote, so a pickup of charges brings a remote along if you have a free slot (that is why C4 takes 2 slots)
   const got = giveItem0(id, qty);
   if (id === 'c4' && itemSlot('remote') < 0) { const si = slots.indexOf(null); if (si >= 0) { slots[si] = { item: 'remote' }; inv.remote = 1; refreshSlots(); refreshItems(); hint('C4 COMES WITH A REMOTE (2 SLOTS)', '#ffd34e'); } else hint('NEEDS A REMOTE: FREE A SLOT (C4 TAKES 2)', '#ff8a8a'); }
   return got;
 }
 function giveItem0(id, qty) {
-  const it = ITEMS[id]; let si = itemSlot(id);
-  if (si >= 0) { const n = Math.min(it.max - inv[id], qty); inv[id] += n; if (holdItem === id) refreshAmmo(); refreshSlots(); return n; }
-  si = slots.indexOf(null); const swapped = si < 0; if (swapped) { si = selSlot; dropSlot(si); }
-  slots[si] = { item: id }; inv[id] = Math.min(it.max, qty); if (swapped) selectSlot(si); refreshSlots(); return inv[id];
+  const it = ITEMS[id], have = stackSlots(id); let n = 0;
+  if (!have.length) {   // a first stack: a free slot, or swap with the slot in your hand
+    let si = slots.indexOf(null); const swapped = si < 0; if (swapped) { si = selSlot; dropSlot(si); }
+    slots[si] = { item: id }; inv[id] = 0; have.push(si); if (swapped) selectSlot(si);
+  }
+  for (;;) {
+    const take = Math.min(have.length * it.max - inv[id], qty - n); if (take > 0) { inv[id] += take; n += take; }
+    if (n >= qty) break;
+    const fi = slots.indexOf(null); if (fi < 0 || have.length >= maxStacks(id)) break;   // that stack is full: use another free slot
+    slots[fi] = { item: id }; have.push(fi);
+  }
+  if (holdItem === id) refreshAmmo(); refreshSlots(); return n;
 }
 function dropSlot(si) {
   const e = slots[si]; if (!e) return;
   if (e.gun !== undefined) { const w = W[e.gun]; dropGunAt(e.gun, w.rar, P.pos); w.owned = false; }
-  else { dropItemAt(e.item, inv[e.item], P.pos); inv[e.item] = 0; if (holdItem === e.item) clearHold(); }
+  else { const id = e.item; dropItemAt(id, takeStack(si), P.pos); }   // one stack drops, the others stay
   slots[si] = null;
 }
 function dropGunAt(gi, rar, pos) {
@@ -1095,7 +1119,7 @@ function deploySmoke(pos) {
   const y = groundY(pos.x, pos.z, pos.y + .4), g = new THREE.Group(), puffs = [];
   const mat = new THREE.MeshToonMaterial({ color: 0xeaeef7, gradientMap: gradient, transparent: true, opacity: .94, depthWrite: false, side: THREE.DoubleSide });
   for (let i = 0; i < 26; i++) { const m = new THREE.Mesh(puffGeo, mat), a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * 5.4; m.position.set(Math.cos(a) * r, rnd(.5, 6), Math.sin(a) * r); m.userData = { s: rnd(2.6, 4.2), ph: rnd(0, 6.28) }; puffs.push(m); g.add(m); }
-  g.position.set(pos.x, y, pos.z); scene.add(g); smokes.push({ g, mat, puffs, c: new V3(pos.x, y + 2.8, pos.z), R: 8.0, t: 0, life: 18 });
+  g.position.set(pos.x, y, pos.z); scene.add(g); smokes.push({ g, mat, puffs, c: new V3(pos.x, y + 2.8, pos.z), R: 8.0, t: 0, life: S.smoke });
   sfxAt('smokePop', pos);
 }
 function updateSmokes(dt) {
@@ -1807,6 +1831,7 @@ function clearHazards() {
   for (const n of nades) { scene.remove(n.m); disposeObj(n.m); } nades.length = 0;
   for (const s of smokes) { scene.remove(s.g); s.mat.dispose(); } smokes.length = 0;
   for (const f of fires) { scene.remove(f.g); for (const m of f.mats) m.dispose(); } fires.length = 0;
+  for (const s of gases) { scene.remove(s.g); for (const m of s.mats) m.dispose(); } gases.length = 0;
 }
 
 // ---- weapons
@@ -1831,8 +1856,9 @@ function useHeld() {
   if (it.kind === 'nade') { playerThrow(id); afterSpent(id); return; } startUse(id);
 }
 function afterSpent(id) {
+  const st = stackSlots(id), need = Math.ceil(Math.max(0, inv[id]) / ITEMS[id].max);
+  for (let k = st.length - 1; k >= need; k--) { if (holdItem === id && selSlot === st[k] && st[0] !== st[k]) selSlot = st[0]; slots[st[k]] = null; }
   if (inv[id] > 0) { refreshAmmo(); refreshSlots(); return; }
-  const si = itemSlot(id); if (si >= 0) slots[si] = null;
   if (holdItem === id) { clearHold(); const gi = slots.findIndex(e => e && e.gun !== undefined); if (gi >= 0) selectSlot(gi); }
   refreshSlots(); refreshItems();
 }
@@ -1840,7 +1866,7 @@ function refreshSlots() {
   const s = $('slots'); while (s.children.length < SLOTN) s.appendChild(document.createElement('div')); while (s.children.length > SLOTN) s.lastChild.remove();
   [...s.children].forEach((e, i) => {
     const en = slots[i]; let nm = '', col = '#555';
-    if (en && en.gun !== undefined) { nm = WDEF[en.gun].name; col = hex(RARITY[W[en.gun].rar].col); } else if (en) { const it = ITEMS[en.item]; nm = it.name + ' x' + inv[en.item]; col = hex(it.col); }
+    if (en && en.gun !== undefined) { nm = WDEF[en.gun].name; col = hex(RARITY[W[en.gun].rar].col); } else if (en) { const it = ITEMS[en.item]; nm = it.name + ' x' + stackCount(en.item, i); col = hex(it.col); }
     e.innerHTML = en ? `<b>${i + 1}</b>${nm}` : `<b>${i + 1}</b>&mdash;`; e.className = (en ? '' : 'off ') + (en && i === selSlot ? 'on' : ''); e.style.setProperty('--rc', col);
   });
 }
@@ -1892,7 +1918,7 @@ function invHTML() {
   slots.forEach((e, i) => {
     if (!e) { o += `<div class="ig off"><b>${i + 1}</b><span class="nm">\u2014 empty \u2014</span></div>`; return; }
     if (e.gun !== undefined) { const w = W[e.gun], R = RARITY[w.rar]; o += `<div class="ig" style="--rc:${hex(R.col)}"><b>${i + 1}</b><span class="nm">${w.d.name}</span><span class="rr">${R.name}</span><span class="st">DMG ${Math.round(w.s.dmg)}${w.d.pellets > 1 ? '\u00d7' + w.d.pellets : ''} \u00b7 MAG ${w.s.mag} \u00b7 RELOAD ${w.s.reload.toFixed(1)}s \u00b7 ${AMMO[w.d.at].name}</span></div>`; }
-    else { const it = ITEMS[e.item]; o += `<div class="ig" style="--rc:${hex(it.col)}"><b>${i + 1}</b><span class="nm">${it.name}</span><span class="rr">x${inv[e.item]}/${it.max}</span><span class="st">${it.desc}</span></div>`; }
+    else { const it = ITEMS[e.item]; o += `<div class="ig" style="--rc:${hex(it.col)}"><b>${i + 1}</b><span class="nm">${it.name}</span><span class="rr">x${stackCount(e.item, i)}/${it.max}</span><span class="st">${it.desc}</span></div>`; }
   });
   o += '</div><h2>AMMO (not in your slots)</h2><div class="invi">';
   for (const k in AMMO) o += `<div class="ii${reserve[k] || FREE() ? '' : ' off'}"><i class="ic" style="--c:${hex(AMMO[k].col)};width:16px;height:16px;border-radius:3px"></i><span class="nm">${AMMO[k].name}</span><span class="ct">${FREE() ? '\u221e' : reserve[k] + '/' + AMMO[k].max}</span><span class="kk"> </span><span class="ds">for ${WDEF.filter(d => d.at === k).map(d => d.name).join(', ')}</span></div>`;
@@ -2257,6 +2283,7 @@ $('toMenu').onclick = () => leaveMatch('');
 $('again').onclick = () => { if (NET.role === 'client') return; if (NET.role === 'host') hostStart(); else startSolo(); lockPointer(); };
 $('restart').onclick = () => { startSolo(); lockPointer(); };
 { const el = $('jumpR'), lab = $('jumpV'), show = () => { lab.textContent = (+S.jump.toFixed(2)) + 'x'; }; el.value = S.jump; show(); el.oninput = () => { S.jump = +el.value; show(); save('jump', S.jump); }; }
+{ const el = $('smokeR'), lab = $('smokeV'), show = () => { lab.textContent = fmtT(S.smoke); }; el.value = S.smoke; show(); el.oninput = () => { S.smoke = +el.value; show(); save('smoke', S.smoke); }; }
 for (const [id, key, lab] of [['sens', 'sens', 'sensV'], ['fovR', 'fov', 'fovV'], ['vol', 'vol', 'volV']]) { const el = $(id); el.value = S[key]; $(lab).textContent = S[key]; el.oninput = () => { S[key] = +el.value; $(lab).textContent = S[key]; save(key, S[key]); if (key === 'vol' && master) master.gain.value = S.vol; }; }
 if (TOUCH) {
   document.querySelector('#prompt kbd').textContent = 'USE'; $('touchWarn').style.display = 'block'; $('touchWarn').textContent = 'Touch controls: left thumb moves (push all the way to sprint), right thumb looks and shoots. Tap a weapon slot to switch.';
