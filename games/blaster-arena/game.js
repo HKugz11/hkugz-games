@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=7.6';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.6';
-import { TOUCH, initTouch } from './touch.js?v=7.6';
+import { MAPS } from './maps.js?v=7.7';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.7';
+import { TOUCH, initTouch } from './touch.js?v=7.7';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -25,7 +25,7 @@ const MODES = {
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: super low gravity and huge jumps (the walls are way taller so nobody leaves), so fights happen high up in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun with unlimited ammo, but the whole map is full of armour, heals and utility. Armour up and pop away!' },
   utility: { name: 'Utility Blitz', blurb: 'Team deathmatch where the whole map is covered in armour, bandages and utility (frags, flashes, smokes, mollys, sticky bombs, cluster bombs and toxic gas) and there are no blasters to find. You only carry a weak Pop-Gun, so throw everything!' },
-  c4flash: { name: 'C4 Flash', blurb: 'Sneak around in a ninja suit (crouch and creep so bots only notice you very close), throw C4 so it sticks to the bots, hide, and then blow them ALL up at once with the remote. C4, smokes, flashes, gliders and ninja suits are everywhere, and the map is huge with lots of hiding places. First to 30 pops wins.' },
+  c4flash: { name: 'C4 Flash', blurb: 'Sneak around in a ninja suit (crouch and creep so bots only notice you very close), throw C4 so it sticks to the bots, hide, and then blow them ALL up at once with the remote. C4, smokes, flashes, gliders and super jumps are everywhere (ninja suits are rare), and the map is huge with lots of hiding places. First to 30 pops wins.' },
   baby: { name: 'Baby Mode', blurb: 'A gentle, super easy mode for little kids. The bots are slow and never shoot, you cannot be hurt, your shots curve toward the nearest bot, and one pop is all it takes. First to 10 pops wins!' },
   lab: { name: 'Test Lab', blurb: 'A white test room with a wall of buttons. Click a button (or press E) to switch on low gravity, super jumps, god mode, infinite utility, any blaster at any rarity, any utility, armour, scopes, and bots to test on. Nobody wins here: it is for testing.' },
   battleroom: { name: 'Battle Room', blurb: "Just like Ender's Game! A huge zero-gravity cube with floating stars. Your army (you plus bots) starts around your gate. Push off the wall with Space (the way you look) and drift, aim with the mouse, and freeze the enemy army with your Flasher (it has a red dot sight: hold right mouse to aim through the box): a hit in the body freezes a soldier solid, a hit in the legs freezes the legs. Win a battle by freezing everyone or by getting FOUR unfrozen soldiers to touch the enemy gate. First to 3 battles wins." },
@@ -455,7 +455,7 @@ const ARMORS = {
   vest2: { name: 'COMBAT VEST', slot: 'body', red: .4, dur: 100, rank: 2, col: 0x4aa8ff, w: 3 },
   vest3: { name: 'HEAVY VEST', slot: 'body', red: .55, dur: 150, rank: 3, col: 0xb06bff, w: 1.5 },
   ghillie: { name: 'GHILLIE SUIT', slot: 'body', red: .1, dur: 80, rank: 1.5, col: 0x4a8a3a, w: 2.5 },   // crouch still and bots only notice you up close
-  ninja: { name: 'NINJA SUIT', slot: 'body', red: .05, dur: 60, rank: 1.4, col: 0x2a2a3a, w: 2 },   // crouch and creep: bots only notice you very close, even while you move slowly
+  ninja: { name: 'NINJA SUIT', slot: 'body', red: .05, dur: 60, rank: 1.4, col: 0x2a2a3a, w: 1 },   // crouch and creep: bots only notice you very close, even while you move slowly
   helm1: { name: 'HELMET', slot: 'helm', red: .5, dur: 60, rank: 1, col: 0xc8d0dc, w: 4 },
   helm2: { name: 'COMBAT HELMET', slot: 'helm', red: .7, dur: 100, rank: 2, col: 0x4aff8a, w: 2 },
 };
@@ -535,7 +535,7 @@ const ITEMS = {
   slurp:   { name: 'SLURP JUICE', desc: '+35 HP and +25 shield · 2.5s', code: 'KeyM', key: 'M', max: 10, use: 2.5, col: 0x4aeaa0, kind: 'slurp', w: 7 },
   soda:    { name: 'SPEED SODA', desc: 'Run 35% faster for 20s · 1.2s', code: 'KeyJ', key: 'J', max: 10, use: 1.2, col: 0xffa24a, kind: 'buff', w: 7 },
   frag:    { name: 'FRAG', desc: 'Huge blast: one-shot kill within 6m, 2s fuse',        code: 'KeyG', key: 'G', max: 10, col: 0x58c24a, kind: 'nade', w: 30 },
-  flash:   { name: 'FLASH', desc: 'Blinds everyone nearby for a long time (even you!)',       code: 'KeyF', key: 'F', max: 10, col: 0xfff27a, kind: 'nade', w: 24 },
+  flash:   { name: 'FLASH', desc: 'Blinds everyone who sees it, from far away, for a long time · you only get flashed if you look right at it',       code: 'KeyF', key: 'F', max: 10, col: 0xfff27a, kind: 'nade', w: 24 },
   smoke:   { name: 'SMOKE', desc: 'Giant cloud that blocks vision for everyone',       code: 'KeyQ', key: 'Q', max: 10, col: 0xc8d0dc, kind: 'nade', w: 20 },
   molly:   { name: 'MOLLY', desc: 'Huge, hot fire zone',       code: 'KeyC', key: 'C', max: 10, col: 0xff8a1a, kind: 'nade', w: 24 },
   sticky:  { name: 'STICKY BOMB', desc: 'Sticks where it lands, then a huge blast · 2s', code: 'KeyH', key: 'H', max: 10, col: 0x39e6c8, kind: 'nade', w: 14 },
@@ -543,8 +543,8 @@ const ITEMS = {
   gas:     { name: 'TOXIC GAS', desc: 'A huge poison cloud that hurts everyone inside', code: 'KeyY', key: 'Y', max: 10, col: 0x8aff3a, kind: 'nade', w: 12 },
   c4:      { name: 'C4 CHARGES', desc: 'Throw it: it sticks anywhere. Needs the REMOTE (2 slots)', code: 'KeyO', key: 'O', max: 10, col: 0xd8c890, kind: 'nade', w: 12 },
   remote:  { name: 'REMOTE', desc: 'Hold it and press F: every C4 you placed blows up', code: 'KeyP', key: 'P', max: 1, col: 0xff4a4a, kind: 'remote', w: 6 },
-  glider:  { name: 'GLIDER', desc: 'Jump, then use it in the air: float down and fly forward for 25s (Shift or landing closes it)', code: 'KeyK', key: 'K', max: 10, use: 0, col: 0x7ad8ff, kind: 'glider', w: 6 },
-  sjump:   { name: 'SUPER JUMP', desc: 'Jump 4x higher for 25s · 1s', code: 'KeyL', key: 'L', max: 10, use: 1.0, col: 0xb6ff3a, kind: 'sjump', w: 7 },
+  glider:  { name: 'GLIDER', desc: 'Jump, then use it in the air: float down and fly forward for 25s (Shift or landing closes it)', code: 'KeyK', key: 'K', max: 10, use: 0, col: 0x7ad8ff, kind: 'glider', w: 11 },
+  sjump:   { name: 'SUPER JUMP', desc: 'Jump 4x higher for 25s · 1s', code: 'KeyL', key: 'L', max: 10, use: 1.0, col: 0xb6ff3a, kind: 'sjump', w: 12 },
 };
 const ITEM_IDS = Object.keys(ITEMS), BY_CODE = {}; for (const id of ITEM_IDS) BY_CODE[ITEMS[id].code] = id;
 const inv = {};
@@ -556,7 +556,7 @@ function resetInv() {
   if (M && M.mode === 'battleroom') return;   // the Battle Room: just your Flasher
   if (M && M.lab) { putItem('bandage', 10); return; }
   if (M && M.baby) return;   // Baby Mode: just the pop-gun
-  if (M && M.c4m) { putItem('c4', 10); putItem('remote', 1); putItem('flash', 4); putItem('smoke', 4); putItem('glider', 1); return; }   // C4 Flash: a ninja's kit
+  if (M && M.c4m) { putItem('c4', 10); putItem('remote', 1); putItem('flash', 4); putItem('smoke', 4); putItem('glider', 2); putItem('sjump', 2); return; }   // C4 Flash: a ninja's kit
   if (M && M.mode === 'pistols') { putItem('bandage', 4); putItem('mini', 3); putItem('frag', 2); putItem('smoke', 2); return; }
   if (M && M.mode === 'utility') { putItem('bandage', 6); putItem('frag', 3); putItem('smoke', 2); return; }   // Utility Blitz: bandages and a few grenades, one slot left free   // Pop-Gun Party starts stocked up
   putItem('bandage', 1); putItem('frag', 1);
@@ -574,11 +574,12 @@ function rollAmmo() {
 // C4 Flash: C4 (10 at a time), ninja suits, smokes, flashes and gliders lie everywhere
 function rollC4Loot() {
   const r = Math.random();
-  if (r < .22) return { id: 'armor', qty: 1, at: 'ninja' };
-  if (r < .60) return { id: 'c4', qty: 10 };
-  if (r < .76) return { id: 'smoke', qty: rint(3, 6) };
-  if (r < .88) return { id: 'flash', qty: rint(3, 6) };
-  if (r < .96) return { id: 'glider', qty: rint(1, 3) };
+  if (r < .06) return { id: 'armor', qty: 1, at: 'ninja' };   // ninja suits are rare now
+  if (r < .36) return { id: 'c4', qty: 10 };
+  if (r < .48) return { id: 'smoke', qty: rint(3, 6) };
+  if (r < .61) return { id: 'flash', qty: rint(3, 6) };
+  if (r < .81) return { id: 'glider', qty: rint(2, 5) };
+  if (r < .96) return { id: 'sjump', qty: rint(2, 4) };   // lots of gliders and super jumps
   return { id: 'bandage', qty: rint(2, 5) };
 }
 function rollLoot() {
@@ -1127,11 +1128,11 @@ function explodeAt(pos, R, botDmg, selfDmg, owner, lethal = 0) {
 function flashAt(pos, owner) {
   blast(pos, 6, 0xffffff); burst(pos, 0xffffff, 36, 11, .14, .6, 4, 1); sfx('flashbang', clamp(1 - pos.distanceTo(P.pos) / 60, .3, 1));
   const lp = pos.clone(), op = ownerPid(owner); lp.y += .3;
-  const power = (eye, fwd) => { const to = lp.clone().sub(eye), d = to.length(); if (d > 70) return 0; to.divideScalar(Math.max(d, .01)); if (d > 1 && worldT(eye, to, d) < d - .4) return 0; const f = fwd.dot(to); return (f > 0 ? .35 + .65 * f : .12) * clamp(1.15 - d / 65, .25, 1); };
-  if (P.alive) { const p = power(eyePos(), aimDir(0)) * (owner instanceof RemotePlayer && !(M && M.pvp) ? .6 : 1); if (p > .05) { P.blindMax = 6.6 * p + .6; P.blindT = Math.max(P.blindT, P.blindMax); } }
+  const power = (eye, fwd, self) => { const to = lp.clone().sub(eye), d = to.length(); if (d > 110) return 0; to.divideScalar(Math.max(d, .01)); if (d > 1 && worldT(eye, to, d) < d - .4) return 0; const f = fwd.dot(to); if (self && f < .8) return 0; return (f > 0 ? .4 + .6 * f : .15) * clamp(1.3 - d / 110, .4, 1); };   // reaches 110 m; whoever threw it is only hit if they are looking right at it
+  if (P.alive) { const p = power(eyePos(), aimDir(0), owner === null) * (owner instanceof RemotePlayer && !(M && M.pvp) ? .6 : 1); if (p > .05) { P.blindMax = 10 * p + 1; P.blindT = Math.max(P.blindT, P.blindMax); } }
   if (isHost() && op >= 0) {
     let n = 0;
-    for (const b of bots) { if (!b.alive || b.ally) continue; const f = new V3(-Math.sin(b.yaw), 0, -Math.cos(b.yaw)), p = power(b.eye(), f); if (p > .08) { b.blindT = Math.max(b.blindT, 6.3 * p + .7); b.alertT = Math.max(b.alertT, 2); n++; } }
+    for (const b of bots) { if (!b.alive || b.ally) continue; const f = new V3(-Math.sin(b.yaw), 0, -Math.cos(b.yaw)), p = power(b.eye(), f, b === owner); if (p > .08) { b.blindT = Math.max(b.blindT, 9.5 * p + 1.2); b.alertT = Math.max(b.alertT, 2); n++; } }
     if (n && op === NET.me) { feed(`<b style="color:#fff27a">Flashed ${n} bot${n > 1 ? 's' : ''}!</b>`); showHit(''); sfx('hit'); }
   }
 }
