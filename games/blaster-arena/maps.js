@@ -506,6 +506,106 @@ MAPS.push(Object.assign({}, PEAKS_DEF, { id: 'peaksxl', name: 'Jungle Highlands 
   blurb: "Sniper's Alley only. EIGHT TIMES bigger: a huge jungle of nine joined hills, towers and forests. Team spawns are at opposite ends, so plan your route, grab armour and a ghillie suit, and get to the high ground." }));
 
 // ---------------------------------------------------------------------------------------------
+// XL MAPS for the normal modes: nine districts (3 x 3 tiles) built side by side, about 9x the area of a normal map.
+// Every tile gets its own layout (b.tile = { k, i, j, n }); the middle tile (i = 1, j = 1) is the landmark. Everything is seeded, so every player sees the same map.
+// ---------------------------------------------------------------------------------------------
+const themeOf = id => MAPS.find(m => m.id === id).theme;
+const xlSpawns = ring(0, 0, 20, 8).concat(ring(0, 0, 27, 8, .4));
+const xlLoot = (seed, n) => wild(rng(seed), 30, n, [[0, 0, 4]]).concat(ring(0, 0, 14, 6, .2), ring(0, 0, 26, 6, .5));
+const archAt = (b, cx, cz, alongZ, c1 = 0xc79a62, c2 = 0xd9b078) => { const o = 3.5; if (alongZ) { b.box(cx, 3, cz - o, 2, 6, 2, c1); b.box(cx, 3, cz + o, 2, 6, 2, c1); b.box(cx, 5, cz, 2.4, 1.6, 9, c2); } else { b.box(cx - o, 3, cz, 2, 6, 2, c1); b.box(cx + o, 3, cz, 2, 6, 2, c1); b.box(cx, 5, cz, 9, 1.6, 2.4, c2); } };
+const quad = R => { const sx = R() < .5 ? -1 : 1, sz = R() < .5 ? -1 : 1; return [sx, sz]; };
+
+// ---- Neon Boulevard XL: a night city of nine districts
+MAPS.push({
+  id: 'neonxl', name: 'Neon Boulevard XL', half: 30, tiles: 3, radar: 100,
+  blurb: 'XL: nine neon districts at night. Towers, shops with walk-up roofs, cars on the boulevards, and a plaza with a glowing spire in the middle district. Bots fill the streets.',
+  swatch: ['#1a1040', '#6a3a9a', '#2ee6ff'],
+  theme: Object.assign({}, themeOf('city'), { fog: [0x6a4a98, 60, 230] }),
+  build(b) {
+    const R = rng(9100 + b.tile.k * 37), centre = b.tile.i === 1 && b.tile.j === 1;
+    const tones = [0x8a7ad8, 0x6a8ae8, 0xb07ae0, 0x5a9ae0, 0x9a8af8], neon = [0xff4fa8, 0x2ee6ff, 0xffd31a, 0x8aff3a];
+    if (centre) { const top = mesa(b, 0, 0, 20, 20, 4, [0xb0a0f0, 0xa090e0, 0x9080d0, 0x8070c0], 2.2); b.box(0, top + 7, 0, 3, 14, 3, 0xff4fa8); b.glow(0, top + 11, 0, 3.2, .6, 3.2, 0x2ee6ff); }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const px = sx * (centre ? 21 : 14 + R() * 3), pz = sz * (centre ? 21 : 14 + R() * 3), kind = R();
+      if (kind < .45) { const w = 9 + R() * 4, d = 9 + R() * 4, h = 7 + R() * 14; b.box(px, h / 2, pz, w, h, d, tones[Math.floor(R() * 5)]); b.glow(px, h * .6, pz, w + .1, .5, d + .1, neon[Math.floor(R() * 4)]); }
+      else if (kind < .75) { for (const s of [-1, 1]) { const w = 6 + R() * 2, d = 9 + R() * 3, h = 5 + R() * 9; b.box(px + s * 4.5, h / 2, pz, w, h, d, tones[Math.floor(R() * 5)]); if (R() < .6) b.glow(px + s * 4.5, h * .6, pz, w + .1, .45, d + .1, neon[Math.floor(R() * 4)]); } }
+      else { const top = mesa(b, px, pz, 12, 11, 3, [0x9a8ada, 0xb0a0e8, 0xc8baf8], 2.2); b.box(px - 3, top + .6, pz - 2, 2, 1.2, 2, 0xffd31a); }
+    }
+    for (let t = 0; t < 7; t++) { const edge = R() < .5, x = edge ? (R() < .5 ? -1 : 1) * (24.5 + R() * 3) : (R() * 2 - 1) * 24, z = edge ? (R() * 2 - 1) * 24 : (R() < .5 ? -1 : 1) * (24.5 + R() * 3); b.box(x, .65, z, edge ? 2 : 4.2, 1.3, edge ? 4.2 : 2, CRATE[Math.floor(R() * 6)]); }   // cars and barriers on the boulevards
+  },
+  spawns: xlSpawns, loot: xlLoot(9201, 14), dmg: [[27, 1.2, 27]],
+});
+
+// ---- Frozen Wastes XL: ice ridges, igloo camps and crystal spires around a glacier fort
+MAPS.push({
+  id: 'frostxl', name: 'Frozen Wastes XL', half: 30, tiles: 3, radar: 100,
+  blurb: 'XL: a frozen wasteland of nine districts. Climbable ice ridges, igloo camps, glowing crystal spires, and a glacier fort with four towers in the middle. Long sight lines, so keep moving.',
+  swatch: ['#6aa8ff', '#c6e6ff', '#ffffff'],
+  theme: Object.assign({}, themeOf('frost'), { fog: [0xd2e8f8, 55, 210] }),
+  build(b) {
+    const R = rng(9300 + b.tile.k * 41), centre = b.tile.i === 1 && b.tile.j === 1, ICE = [0xa4c8e8, 0x86c0ee, 0xc6e6ff, 0x6f9cc8];
+    if (centre) {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const tx = sx * 14, tz = sz * 14;
+        b.box(tx, 1.1, tz, 6, 2.2, 6, 0x6f9cc8); b.box(tx + sx * 2.8, 2.2 + .45, tz, .6, .9, 6, 0x4f78a8); b.box(tx, 2.2 + .45, tz + sz * 2.8, 6, .9, .6, 0x4f78a8);
+        [[.7, 1.65], [2.1, 1.1], [3.5, .55]].forEach(([d, h]) => { b.box(tx - sx * (3 + d), h / 2, tz, 1.4, h, 3, 0xa4c8e8); b.box(tx, h / 2, tz - sz * (3 + d), 3, h, 1.4, 0xa4c8e8); });
+        b.box(sx * 14, 1.7, sz * 5.5, 1.4, 3.4, 6, 0x5e8cbb); b.box(sx * 5.5, 1.7, sz * 14, 6, 3.4, 1.4, 0x5e8cbb);
+      }
+      b.box(0, 2, 0, 4, 4, 4, 0x86c0ee); for (const [x, z, sx, sz] of [[-7, 0, 1, 4], [7, 0, 1, 4], [0, -7, 4, 1], [0, 7, 4, 1]]) b.box(x, .6, z, sx, 1.2, sz, 0xa4c8e8);
+    } else {
+      const [rx, rz] = quad(R); mesa(b, rx * (6 + R() * 8), rz * (6 + R() * 8), 17 + R() * 6, 11 + R() * 4, 3, [ICE[0], ICE[1], ICE[2]], 2.2);   // an ice ridge you can walk up
+      const [cx, cz] = [-rx * (12 + R() * 6), -rz * (12 + R() * 6)];
+      for (let k = 0; k < 7; k++) { if (k === 3) continue; const a = k / 7 * Math.PI * 2; b.box(cx + Math.cos(a) * 3.6, 1.1, cz + Math.sin(a) * 3.6, 2.2, 2.2, 1.6, 0xd6ebfa); }   // an igloo camp with one gap
+      b.box(cx, .5, cz, 1.8, 1, 1.8, 0x86c0ee);
+      for (let k = 0; k < 5; k++) { const x = (R() * 2 - 1) * 24, z = (R() * 2 - 1) * 24, h = 4 + R() * 6; if (Math.hypot(x - cx, z - cz) < 6) continue; b.box(x, h / 2, z, 1.2, h, 1.2, 0xb6e6ff); b.glow(x, h + .25, z, 1.4, .5, 1.4, 0x2ee6ff); }   // crystal spires
+      for (let k = 0; k < 5; k++) b.box((R() * 2 - 1) * 25, .4, (R() * 2 - 1) * 25, 5 + R() * 3, .8, 2.5 + R() * 2, ICE[Math.floor(R() * 4)]);   // snow drifts
+    }
+  },
+  spawns: xlSpawns, loot: xlLoot(9401, 14), dmg: [[27, 1.2, 27]],
+});
+
+// ---- Desert Canyon XL: pillars, arches and canyon walls around a great pyramid
+MAPS.push({
+  id: 'canyonxl', name: 'Desert Canyon XL', half: 30, tiles: 3, radar: 100,
+  blurb: 'XL: nine sunset districts of sandstone canyon walls, arches, pillars and rock stacks around a great stepped pyramid with an obelisk in the middle. Fight through the canyon lanes.',
+  swatch: ['#2a3a8a', '#ff9a5a', '#ffe0a0'],
+  theme: Object.assign({}, themeOf('ruins'), { fog: [0xffc890, 60, 230] }),
+  build(b) {
+    const R = rng(9500 + b.tile.k * 43), centre = b.tile.i === 1 && b.tile.j === 1, SAND = [0xc79a62, 0xd9b078, 0xcaa06a, 0xb88a56];
+    if (centre) { const top = mesa(b, 0, 0, 24, 24, 5, [0xe8cf9a, 0xdcc088, 0xcfb078, 0xf5deb0, 0xe8cf9a], 2.2); b.box(0, top + 5, 0, 2.4, 10, 2.4, 0xd9b078); archAt(b, -20, 0, true); archAt(b, 20, 0, true); archAt(b, 0, -20, false); archAt(b, 0, 20, false); }
+    else {
+      for (let k = 0; k < 3; k++) { const along = R() < .5, len = 14 + R() * 10, h = 5 + R() * 4, x = (R() * 2 - 1) * 14, z = (R() * 2 - 1) * 14; b.box(x, h / 2, z, along ? len : 3, h, along ? 3 : len, SAND[Math.floor(R() * 4)]); }   // canyon walls
+      for (let k = 0; k < 2; k++) { const x = (R() * 2 - 1) * 18, z = (R() * 2 - 1) * 18; if (Math.hypot(x, z) > 7) archAt(b, x, z, R() < .5); }
+      for (let k = 0; k < 6; k++) { const h = 3 + R() * 5; b.box((R() * 2 - 1) * 25, h / 2, (R() * 2 - 1) * 25, 2, h, 2, SAND[Math.floor(R() * 4)]); }   // pillars
+      const [sx, sz] = quad(R); mesa(b, sx * (16 + R() * 6), sz * (16 + R() * 6), 8, 8, 2, [SAND[1], SAND[0]], 1.6);   // a rock stack (top at 1.1)
+      for (let k = 0; k < 4; k++) b.box((R() * 2 - 1) * 26, .65, (R() * 2 - 1) * 26, 6 + R() * 3, 1.3, 1, 0xb88a56);   // low walls
+    }
+  },
+  spawns: xlSpawns, loot: xlLoot(9601, 14), dmg: [[27, 1.2, 27]],
+});
+
+// ---- Toy Kingdom XL: block castles, dominoes and ramps around an alphabet tower
+MAPS.push({
+  id: 'toysxl', name: 'Toy Kingdom XL', half: 30, tiles: 3, radar: 100,
+  blurb: 'XL: a giant toy kingdom of nine playroom districts. Stepped block castles, rows of dominoes, ramps up to toy platforms, and a huge alphabet tower in the middle. Colourful and wide open.',
+  swatch: ['#3a8aff', '#ffd34e', '#ff6a4a'],
+  theme: Object.assign({}, themeOf('toys'), { fog: [0xd8f0ff, 60, 230] }),
+  build(b) {
+    const R = rng(9700 + b.tile.k * 47), centre = b.tile.i === 1 && b.tile.j === 1, C = [0xff4a4a, 0xffd31a, 0x2e8bff, 0x4adf6a, 0xff7a1a, 0xb06bff];
+    const castle = (x, z, c) => { b.box(x, .275, z, 9, .55, 9, C[c % 6]); b.box(x, .825, z, 7, .55, 7, C[(c + 1) % 6]); b.box(x, 1.375, z, 5, .55, 5, C[(c + 2) % 6]); b.box(x, 1.925, z, 3, .55, 3, C[(c + 3) % 6]); };   // top at 2.2
+    if (centre) { b.box(0, 1.1, 0, 6, 2.2, 6, 0xffd31a); b.box(0, 2.2 + 1.2, 0, 4.4, 2.4, 4.4, 0xff4a4a); b.box(0, 4.6 + 1.2, 0, 3, 2.4, 3, 0x2e8bff); b.box(0, 7 + .8, 0, 1.8, 1.6, 1.8, 0x4adf6a);
+      for (const [x, z, c] of [[-20, -20, 0], [20, -20, 1], [-20, 20, 2], [20, 20, 3]]) castle(x, z, c); }
+    else {
+      const [sx, sz] = quad(R); castle(sx * (16 + R() * 6), sz * (16 + R() * 6), Math.floor(R() * 6)); castle(-sx * (18 + R() * 4), sz * (12 + R() * 6), Math.floor(R() * 6));
+      for (let k = 0; k < 4; k++) { const rot = R() < .5, x = (R() * 2 - 1) * 22, z = (R() * 2 - 1) * 22; rot ? b.box(x, 2, z, 6, 4, 1.2, C[k % 6]) : b.box(x, 2, z, 1.2, 4, 6, C[(k + 2) % 6]); }   // dominoes
+      for (let k = 0; k < 7; k++) { const s = 1.6 + R() * 1.6; b.box((R() * 2 - 1) * 25, s / 2, (R() * 2 - 1) * 25, s, s, s, C[Math.floor(R() * 6)]); }   // toy blocks
+      const rx = (R() * 2 - 1) * 12, rz = (R() * 2 - 1) * 12; for (let i = 0; i < 6; i++) b.box(rx, (i + 1) * .55 / 2, rz + i * 1.2, 3, (i + 1) * .55, 1.2, C[(i + 1) % 6]); b.box(rx, 1.65, rz + 8.4, 4, 3.3, 4, C[2]);   // a ramp up to a toy platform (top at 3.3)
+    }
+  },
+  spawns: xlSpawns, loot: xlLoot(9801, 14), dmg: [[27, 1.2, 27]],
+});
+
+// ---------------------------------------------------------------------------------------------
 // BATTLE ROOM (room: true, only for the Battle Room mode): a zero-gravity cube like in Ender's Game, 70 m on every side, with floating
 // "stars" (cubes, slabs, bars and stepped blocks) in the middle and a gate in the centre of each end wall. Each army starts around
 // its own gate. The stars are mirrored (turned upside down and around) so both armies get the same cover.

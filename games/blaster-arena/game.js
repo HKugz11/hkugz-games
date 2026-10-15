@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=7.1';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.1';
-import { TOUCH, initTouch } from './touch.js?v=7.1';
+import { MAPS } from './maps.js?v=7.2';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.2';
+import { TOUCH, initTouch } from './touch.js?v=7.2';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -177,9 +177,9 @@ function loadMap(id, big = false) {
   [[0, -HALF + .08, 2 * HALF, .1, t.strips[0]], [0, HALF - .08, 2 * HALF, .1, t.strips[1]], [-HALF + .08, 0, .1, 2 * HALF, t.strips[2]], [HALF - .08, 0, .1, 2 * HALF, t.strips[3]]].forEach(([x, z, sx, sz, c]) => { addGlow(x, .6, z, sx, .35, sz, c); addGlow(x, 5.2, z, sx, .35, sz, c); if (wh > 10) addGlow(x, wh - .8, z, sx, .35, sz, c); });
   // battle royale builds the map four times (mirrored) side by side: twice as wide, four times the area
   const copies = nt ? Array.from({ length: nt * nt }, (_, k) => [((k % nt) - (nt - 1) / 2) * 2 * H, (Math.floor(k / nt) - (nt - 1) / 2) * 2 * H, 0, 0]) : tile ? [[-H, -H, 0, 0], [H, -H, 1, 0], [-H, H, 0, 1], [H, H, 1, 1]] : [[0, 0, 0, 0]];   // tiles: the XL map is nt x nt copies side by side
-  for (const [ox, oz, mx, mz] of copies) {
+  for (const [ci, [ox, oz, mx, mz]] of copies.entries()) {
     const T = (x, z) => [ox + (mx ? -x : x), oz + (mz ? -z : z)];
-    def.build({ box: (cx, cy, cz, sx, sy, sz, c, o) => { const [x, z] = T(cx, cz); return addBox(x, cy, z, sx, sy, sz, c, o); }, glow: (cx, cy, cz, sx, sy, sz, c) => { const [x, z] = T(cx, cz); return addGlow(x, cy, z, sx, sy, sz, c); } });
+    def.build({ tile: { k: ci, i: nt ? ci % nt : 0, j: nt ? Math.floor(ci / nt) : 0, n: nt || 1 }, box: (cx, cy, cz, sx, sy, sz, c, o) => { const [x, z] = T(cx, cz); return addBox(x, cy, z, sx, sy, sz, c, o); }, glow: (cx, cy, cz, sx, sy, sz, c) => { const [x, z] = T(cx, cz); return addGlow(x, cy, z, sx, sy, sz, c); } });
   }
   flushBatch(); buildGrid();
   if (t.deco === 'balloons') for (let i = 0; i < (big ? 22 : 10); i++) { const a = i / (big ? 22 : 10) * Math.PI * 2, r = HALF - 4; const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 1), toon(BOT_COLORS[i % 6])); m.position.set(Math.cos(a) * r, 8 + (i % 3) * 1.4, Math.sin(a) * r); outline(m, 1.08); mapGroup.add(m); balloons.push(m); }
@@ -1635,11 +1635,11 @@ function hostSetupMode() {
   if (M.mode === 'horde') { M.phase = 'break'; M.phaseT = 6; M.wave = 0; M.lives = 4 + 2 * M.np; showCenter('GET READY!', '#7cecff'); }
   else if (M.mode === 'free') { const bots4 = M.fp === 'bots', n = bots4 ? 4 : 6 + 2 * (M.np - 1), FD = bots4 ? D : Object.assign({}, D, { hp: 120, speed: 0, fire: 99, react: 99, nade: 99999, aim: 1 }); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D: FD, dummy: !bots4 }); b.respT = .1 + i * .15; bots.push(b); } showCenter('FREEPLAY - grab any blaster!', '#7cecff'); }
   else if (M.mode === 'royale') { stormInit(); const n = Math.min(22, 14 + 3 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .05 + i * .02; bots.push(b); } showCenter('DROP IN!  Find loot, stay out of the storm', '#c58aff'); }
-  else if (BRAWLISH(M.mode)) { const n = Math.max(2, 6 - M.np); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter(M.mode === 'gungame' ? 'GUN GAME! Pop to upgrade' : M.mode === 'moon' ? 'MOON BRAWL! Jump high' : 'BRAWL! Everyone is an enemy', '#ff9a4a'); }
+  else if (BRAWLISH(M.mode)) { const n = Math.max(2, 6 - M.np) * (curMap && curMap.tiles ? 2 : 1); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter(M.mode === 'gungame' ? 'GUN GAME! Pop to upgrade' : M.mode === 'moon' ? 'MOON BRAWL! Jump high' : 'BRAWL! Everyone is an enemy', '#ff9a4a'); }
   else if (M.zerog) { const size = D.bots + 3, na = Math.max(1, size - M.np), mk = (ally, n) => { for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D, ally }); b.role = i < 2 ? 'runner' : i === n - 1 ? 'defend' : 'skirm'; bots.push(b); } }; mk(true, na); mk(false, size); startBattle(); }   // two armies of the same size
   else if (M.team) { const xl = curMap && curMap.tiles ? 2 : 1, n = Math.min(9 * xl, (D.bots + 2 * (M.np - 1)) * xl), na = Math.max(2, n - M.np - 1); for (let i = 0; i < na; i++) { const b = new Bot(M.nextBotId++, i, { D, ally: true }); b.respT = .2 + i * .5; bots.push(b); } for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .3 + i * .5; bots.push(b); } showCenter("SNIPER'S ALLEY! Climb high, stay low", '#7cecff'); }
   else if (M.mode === 'lab') { showCenter('TEST LAB: click the buttons on the wall!', '#7cecff'); hint('AIM AT A BUTTON AND CLICK (OR PRESS E) · RARITY IS ON THE FAR LEFT · BOTS ARE ON THE FAR RIGHT', '#7cecff'); }
-  else { const n = Math.min(10, D.bots + 2 * (M.np - 1)); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } }
+  else { const xl = curMap && curMap.tiles ? 2 : 1, n = Math.min(10 * xl, (D.bots + 2 * (M.np - 1)) * xl); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } }   // XL maps get twice the bots
 }
 function startSolo() { NET.role = 'solo'; NET.me = 0; NET.roster = [{ pid: 0, name: myName(), color: PLAYER_COLORS[0] }]; syncRemotes(); M = newMatch(CFG, 1); loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); beginLocal(); }
 function hostStart() {
@@ -2321,6 +2321,6 @@ for (const key of ['t', 'b', 'l', 'r']) $('cross').querySelector('.' + key).id =
 buildItems(); refreshItems(); refreshSlots(); refreshAmmo();
 loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); renderPickers();
 buildBushOverlay();
-window.__ba = { labPanels, labAim, labPress, labClick, setBag, gases, projs, detonateC4, triggerC4, giveItem, spawnNade, detonate, slots, brTick, startBattle, endBattle, zgFreeze, zgKick, applySuit, gateTouch, pickZ, S, ARMORS, stealthR, BUSHES, P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
+window.__ba = { SPAWNS, WAYPOINTS, LOOT_SPOTS, CHEST_SPOTS, getHalf: () => HALF, getMap: () => curMap, labPanels, labAim, labPress, labClick, setBag, gases, projs, detonateC4, triggerC4, giveItem, spawnNade, detonate, slots, brTick, startBattle, endBattle, zgFreeze, zgKick, applySuit, gateTouch, pickZ, S, ARMORS, stealthR, BUSHES, P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
   get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck, TREES, treeHidden, SCOPES, updateScopeUI, get myScope() { return myScope; }, set myScope(v) { myScope = v; }, get thermalView() { return thermalView; } };
 requestAnimationFrame(loop);
