@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=7.2';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.2';
-import { TOUCH, initTouch } from './touch.js?v=7.2';
+import { MAPS } from './maps.js?v=7.5';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.5';
+import { TOUCH, initTouch } from './touch.js?v=7.5';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -12,7 +12,7 @@ const load = (k, d) => { try { const v = localStorage.getItem('ba.' + k); return
 const save = (k, v) => { try { localStorage.setItem('ba.' + k, JSON.stringify(v)); } catch (e) {} };
 const S = { sens: load('sens', 1), fov: load('fov', 85), vol: load('vol', 0.7), jump: Math.max(1, Math.min(12, +load('jump', 1) || 1)), smoke: Math.max(5, Math.min(600, +load('smoke', 180) || 180)) };   // smoke: how many seconds a smoke cloud stays (a slider in the pause menu)   // jump: how many times higher you jump (a slider in the pause menu, works on every map and mode)
 const CFG = { mode: load('mode', 'tdm'), map: load('map', 'plaza'), diff: load('diff', 'normal'), rarity: load('rarity', 2), fp: load('fp', 'dummy') };
-const mapOK = (m, mode) => m.br ? mode === 'royale' : m.sn ? mode === 'snipers' : m.room ? mode === 'battleroom' : m.lab ? mode === 'lab' : mode !== 'battleroom' && mode !== 'lab';   // Battle Royale maps only in Battle Royale, sniper maps only in Sniper's Alley
+const mapOK = (m, mode) => m.br ? mode === 'royale' : m.sn ? mode === 'snipers' : m.room ? mode === 'battleroom' : m.lab ? mode === 'lab' : mode !== 'battleroom' && mode !== 'lab' && !(mode === 'baby' && m.tiles);   // Battle Royale maps only in Battle Royale, sniper maps only in Sniper's Alley
 { const cm = MAPS.find(m => m.id === CFG.map); if (!cm || !mapOK(cm, CFG.mode)) CFG.map = CFG.mode === 'battleroom' ? 'battleroom' : CFG.mode === 'lab' ? 'lab' : CFG.mode === 'snipers' ? 'peaksxl' : 'plaza'; }
 const MODES = {
   tdm:   { name: 'Team Deathmatch', blurb: 'You (and your friends) vs the bots. First team to the target wins.' },
@@ -25,13 +25,14 @@ const MODES = {
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: super low gravity and huge jumps (the walls are way taller so nobody leaves), so fights happen high up in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun with unlimited ammo, but the whole map is full of armour, heals and utility. Armour up and pop away!' },
   utility: { name: 'Utility Blitz', blurb: 'Team deathmatch where the whole map is covered in armour, bandages and utility (frags, flashes, smokes, mollys, sticky bombs, cluster bombs and toxic gas) and there are no blasters to find. You only carry a weak Pop-Gun, so throw everything!' },
+  baby: { name: 'Baby Mode', blurb: 'A gentle, super easy mode for little kids. The bots are slow and never shoot, you cannot be hurt, your shots curve toward the nearest bot, and one pop is all it takes. First to 10 pops wins!' },
   lab: { name: 'Test Lab', blurb: 'A white test room with a wall of buttons. Click a button (or press E) to switch on low gravity, super jumps, god mode, infinite utility, any blaster at any rarity, any utility, armour, scopes, and bots to test on. Nobody wins here: it is for testing.' },
   battleroom: { name: 'Battle Room', blurb: "Just like Ender's Game! A huge zero-gravity cube with floating stars. Your army (you plus bots) starts around your gate. Push off the wall with Space (the way you look) and drift, aim with the mouse, and freeze the enemy army with your Flasher (it has a red dot sight: hold right mouse to aim through the box): a hit in the body freezes a soldier solid, a hit in the legs freezes the legs. Win a battle by freezing everyone or by getting FOUR unfrozen soldiers to touch the enemy gate. First to 3 battles wins." },
   snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high: jump at a rock to climb it, hold jump while pushing into a tall spire or wall (or a tree trunk) to climb it, or step on a jump pad. Bots cannot see you up in a tree. Line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
-const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'utility' || m === 'snipers' || m === 'battleroom';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
-const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], utility: [0], battleroom: [16] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
+const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'utility' || m === 'baby' || m === 'snipers' || m === 'battleroom';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
+const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], utility: [0], baby: [0], battleroom: [16] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
 const DIFF = {
   easy:   { bots: 4, hp: 70,  aim: 0.085, react: 0.75, dmg: 5,  speed: 3.6, fire: 0.36, turn: 5, nade: 22, nades: ['frag'], sn: { dmg: 42, cd: 2.8, wind: .9, aim: .02 } },
   normal: { bots: 5, hp: 100, aim: 0.05,  react: 0.45, dmg: 7,  speed: 4.4, fire: 0.25, turn: 7, nade: 13, nades: ['frag', 'frag', 'molly', 'flash'], sn: { dmg: 58, cd: 2.0, wind: .65, aim: .012 } },
@@ -550,6 +551,7 @@ function resetInv() {
   if (M && M.free) { putItem('bandage', ITEMS.bandage.max); putItem('mini', ITEMS.mini.max); putItem('frag', ITEMS.frag.max); return; }
   if (M && M.mode === 'battleroom') return;   // the Battle Room: just your Flasher
   if (M && M.lab) { putItem('bandage', 10); return; }
+  if (M && M.baby) return;   // Baby Mode: just the pop-gun
   if (M && M.mode === 'pistols') { putItem('bandage', 4); putItem('mini', 3); putItem('frag', 2); putItem('smoke', 2); return; }
   if (M && M.mode === 'utility') { putItem('bandage', 6); putItem('frag', 3); putItem('smoke', 2); return; }   // Utility Blitz: bandages and a few grenades, one slot left free   // Pop-Gun Party starts stocked up
   putItem('bandage', 1); putItem('frag', 1);
@@ -1441,7 +1443,7 @@ const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.som
 const wireCfg = () => ({ mode: CFG.mode, map: CFG.map, diff: CFG.diff, rarity: CFG.rarity, fp: CFG.fp });
 const botsAlive = () => bots.filter(b => b.alive).length;
 function newMatch(cfg, np) {
-  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', team: cfg.mode === 'snipers' || cfg.mode === 'battleroom', zerog: cfg.mode === 'battleroom', noloot: cfg.mode === 'battleroom' || cfg.mode === 'lab', lab: cfg.mode === 'lab', snipe: cfg.mode === 'snipers', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode] || cfg.mode === 'lab', grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'battleroom' ? 3 : cfg.mode === 'snipers' ? ((MAPS.find(m => m.id === cfg.map) || {}).tiles ? 20 + 5 * (np - 1) : 25 + 8 * (np - 1)) : TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
+  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', team: cfg.mode === 'snipers' || cfg.mode === 'battleroom', zerog: cfg.mode === 'battleroom', noloot: cfg.mode === 'battleroom' || cfg.mode === 'lab' || cfg.mode === 'baby', lab: cfg.mode === 'lab', baby: cfg.mode === 'baby', snipe: cfg.mode === 'snipers', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode] || cfg.mode === 'lab', grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'baby' ? 10 : cfg.mode === 'battleroom' ? 3 : cfg.mode === 'snipers' ? ((MAPS.find(m => m.id === cfg.map) || {}).tiles ? 20 + 5 * (np - 1) : 25 + 8 * (np - 1)) : TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
     wave: 0, phase: '', phaseT: 0, toSpawn: 0, spawnT: 0, maxAlive: 8, lives: 0, left: 0, nextBotId: 1, bPhase: 'ready', bT: 6, battle: 0, gate: [0, 0], gateT: [0, 0], aliveA: 0, aliveB: 0 };
 }
 function feedText(text, color = '#fff') { const f = $('feed'), d = document.createElement('div'); d.textContent = text; d.style.color = color; f.appendChild(d); setTimeout(() => d.remove(), 4500); while (f.children.length > 5) f.firstChild.remove(); }
@@ -1638,6 +1640,7 @@ function hostSetupMode() {
   else if (BRAWLISH(M.mode)) { const n = Math.max(2, 6 - M.np) * (curMap && curMap.tiles ? 2 : 1); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } showCenter(M.mode === 'gungame' ? 'GUN GAME! Pop to upgrade' : M.mode === 'moon' ? 'MOON BRAWL! Jump high' : 'BRAWL! Everyone is an enemy', '#ff9a4a'); }
   else if (M.zerog) { const size = D.bots + 3, na = Math.max(1, size - M.np), mk = (ally, n) => { for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D, ally }); b.role = i < 2 ? 'runner' : i === n - 1 ? 'defend' : 'skirm'; bots.push(b); } }; mk(true, na); mk(false, size); startBattle(); }   // two armies of the same size
   else if (M.team) { const xl = curMap && curMap.tiles ? 2 : 1, n = Math.min(9 * xl, (D.bots + 2 * (M.np - 1)) * xl), na = Math.max(2, n - M.np - 1); for (let i = 0; i < na; i++) { const b = new Bot(M.nextBotId++, i, { D, ally: true }); b.respT = .2 + i * .5; bots.push(b); } for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = .3 + i * .5; bots.push(b); } showCenter("SNIPER'S ALLEY! Climb high, stay low", '#7cecff'); }
+  else if (M.mode === 'baby') { const BD = Object.assign({}, DIFF.easy, { hp: 20, dmg: 0, speed: 2.2, fire: 99, react: 2, nade: 99999, nades: [] }); for (let i = 0; i < 5; i++) { const b = new Bot(M.nextBotId++, i, { D: BD }); b.respT = .3 + i * .5; bots.push(b); } showCenter('BABY MODE! Pop the friendly bots', '#ff9ad8'); hint('YOU CANNOT BE HURT · YOUR SHOTS FIND THE BOTS · POP 10 TO WIN', '#ff9ad8'); }
   else if (M.mode === 'lab') { showCenter('TEST LAB: click the buttons on the wall!', '#7cecff'); hint('AIM AT A BUTTON AND CLICK (OR PRESS E) · RARITY IS ON THE FAR LEFT · BOTS ARE ON THE FAR RIGHT', '#7cecff'); }
   else { const xl = curMap && curMap.tiles ? 2 : 1, n = Math.min(10 * xl, (D.bots + 2 * (M.np - 1)) * xl); for (let i = 0; i < n; i++) { const b = new Bot(M.nextBotId++, i, { D }); b.respT = rnd(.2, 1.5) + i * .4; bots.push(b); } }   // XL maps get twice the bots
 }
@@ -1789,7 +1792,8 @@ function leaveMatch(msg) {
 
 // ------------------------------------------------------------------ game logic
 function damagePlayer(dmg, from, self = false, head = false, zone = -1) {
-  if (!P.alive) return; if (M && M.god) return;   // god mode (Test Lab)
+  if (!P.alive) return; if (M && (M.god || M.baby)) return;   // god mode (Test Lab) and Baby Mode: nothing hurts you
+  padRumble(.5, .85, 150);
   if (M && M.zerog) {   // Battle Room: nothing hurts, a hit freezes your suit
     if (!self && !P.frozen && M.bPhase === 'go') { zgFreeze(P, zone, head); if (from && from.pos) dmgInd.push({ a: Math.atan2(-(from.pos.x - P.pos.x), -(from.pos.z - P.pos.z)), t: time }); }
     return;
@@ -1884,7 +1888,14 @@ function startReload() {
 function aimDir(spread) { const d = new V3(0, 0, -1); const e = new THREE.Euler(P.pitch, P.yaw, 0, 'YXZ'); d.applyEuler(e); if (spread) { const r = new V3(1, 0, 0).applyEuler(e), u = new V3(0, 1, 0).applyEuler(e); const a = rnd(0, 6.283), m = Math.sqrt(Math.random()) * spread; d.addScaledVector(r, Math.cos(a) * m).addScaledVector(u, Math.sin(a) * m).normalize(); } return d; }
 function muzzleWorld() { const w = W[cur], p = new V3(w.muzzle.x, w.muzzle.y, w.muzzle.z).add(vmBase); p.applyEuler(camera.rotation); return p.add(camera.position); }
 let vmBase = new V3(.27, -.25, -.5);
+// Baby Mode: shots curve toward the nearest bot near where you are looking
+function babyAssist(o) {
+  const fwd = aimDir(0); let best = null, bs = .22;   // about 12 degrees
+  for (const b of bots) { if (!b.alive || b.ally || b.invT > 0) continue; const c = new V3(b.pos.x, b.pos.y + b.sc, b.pos.z), to = c.clone().sub(o), d = to.length(); if (d > 55 || d < .5) continue; to.divideScalar(d); const ang = Math.acos(clamp(fwd.dot(to), -1, 1)); if (ang < bs && worldT(o, to, d) >= d - .5) { bs = ang; best = to; } }
+  return best;
+}
 function fire(follow = false) {
+  padRumble(.12, .28, 60);
   const w = W[cur], d = w.d, st = w.s; w.ammo--; if (!follow) { w.cd = st.rate; if (d.burst) { burstLeft = d.burst - 1; burstT = d.burstGap || .075; } } vmKick = d.kick * 4; flash.material.opacity = 1; flashLight.intensity = 6; setTimeout(() => flashLight.intensity = 0, 50); sfx(d.id); refreshAmmo();
   const dmgMul = (P.buffT > 0 ? 2 : 1) * (M && M.mode === 'utility' ? .5 : 1); const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
   recP += rnd(.5, 1) * d.kick * .3 * (adsK > .5 ? .6 : 1); recY += rnd(-.5, .5) * d.kick * .12; P.shakeT = Math.max(P.shakeT, .08);
@@ -1894,9 +1905,9 @@ function fire(follow = false) {
   const mz = muzzleWorld();
   if (d.launch) { const dir = aimDir(0), vel = dir.multiplyScalar(26); vel.y += 2.4; spawnNade('shell', mz, vel, null); netEvent({ t: 'th', id: 'shell', p: v3a(mz), v: v3a(vel) }); return; }
   if (d.proj) { for (let i = 0; i < (d.pellets || 1); i++) { const dir = aimDir(d.pspread || 0), vel = dir.multiplyScalar(30); spawnRocket(mz, vel, st.dmg, null, d.radius || 5.5, d.self || 35); netEvent({ t: 'rk', p: v3a(mz), v: v3a(vel), d: r1(st.dmg), r: d.radius || 5.5 }); } return; }
-  let shotEnd = null;
+  let shotEnd = null; const assist = M && M.baby ? babyAssist(o) : null;
   for (let i = 0; i < d.pellets; i++) {
-    const dir = aimDir(sp); let tw = worldT(o, dir), hit = null, hb = null;
+    const dir = assist ? assist.clone() : aimDir(sp); let tw = worldT(o, dir), hit = null, hb = null;
     for (const b of bots) { if (!b.alive || b.invT > 0 || b.ally || b.frozen) continue; const h = hitEntity(o, dir, b, b.headY); if (h && h.t < tw && (!hit || h.t < hit.t)) { hit = h; hb = b; } }
     if (M && M.pvp) for (const rp of remotes.values()) { if (!rp.alive || !rp.seen) continue; const h = hitEntity(o, dir, rp, rp.eyeH - .05); if (h && h.t < tw && (!hit || h.t < hit.t)) { hit = h; hb = rp; } }
     const end = hit ? hit.t : Math.min(tw, 120), endP = o.clone().addScaledVector(dir, end); if (!shotEnd) shotEnd = endP;
@@ -2231,7 +2242,7 @@ function renderLobby() {
   $('startBtn').textContent = NET.roster.length > 1 ? `START MATCH (${NET.roster.length} players)` : 'START (solo for now)';
 }
 function lockPointer() {
-  if (DEBUG || TOUCH) { audioInit(); onLock(true); return; } audioInit();
+  if (DEBUG || TOUCH || padLock) { audioInit(); onLock(true); return; } audioInit();
   try { const p = canvas.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => { try { canvas.requestPointerLock(); } catch (e) {} }); } catch (e) { try { canvas.requestPointerLock(); } catch (e2) {} }
 }
 function onLock(locked) {
@@ -2245,14 +2256,58 @@ document.addEventListener('mousemove', e => {
   if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;   // ignore the occasional bogus spike
   const k = .0022 * S.sens * (adsK > .5 ? (W[cur].d.zoom ? .3 * Math.min(1, scopeZoom(W[cur]) / 22) : .7) : 1); P.yaw -= e.movementX * k; P.pitch -= e.movementY * k;
 });
-addEventListener('mousedown', e => { if (state !== 'play') return; if (!P.alive) specI++; if (e.button === 0) { if (M && M.lab && labClick()) return; mouseL = true; } if (e.button === 2) mouseR = true; });
+addEventListener('mousedown', e => { if (state === 'play' && padLock && !document.pointerLockElement && !DEBUG && !TOUCH) { padLock = false; lockPointer(); }   // a mouse click after playing with the controller switches back to the mouse
+  if (state !== 'play') return; if (!P.alive) specI++; if (e.button === 0) { if (M && M.lab && labClick()) return; mouseL = true; } if (e.button === 2) mouseR = true; });
 addEventListener('mouseup', e => { if (e.button === 0) mouseL = false; if (e.button === 2) mouseR = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('wheel', e => { if (state !== 'play') return; cycleWeapon(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+// ------------------------------------------------------------------ controller (gamepad) support
+// Left stick: move (click it to sprint) · right stick: look · RT: shoot · LT: zoom · A: jump · B: crouch · X: reload · Y: use / throw what is in your hand
+// LB / RB: switch slot · D-pad up: pick up / open chests · D-pad down: bag (hold) · D-pad left: toggle aim · Back: scoreboard (hold) · Start: pause
+const pad = { on: false, gp: null, prev: [], held: {}, sprint: false, mouseL: false, mouseR: false, rum: 0 };
+let padLock = false, padT = 0;   // padLock: this match was started with the controller, so there is no pointer lock (a mouse click switches back to the mouse)
+function padRumble(w, s, ms) { const gp = pad.on && pad.gp; if (!gp || !gp.vibrationActuator || performance.now() < pad.rum) return; pad.rum = performance.now() + 40; try { gp.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: ms, weakMagnitude: w, strongMagnitude: s }); } catch (e) {} }
+function padKey(code, on) { if (on) { keys[code] = true; pad.held[code] = true; } else if (pad.held[code]) { keys[code] = false; pad.held[code] = false; } }
+function padRelease() { for (const c in pad.held) if (pad.held[c]) { keys[c] = false; pad.held[c] = false; } if (pad.mouseL) { mouseL = false; pad.mouseL = false; } if (pad.mouseR) { mouseR = false; pad.mouseR = false; } pad.sprint = false; }
+function padStep(now) {
+  const dt = Math.min(.05, (now - padT) / 1000 || .016); padT = now;
+  let gp = null; try { for (const g of navigator.getGamepads ? navigator.getGamepads() : []) if (g && g.connected && g.buttons.length >= 10 && g.axes.length >= 4) { gp = g; break; } } catch (e) {}
+  if (!gp) { if (pad.on) { pad.on = false; padRelease(); } return; }
+  const first = !pad.on; pad.gp = gp; pad.on = true;
+  const dz = v => Math.abs(v) < .17 ? 0 : (v - Math.sign(v) * .17) / .83, ax = i => dz(gp.axes[i] || 0);
+  const lx = ax(0), ly = ax(1), rx = ax(2), ry = ax(3), bt = [];
+  for (let i = 0; i < 17; i++) bt[i] = !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > .5));
+  bt[6] = !!(gp.buttons[6] && gp.buttons[6].value > .35); bt[7] = !!(gp.buttons[7] && gp.buttons[7].value > .35);   // triggers: a light squeeze is enough
+  const hit = i => bt[i] && !pad.prev[i], up = i => !bt[i] && pad.prev[i];
+  if (first) { const n = $('padNote'); if (n) n.textContent = 'Controller connected: press A to play solo'; }
+  if (state === 'menu') { if (hit(0) && !$('menu').classList.contains('hide') && $('lobby').classList.contains('hide')) { padLock = true; $('play').click(); } padRelease(); }
+  else if (state === 'pause') { if (hit(9) || hit(0)) { padLock = true; $('resume').click(); } padRelease(); }
+  else if (state === 'over') { if (hit(0)) { padLock = true; $('again').click(); } else if (hit(1)) $('toMenu').click(); padRelease(); }
+  else if (state === 'play') {
+    if (hit(9)) { if (document.pointerLockElement) { padLock = true; document.exitPointerLock(); } else padLock = true; padRelease(); onLock(false); pad.prev = bt; return; }   // Start = pause
+    if (P.alive) { const k = 2.9 * S.sens * (adsK > .5 ? (W[cur].d.zoom ? .3 * Math.min(1, scopeZoom(W[cur]) / 22) : .7) : 1) * dt, curve = v => Math.sign(v) * Math.pow(Math.abs(v), 1.6); P.yaw -= curve(rx) * k; P.pitch -= curve(ry) * k; }
+    padKey('KeyW', ly < -.3); padKey('KeyS', ly > .3); padKey('KeyA', lx < -.3); padKey('KeyD', lx > .3);
+    if (hit(10)) pad.sprint = !pad.sprint; if (ly > -.3) pad.sprint = false; padKey('Tab', pad.sprint && ly < -.5);
+    padKey('Space', bt[0]); if (hit(0)) zgKick();
+    padKey('ShiftLeft', bt[1]);
+    if (hit(7)) { if (!P.alive) specI++; if (!(M && M.lab && labClick())) { mouseL = true; pad.mouseL = true; } }
+    if (up(7) && pad.mouseL) { mouseL = false; pad.mouseL = false; }
+    if (hit(6)) { mouseR = true; pad.mouseR = true; } if (up(6) && pad.mouseR) { mouseR = false; pad.mouseR = false; }
+    if (P.alive) { if (hit(2) && !holdItem) startReload(); if (hit(3)) useHeld(); if (hit(12)) interact(); if (hit(14)) adsTog = !adsTog; if (hit(4)) cycleWeapon(-1); if (hit(5)) cycleWeapon(1); }
+    if (hit(13)) { $('invpanel').innerHTML = '<div class="box">' + invHTML() + '</div>'; $('invpanel').classList.remove('hide'); } if (up(13)) $('invpanel').classList.add('hide');
+    if (hit(8)) { $('board2').innerHTML = boardHTML(); $('board-screen').classList.remove('hide'); } if (up(8)) $('board-screen').classList.add('hide');
+  } else padRelease();
+  pad.prev = bt;
+}
+function padLoop(now) { requestAnimationFrame(padLoop); padStep(now); }
+addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') padLock = false; }, true);   // clicking with a mouse always means: use the mouse
+requestAnimationFrame(padLoop);
+
 let lastWTap = -1e9, wSprint = false;   // double-tap W to sprint (until you let go of W)
 addEventListener('keydown', e => {
   if (e.code === 'Tab' && state === 'play') e.preventDefault();   // Tab still sprints too (the touch controls use it), don't let it move browser focus
   if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.code === 'Escape' && padLock && state === 'play') { onLock(false); return; }   // no pointer lock while you play with a controller, so Esc pauses by hand
   keys[e.code] = true;
   if (state !== 'play') return;
   if (e.code === 'KeyW' && !e.repeat && (e.isTrusted || DEBUG)) { const now = performance.now(); if (now - lastWTap < 320) wSprint = true; lastWTap = now; }
@@ -2321,6 +2376,6 @@ for (const key of ['t', 'b', 'l', 'r']) $('cross').querySelector('.' + key).id =
 buildItems(); refreshItems(); refreshSlots(); refreshAmmo();
 loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); renderPickers();
 buildBushOverlay();
-window.__ba = { SPAWNS, WAYPOINTS, LOOT_SPOTS, CHEST_SPOTS, getHalf: () => HALF, getMap: () => curMap, labPanels, labAim, labPress, labClick, setBag, gases, projs, detonateC4, triggerC4, giveItem, spawnNade, detonate, slots, brTick, startBattle, endBattle, zgFreeze, zgKick, applySuit, gateTouch, pickZ, S, ARMORS, stealthR, BUSHES, P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
+window.__ba = { padStep, pad, babyAssist, worldT, aimDir, eyePos, SPAWNS, WAYPOINTS, LOOT_SPOTS, CHEST_SPOTS, getHalf: () => HALF, getMap: () => curMap, labPanels, labAim, labPress, labClick, setBag, gases, projs, detonateC4, triggerC4, giveItem, spawnNade, detonate, slots, brTick, startBattle, endBattle, zgFreeze, zgKick, applySuit, gateTouch, pickZ, S, ARMORS, stealthR, BUSHES, P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
   get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck, TREES, treeHidden, SCOPES, updateScopeUI, get myScope() { return myScope; }, set myScope(v) { myScope = v; }, get thermalView() { return thermalView; } };
 requestAnimationFrame(loop);

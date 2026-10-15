@@ -121,12 +121,12 @@
   }
   a.back { position: fixed; left: 18px; top: 156px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; pointer-events: auto; }
 </style>
-<meta name="description" content="A bouncy 3D robot shooter with 20 maps, 12 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
+<meta name="description" content="A bouncy 3D robot shooter with 20 maps, 13 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#0a0618">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Blaster Arena - free browser game">
-<meta property="og:description" content="A bouncy 3D robot shooter with 20 maps, 12 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
+<meta property="og:description" content="A bouncy 3D robot shooter with 20 maps, 13 modes (gun game, battle royale, horde and more), loot, chests and online co-op. Free in your browser, on Chromebooks and on phones.">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/blaster-arena/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/blaster-arena.png">
 <meta name="twitter:card" content="summary_large_image">
 </head>
@@ -165,6 +165,7 @@
     <div class="row"><input id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">PLAY SOLO</button></div>
     <div class="row coop"><button id="hostBtn" class="alt">HOST CO-OP</button><span class="or">or join a friend:</span><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off"><button id="joinBtn" class="alt">JOIN</button></div>
     <p class="sub" id="netMsg" style="min-height:22px;margin:4px 0"></p>
+    <p class="sub" id="padNote" style="min-height:18px;margin:2px 0;color:#7cecff"></p>
     </div>
     <p class="fine">Online co-op connects you straight to your friends through a free helper service (PeerJS). Only share your room code with people you know, because players can see each other's network address.</p>
     <details class="keys-d"><summary>Controls</summary>
@@ -173,6 +174,7 @@
       <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div><div><b>W W</b> double-tap W to sprint</div><div><b>R</b> reload</div><div><b>1-5 / Wheel</b> pick a slot (guns + items)</div>
       <div><b>F</b> drink / use / throw what is in your hand</div><div><b>Z</b> toggle aim (handy on a trackpad)</div>
       <div><b>E</b> pick up / open chests</div>
+      <div style="grid-column:1/-1"><b>Controller</b> left stick move (click it to sprint) · right stick look · RT shoot · LT zoom · A jump · B crouch · X reload · Y use / throw · LB / RB switch slot · D-pad up pick up · D-pad down bag · D-pad left toggle aim · Back scoreboard · Start pause. Press A on the menu to play.</div>
       <div><b>T</b> scoreboard (hold)</div><div><b>I</b> inventory (hold)</div><div><b>Esc</b> pause</div><div><b>Reload</b> uses ammo boxes. Blasters come in 5 rarities!</div>
     </div></details>
     <p class="sub" id="touchWarn" style="display:none">This game needs a keyboard and mouse. Open it on a computer!</p>
@@ -220,6 +222,6 @@
 <div class="screen hide" id="board-screen" style="background:rgba(8,4,20,.7);pointer-events:none"><div class="box"><table id="board2" id="board" style="margin:auto"></table></div></div>
 <a class="back" href="../../index.html">&larr; All games</a>
 <script src="vendor/peerjs.min.js"></script>
-<script type="module" src="game.js?v=7.2"></script>
+<script type="module" src="game.js?v=7.5"></script>
 </body>
 </html>
