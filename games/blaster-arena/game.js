@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=7.7';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.7';
-import { TOUCH, initTouch } from './touch.js?v=7.7';
+import { MAPS } from './maps.js?v=7.8';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.8';
+import { TOUCH, initTouch } from './touch.js?v=7.8';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -418,7 +418,7 @@ const P = { pos: new V3(0, 0, 24), vel: new V3(), r: .35, h: STAND_H, eyeH: STAN
 P.armor = { body: null, helm: null }; P.stealth = 0; P.hidden = false;
 const eyePos = () => new V3(P.pos.x, P.pos.y + P.eyeH, P.pos.z);
 const keys = {}; let mouseL = false, mouseR = false, firedThis = false, cur = 0, wantSwap = -1, swapT = 0, reloadT = 0, adsK = 0, vmKick = 0, vmBob = 0, time = 0, state = 'menu', started = false, killTimes = [], dmgInd = [];
-let recP = 0, recY = 0, throwCD = 0, throwAnim = 0, useK = 0, stepOff = 0, lastPY = 0, fullHintT = -9, use = null, held = null;
+let recP = 0, recY = 0, throwCD = 0, spamLock = false, throwAnim = 0, useK = 0, stepOff = 0, lastPY = 0, fullHintT = -9, use = null, held = null;
 const bots = [], botById = new Map(), projs = [], nades = [], smokes = [], fires = [], remotes = new Map();
 const score = { me: 0, bots: 0 };
 const NET = { role: 'solo', me: 0, net: null, roster: [], code: '' };
@@ -1079,11 +1079,11 @@ function playerThrow(id) {
   if (state !== 'play' || !P.alive) return;
   if (use || throwCD > 0 || swapT > 0) return;
   if (inv[id] <= 0) { hint('NO ' + ITEMS[id].name, '#ff8a8a'); sfx('empty'); return; }
-  if (!(M && M.infUtil)) inv[id]--; throwCD = .6; throwAnim = .35; refreshItems(); sfx('throw');
+  if (!(M && M.infUtil)) inv[id]--; throwCD = .35; throwAnim = .3; refreshItems(); sfx('throw');
   const o = eyePos(), d = aimDir(0); let s = o.clone().addScaledVector(d, .7); s.y -= .15;
   if (worldT(o, d, .8) < .8) s = o.clone();
   const v = d.clone().multiplyScalar(19).add(new V3(P.vel.x * .5, 3.8, P.vel.z * .5));
-  spawnNade(id, s, v, null); netEvent({ t: 'th', id, p: v3a(s), v: v3a(v) }); if (id === 'c4') hint('C4 PLACED: HOLD THE REMOTE (P) AND PRESS F', '#ffd34e');
+  spawnNade(id, s, v, null); netEvent({ t: 'th', id, p: v3a(s), v: v3a(v) }); if (id === 'c4' && nades.filter(n => n.id === 'c4').length <= 1) hint('C4 PLACED: HOLD THE REMOTE (P) AND PRESS F', '#ffd34e');
 }
 function botThrow(b, id, tgt) {
   const from = new V3(b.pos.x, b.pos.y + 1.4 * b.sc, b.pos.z), sc = 1.1 + Math.hypot(tgt.x - from.x, tgt.z - from.z) * .07;
@@ -2075,9 +2075,9 @@ function updatePlayer(dt) {
   if (reloadT > 0) { reloadT -= dt; if (reloadT <= 0) { const need = w.s.mag - w.ammo, take = FREE() ? need : Math.min(need, reserve[w.d.at]); w.ammo += take; if (!FREE()) reserve[w.d.at] -= take; reloadT = 0; refreshAmmo(); } }
   if (burstLeft > 0) { burstT -= dt; if (burstT <= 0) { if (w.ammo > 0 && w.d.burst && swapT <= 0 && reloadT <= 0 && !use) { fire(true); burstT = w.d.burstGap || .075; burstLeft--; } else burstLeft = 0; } }
   if (use) { use.t += dt; use.tick -= dt; if (use.tick <= 0) { use.tick = .3; sfx('tick'); } const pct = Math.min(100, Math.floor(use.t / use.dur * 100)); if (pct !== use.pct) { use.pct = pct; $('useFill').style.width = pct + '%'; } if (use.t >= use.dur) finishUse(); }
-  if (holdItem) { if (mouseL && !firedThis) { firedThis = true; useHeld(); } }
-  else if (mouseL && !use && swapT <= 0 && reloadT <= 0 && w.cd <= 0 && !(M && M.zerog && (P.frozen || M.bPhase !== 'go'))) { if (w.ammo > 0) { if (w.d.auto || !firedThis) { fire(); firedThis = true; } } else if (!firedThis) { sfx('empty'); startReload(); firedThis = true; } }
-  if (!mouseL) firedThis = false;
+  if (holdItem) { if (mouseL && (!firedThis || ITEMS[holdItem].kind === 'nade')) { firedThis = true; spamLock = true; useHeld(); } }   // hold the button to keep throwing grenades / C4
+  else if (mouseL && !spamLock && !use && swapT <= 0 && reloadT <= 0 && w.cd <= 0 && !(M && M.zerog && (P.frozen || M.bPhase !== 'go'))) { if (w.ammo > 0) { if (w.d.auto || !firedThis) { fire(); firedThis = true; } } else if (!firedThis) { sfx('empty'); startReload(); firedThis = true; } }
+  if (!mouseL) { firedThis = false; spamLock = false; }   // (spamLock: when your last grenade is gone, your gun waits until you let go)
 }
 function updateCamera(dt) {
   const w = W[cur], tgt = (mouseR || adsTog) && P.alive && swapT <= 0 && reloadT <= 0 && !use && !holdItem ? 1 : 0; adsK += (tgt - adsK) * clamp(dt * 12, 0, 1);
