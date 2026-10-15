@@ -1,9 +1,9 @@
 // BLASTER ARENA - stylized arena shooter (Three.js). No blood: robots pop into confetti.
 // Solo, or online co-op for up to 4 friends (WebRTC through PeerJS). The host runs the bots and loot; everyone else simulates themselves.
 import * as THREE from './three.module.min.js';
-import { MAPS } from './maps.js?v=7.5';
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.5';
-import { TOUCH, initTouch } from './touch.js?v=7.5';
+import { MAPS } from './maps.js?v=7.6';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.6';
+import { TOUCH, initTouch } from './touch.js?v=7.6';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
@@ -25,14 +25,15 @@ const MODES = {
   moon: { name: 'Moon Brawl', blurb: 'Free-for-all on the Moon: super low gravity and huge jumps (the walls are way taller so nobody leaves), so fights happen high up in the air. First to 12 pops wins.' },
   pistols: { name: 'Pop-Gun Party', blurb: 'Team deathmatch where everyone only has the Pop-Gun with unlimited ammo, but the whole map is full of armour, heals and utility. Armour up and pop away!' },
   utility: { name: 'Utility Blitz', blurb: 'Team deathmatch where the whole map is covered in armour, bandages and utility (frags, flashes, smokes, mollys, sticky bombs, cluster bombs and toxic gas) and there are no blasters to find. You only carry a weak Pop-Gun, so throw everything!' },
+  c4flash: { name: 'C4 Flash', blurb: 'Sneak around in a ninja suit (crouch and creep so bots only notice you very close), throw C4 so it sticks to the bots, hide, and then blow them ALL up at once with the remote. C4, smokes, flashes, gliders and ninja suits are everywhere, and the map is huge with lots of hiding places. First to 30 pops wins.' },
   baby: { name: 'Baby Mode', blurb: 'A gentle, super easy mode for little kids. The bots are slow and never shoot, you cannot be hurt, your shots curve toward the nearest bot, and one pop is all it takes. First to 10 pops wins!' },
   lab: { name: 'Test Lab', blurb: 'A white test room with a wall of buttons. Click a button (or press E) to switch on low gravity, super jumps, god mode, infinite utility, any blaster at any rarity, any utility, armour, scopes, and bots to test on. Nobody wins here: it is for testing.' },
   battleroom: { name: 'Battle Room', blurb: "Just like Ender's Game! A huge zero-gravity cube with floating stars. Your army (you plus bots) starts around your gate. Push off the wall with Space (the way you look) and drift, aim with the mouse, and freeze the enemy army with your Flasher (it has a red dot sight: hold right mouse to aim through the box): a hit in the body freezes a soldier solid, a hit in the legs freezes the legs. Win a battle by freezing everyone or by getting FOUR unfrozen soldiers to touch the enemy gate. First to 3 battles wins." },
   snipers: { name: "Sniper's Alley", blurb: 'Snipers only! Six sniper rifles to find in chests and on the ground, on a mountain map with peaks, forests, boulders and jump pads. Bot snipers fight on your team too. Get high: jump at a rock to climb it, hold jump while pushing into a tall spire or wall (or a tree trunk) to climb it, or step on a jump pad. Bots cannot see you up in a tree. Line it up and hold your breath.' },
 };
 if (!MODES[CFG.mode]) CFG.mode = 'tdm';
-const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'utility' || m === 'baby' || m === 'snipers' || m === 'battleroom';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
-const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], utility: [0], baby: [0], battleroom: [16] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
+const BRAWLISH = m => m === 'brawl' || m === 'gungame' || m === 'moon', TDMISH = m => m === 'tdm' || m === 'pistols' || m === 'utility' || m === 'baby' || m === 'c4flash' || m === 'snipers' || m === 'battleroom';   // modes that play like Brawl (free-for-all) or like Team Deathmatch
+const LADDER = { gungame: [1, 2, 8, 6, 7, 3, 4, 5, 9, 0], pistols: [0], utility: [0], baby: [0], c4flash: [0], battleroom: [16] };   // forced blasters (indexes into WDEF): Gun Game climbs the list with every pop
 const DIFF = {
   easy:   { bots: 4, hp: 70,  aim: 0.085, react: 0.75, dmg: 5,  speed: 3.6, fire: 0.36, turn: 5, nade: 22, nades: ['frag'], sn: { dmg: 42, cd: 2.8, wind: .9, aim: .02 } },
   normal: { bots: 5, hp: 100, aim: 0.05,  react: 0.45, dmg: 7,  speed: 4.4, fire: 0.25, turn: 7, nade: 13, nades: ['frag', 'frag', 'molly', 'flash'], sn: { dmg: 58, cd: 2.0, wind: .65, aim: .012 } },
@@ -454,6 +455,7 @@ const ARMORS = {
   vest2: { name: 'COMBAT VEST', slot: 'body', red: .4, dur: 100, rank: 2, col: 0x4aa8ff, w: 3 },
   vest3: { name: 'HEAVY VEST', slot: 'body', red: .55, dur: 150, rank: 3, col: 0xb06bff, w: 1.5 },
   ghillie: { name: 'GHILLIE SUIT', slot: 'body', red: .1, dur: 80, rank: 1.5, col: 0x4a8a3a, w: 2.5 },   // crouch still and bots only notice you up close
+  ninja: { name: 'NINJA SUIT', slot: 'body', red: .05, dur: 60, rank: 1.4, col: 0x2a2a3a, w: 2 },   // crouch and creep: bots only notice you very close, even while you move slowly
   helm1: { name: 'HELMET', slot: 'helm', red: .5, dur: 60, rank: 1, col: 0xc8d0dc, w: 4 },
   helm2: { name: 'COMBAT HELMET', slot: 'helm', red: .7, dur: 100, rank: 2, col: 0x4aff8a, w: 2 },
 };
@@ -469,6 +471,7 @@ function armorModel(k) {
   const A = ARMORS[k] || ARMORS.vest1, g = new THREE.Group();
   if (A.slot === 'helm') { const dome = new THREE.Mesh(new THREE.SphereGeometry(.3, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon(A.col)); outline(dome, 1.08); g.add(dome); const rim = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .05, 16), toon(0x2a2f44)); g.add(rim); const vis = new THREE.Mesh(new THREE.BoxGeometry(.4, .09, .1), new THREE.MeshBasicMaterial({ color: A.col })); vis.position.set(0, .06, .27); g.add(vis); g.position.y = -.1; }
   else if (k === 'ghillie') { const gr = [0x2f6a2a, 0x4a8a3a, 0x3a7a30, 0x5a9a44, 0x28521f]; for (let i = 0; i < 9; i++) { const a = i * 2.4, b = new THREE.Mesh(new THREE.BoxGeometry(.28 + (i % 3) * .08, .24 + (i % 2) * .12, .26 + (i % 4) * .05), toon(gr[i % 5])); b.position.set(Math.cos(a) * .2, (i % 4) * .13 - .2, Math.sin(a) * .16); b.rotation.set(i * .4, i * .9, i * .2); g.add(b); } }
+  else if (k === 'ninja') { const body = new THREE.Mesh(new THREE.BoxGeometry(.5, .6, .28), toon(0x23242e)); outline(body, 1.07); g.add(body); const sash = new THREE.Mesh(new THREE.BoxGeometry(.54, .1, .3), new THREE.MeshBasicMaterial({ color: 0xff3a3a })); sash.position.y = -.05; g.add(sash); const mask = new THREE.Mesh(new THREE.BoxGeometry(.4, .12, .3), toon(0x1a1b24)); mask.position.y = .32; g.add(mask); }
   else { const body = new THREE.Mesh(new THREE.BoxGeometry(.56, .6, .3), toon(A.col)); outline(body, 1.07); g.add(body); for (const x of [-.2, .2]) { const s = new THREE.Mesh(new THREE.BoxGeometry(.14, .1, .3), toon(0x2a2f44)); s.position.set(x, .35, 0); g.add(s); } const band = new THREE.Mesh(new THREE.BoxGeometry(.58, .08, .32), new THREE.MeshBasicMaterial({ color: A.col })); band.position.y = -.1; g.add(band); const pl = new THREE.Mesh(new THREE.BoxGeometry(.3, .26, .05), toon(0x2a2f44)); pl.position.set(0, .08, .17); g.add(pl); }
   return g;
 }
@@ -486,8 +489,9 @@ function stealthR(e) {
   if ((e.revealT || 0) > 0) return 0;
   if (treeTop(e)) return 999;
   const me = e === P, crouched = me ? P.crouchK > .6 : (e.crouch || 0) > .6, spd = me ? Math.hypot(P.vel.x, P.vel.z) : (e.spd || 0);
-  if (!crouched || spd > 2.4) return 0;
-  let r = me && P.armor.body && P.armor.body.k === 'ghillie' ? 12 : 0;
+  const ninja = me && P.armor.body && P.armor.body.k === 'ninja';
+  if (!crouched || spd > (ninja ? 4.6 : 2.4)) return 0;   // a ninja can creep (crouch-walk) and stay hidden
+  let r = ninja ? 7 : me && P.armor.body && P.armor.body.k === 'ghillie' ? 12 : 0;
   if (BUSHES.length && inBush(e)) r = r ? 5 : 10;
   return r;
 }
@@ -552,6 +556,7 @@ function resetInv() {
   if (M && M.mode === 'battleroom') return;   // the Battle Room: just your Flasher
   if (M && M.lab) { putItem('bandage', 10); return; }
   if (M && M.baby) return;   // Baby Mode: just the pop-gun
+  if (M && M.c4m) { putItem('c4', 10); putItem('remote', 1); putItem('flash', 4); putItem('smoke', 4); putItem('glider', 1); return; }   // C4 Flash: a ninja's kit
   if (M && M.mode === 'pistols') { putItem('bandage', 4); putItem('mini', 3); putItem('frag', 2); putItem('smoke', 2); return; }
   if (M && M.mode === 'utility') { putItem('bandage', 6); putItem('frag', 3); putItem('smoke', 2); return; }   // Utility Blitz: bandages and a few grenades, one slot left free   // Pop-Gun Party starts stocked up
   putItem('bandage', 1); putItem('frag', 1);
@@ -566,7 +571,18 @@ function rollAmmo() {
   const own = {}; for (const w of W) if (w.owned) own[w.d.at] = (own[w.d.at] || 0) + 3; const types = M && M.snipe ? ['heavy', 'medium'] : Object.keys(AMMO), ws = types.map(t => 1 + (own[t] || 0)); let r = Math.random() * ws.reduce((a, b) => a + b, 0), at = types[0];
   for (let i = 0; i < types.length; i++) { r -= ws[i]; if (r <= 0) { at = types[i]; break; } } const b = AMMO[at].box; return { id: 'ammo', at, qty: rint(b[0], b[1]) };
 }
+// C4 Flash: C4 (10 at a time), ninja suits, smokes, flashes and gliders lie everywhere
+function rollC4Loot() {
+  const r = Math.random();
+  if (r < .22) return { id: 'armor', qty: 1, at: 'ninja' };
+  if (r < .60) return { id: 'c4', qty: 10 };
+  if (r < .76) return { id: 'smoke', qty: rint(3, 6) };
+  if (r < .88) return { id: 'flash', qty: rint(3, 6) };
+  if (r < .96) return { id: 'glider', qty: rint(1, 3) };
+  return { id: 'bandage', qty: rint(2, 5) };
+}
 function rollLoot() {
+  if (M && M.c4m) return rollC4Loot();
   const p = M && M.mode === 'royale' ? .3 : .2, q = Math.random(); if (!(M && M.ladder)) { if (q < p) return rollGun(); if (q < p + .2) return rollAmmo(); }   // forced-blaster modes: no guns or ammo on the floor
   const lo = M && M.ladder ? 0 : p + .2, armP = M && (M.mode === 'pistols' || M.mode === 'utility') ? .26 : M && M.snipe ? .09 : .07;   // armour lies around in every mode
   if (q >= lo && q < lo + armP) return rollArmor();
@@ -660,7 +676,7 @@ function hostRollPickups(np) {
   clearPickups(); if (M && M.noloot) return []; if (M && M.free) return freeplayLoot(); let forced = 0; const br = M && M.mode === 'royale', nForce = br ? 4 + np : (M && M.snipe ? 7 : 5) + (np - 1); if (M && M.ladder) forced = 99;
   const spots = br ? LOOT_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 14 + 5 * np) : curMap && curMap.tiles ? LOOT_SPOTS.filter(() => Math.random() < .4) : LOOT_SPOTS;   // battle royale: big map, only a little loot
   for (const [x, z, y] of spots) addPickup(forced < nForce ? rollGun(M && M.snipe ? SNIPERS[forced++ % SNIPERS.length] : 1 + (forced++ % (GUN_W.length - 1))) : rollLoot(), x, y, z);
-  if (M && (M.mode === 'pistols' || M.mode === 'utility')) for (let i = 0; i < (M.mode === 'utility' ? 48 : 36); i++) { const w = pick(WAYPOINTS); addPickup(rollLoot(), w.x, 0, w.z); }   // Pop-Gun Party: heals, utility and armour all over the place
+  if (M && (M.mode === 'pistols' || M.mode === 'utility' || M.c4m)) for (let i = 0; i < (M.c4m ? 90 : M.mode === 'utility' ? 48 : 36); i++) { const w = pick(WAYPOINTS); addPickup(rollLoot(), w.x, 0, w.z); }   // Pop-Gun Party: heals, utility and armour all over the place
   for (const [x, y, z] of (br ? DMG_SPOTS.slice().sort(() => Math.random() - .5).slice(0, 2) : DMG_SPOTS)) addPickup({ id: 'dmg' }, x, y, z, { fixed: 'dmg' });
   buildChests(); return pickups.map(wirePk);
 }
@@ -720,6 +736,7 @@ function buildChests() { const spots = M && M.mode === 'royale' ? CHEST_SPOTS.sl
 const bumpQty = l => M && (M.mode === 'pistols' || M.mode === 'utility') ? { id: l.id, qty: Math.max(l.qty, Math.ceil(ITEMS[l.id].max * .6)) } : l;   // Pop-Gun Party: big stacks
 function rollConsumable() { let r = Math.random() * LOOT_TOTAL; for (const id of ITEM_IDS) { r -= ITEMS[id].w; if (r <= 0) return bumpQty({ id, qty: ITEMS[id].kind === 'nade' ? rint(2, 4) : id === 'bandage' ? rint(2, 5) : id === 'mini' ? rint(1, 3) : (id === 'medkit' || id === 'pot' || id === 'slurp' || id === 'soda') ? rint(1, 2) : 1 }); } return { id: 'bandage', qty: 1 }; }
 function chestLoot() {
+  if (M && M.c4m) return [rollC4Loot(), rollC4Loot(), rollC4Loot(), rollC4Loot()];
   if (M && M.ladder) return [rollArmor(), rollConsumable(), rollConsumable(), rollConsumable(), ...(M.mode === 'pistols' || M.mode === 'utility' ? [rollArmor(), rollConsumable()] : [])];   // forced-blaster modes: no guns or ammo in chests
   const gun = rollGun(); gun.rar = Math.min(4, rollRarity() + (Math.random() < .55 ? 1 : 0)); return [gun, rollAmmo(), rollConsumable(), Math.random() < .35 ? rollArmor() : Math.random() < .5 ? rollConsumable() : (M && M.snipe && Math.random() < .55 ? rollScope() : rollAmmo())];
 }
@@ -1011,6 +1028,7 @@ function spawnNade(id, pos, vel, owner) {
 function updateNades(dt) {
   for (let i = nades.length - 1; i >= 0; i--) {
     const n = nades[i]; n.fuse -= dt; n.age += dt; let impact = 0; if (!n.stuck) n.vel.y -= G * dt;
+    if (n.attach) { if (n.attach.alive) { n.pos.set(n.attach.pos.x + n.off.x, n.attach.pos.y + n.off.y, n.attach.pos.z + n.off.z); n.vel.set(0, 0, 0); } else { n.attach = null; n.stuck = false; } }   // riding on a bot (it falls to the floor if the bot pops)
     for (const ax of ['x', 'y', 'z']) {
       const old = n.pos[ax]; n.pos[ax] += n.vel[ax] * dt;
       for (const b of world) if (n.pos.x > b.minX - n.r && n.pos.x < b.maxX + n.r && n.pos.y > b.minY - n.r && n.pos.y < b.maxY + n.r && n.pos.z > b.minZ - n.r && n.pos.z < b.maxZ + n.r) {
@@ -1022,6 +1040,7 @@ function updateNades(dt) {
     if (rolling) { const f = Math.max(0, 1 - 2.4 * dt); n.vel.x *= f; n.vel.z *= f; }
     const sp = n.vel.length(), sk = Math.min(1, sp / 6); n.m.position.copy(n.pos); n.m.rotation.x += n.spin.x * dt * sk; n.m.rotation.y += n.spin.y * dt * sk; n.m.rotation.z += n.spin.z * dt * sk;
     if (impact > 3 && n.age > .05) sfxAt('clink', n.pos);
+    if ((n.id === 'sticky' || n.id === 'c4') && !n.stuck && n.age > .03) for (const b of bots) { if (!b.alive || b.ally) continue; const dx = n.pos.x - b.pos.x, dz = n.pos.z - b.pos.z, dy = n.pos.y - b.pos.y; if (Math.hypot(dx, dz) < .55 * b.sc + .3 && dy > -.2 && dy < 2 * b.sc) { n.attach = b; n.off = new V3(dx, dy, dz); n.stuck = true; n.vel.set(0, 0, 0); sfxAt('clink', n.pos); break; } }   // C4 and sticky bombs stick to bots
     if ((n.id === 'sticky' || n.id === 'c4') && !n.stuck && impact > 1.2 && n.age > .05) { n.stuck = true; n.vel.set(0, 0, 0); }   // sticky bombs stay where they land
     let boom = n.fuse <= 0;
     if (n.id === 'gas' && n.age > .5 && rolling && Math.hypot(n.vel.x, n.vel.z) < .8) boom = true;
@@ -1443,7 +1462,7 @@ const safeCfg = c => ({ mode: MODES[c && c.mode] ? c.mode : 'tdm', map: MAPS.som
 const wireCfg = () => ({ mode: CFG.mode, map: CFG.map, diff: CFG.diff, rarity: CFG.rarity, fp: CFG.fp });
 const botsAlive = () => bots.filter(b => b.alive).length;
 function newMatch(cfg, np) {
-  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', team: cfg.mode === 'snipers' || cfg.mode === 'battleroom', zerog: cfg.mode === 'battleroom', noloot: cfg.mode === 'battleroom' || cfg.mode === 'lab' || cfg.mode === 'baby', lab: cfg.mode === 'lab', baby: cfg.mode === 'baby', snipe: cfg.mode === 'snipers', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode] || cfg.mode === 'lab', grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'baby' ? 10 : cfg.mode === 'battleroom' ? 3 : cfg.mode === 'snipers' ? ((MAPS.find(m => m.id === cfg.map) || {}).tiles ? 20 + 5 * (np - 1) : 25 + 8 * (np - 1)) : TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
+  return { mode: cfg.mode, map: cfg.map, diff: cfg.diff, np, over: false, pvp: BRAWLISH(cfg.mode) || cfg.mode === 'royale', free: cfg.mode === 'free', team: cfg.mode === 'snipers' || cfg.mode === 'battleroom', zerog: cfg.mode === 'battleroom', noloot: cfg.mode === 'battleroom' || cfg.mode === 'lab' || cfg.mode === 'baby', lab: cfg.mode === 'lab', baby: cfg.mode === 'baby', c4m: cfg.mode === 'c4flash', snipe: cfg.mode === 'snipers', ladder: LADDER[cfg.mode] || null, inf: !!LADDER[cfg.mode] || cfg.mode === 'lab', grav: cfg.mode === 'moon', myTier: -1, rarity: clamp((cfg.rarity | 0), 0, 4), fp: cfg.fp === 'bots' ? 'bots' : 'dummy', norespawn: cfg.mode === 'horde' || cfg.mode === 'royale', storm: null, target: cfg.mode === 'baby' ? 10 : cfg.mode === 'c4flash' ? 30 : cfg.mode === 'battleroom' ? 3 : cfg.mode === 'snipers' ? ((MAPS.find(m => m.id === cfg.map) || {}).tiles ? 20 + 5 * (np - 1) : 25 + 8 * (np - 1)) : TDMISH(cfg.mode) ? 25 + 10 * (np - 1) : cfg.mode === 'brawl' ? 15 : cfg.mode === 'moon' ? 12 : cfg.mode === 'gungame' ? LADDER.gungame.length : 0, timeLeft: cfg.mode === 'blitz' ? 300 : 0,
     wave: 0, phase: '', phaseT: 0, toSpawn: 0, spawnT: 0, maxAlive: 8, lives: 0, left: 0, nextBotId: 1, bPhase: 'ready', bT: 6, battle: 0, gate: [0, 0], gateT: [0, 0], aliveA: 0, aliveB: 0 };
 }
 function feedText(text, color = '#fff') { const f = $('feed'), d = document.createElement('div'); d.textContent = text; d.style.color = color; f.appendChild(d); setTimeout(() => d.remove(), 4500); while (f.children.length > 5) f.firstChild.remove(); }
@@ -1624,13 +1643,13 @@ function netTick(dt) {
 
 // ---- starting / ending matches
 function beginLocal() {
-  setBag(M && M.lab ? 9 : 5);
+  setBag(M && (M.lab || M.c4m) ? 9 : 5);
   for (const b of bots) b.remove(); bots.length = 0; botById.clear(); for (const p of projs) { scene.remove(p.m); } projs.length = 0; clearHazards();
   myScope = null; updateScopeUI(); const st0 = M && M.snipe ? SNIPE_START : 0; for (const w of W) { w.owned = WDEF.indexOf(w.d) === st0; w.rar = 0; applyRarity(w); } slots.fill(null); slots[0] = { gun: st0 }; selSlot = 0; clearHold(); adsTog = false;
   score.me = score.bots = 0; P.kills = P.deaths = P.streak = 0; killTimes = []; $('feed').innerHTML = ''; updScore(); spawnPlayer(true); cur = st0; wantSwap = -1; swapT = 0; selectWeapon(st0, true); G = M && M.zerog ? 0 : M && M.grav ? 5.5 : 22; if (M && M.ladder) { M.myTier = -1; applyLoadout(true); }
   clearStormVis(); specI = 0; $('team').style.display = M.pvp ? 'none' : ''; for (const rp of remotes.values()) rp.tag.material.depthTest = !!M.pvp;
   if (M && M.lab) labBuild(); else labClear();
-  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT ROCKS TO CLIMB · HOLD JUMP AT SPIRES AND TREES · TREETOPS HIDE YOU', '#7cecff'); if (M && M.zerog) hint('BLUE + GREEN DIAMOND = YOUR ARMY · ORANGE = ENEMY · SPACE = PUSH OFF · SHIFT = BRAKE · CLICK = FREEZE', '#7cecff');
+  if (isHost()) hostSetupMode(); started = true; state = 'play'; lastSnapAt = 0; $('over').classList.add('hide'); $('menu').classList.add('hide'); $('lobby').classList.add('hide'); $('pause').classList.add('hide'); $('pauseT').textContent = 'PAUSED'; $('resume').textContent = 'RESUME'; if (M && M.snipe) hint('JUMP AT ROCKS TO CLIMB · HOLD JUMP AT SPIRES AND TREES · TREETOPS HIDE YOU', '#7cecff'); if (M && M.c4m) hint('CROUCH + CREEP IN YOUR NINJA SUIT · THROW C4 AT BOTS (IT STICKS) · THEN HOLD THE REMOTE (P) AND PRESS F', '#ff9a4a'); if (M && M.zerog) hint('BLUE + GREEN DIAMOND = YOUR ARMY · ORANGE = ENEMY · SPACE = PUSH OFF · SHIFT = BRAKE · CLICK = FREEZE', '#7cecff');
 }
 function hostSetupMode() {
   const D = DIFF[M.diff];
@@ -1828,7 +1847,7 @@ function spawnPlayer(initial) {
   let best = null; const pool = M && M.team && SPAWNS_A.length ? SPAWNS_A : SPAWNS;   // Sniper's Alley: your team starts at its own end of the map
   if (initial && M && M.mode === 'royale') best = brSpawn(NET.me); else if (initial) best = pool[(NET.me * 3) % pool.length];
   else { let bd = -1; for (const s of pool) { let md = 1e9; for (const b of bots) if (b.alive && !(M && M.team && b.ally)) md = Math.min(md, s.distanceTo(b.pos)); for (const rp of remotes.values()) if (rp.alive) md = Math.min(md, s.distanceTo(rp.pos) * 1.6); md += rnd(0, 4); if (md > bd) { bd = md; best = s; } } }
-  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.mant = null; P.climb = null; P.revealT = 0; P.sjT = 0; P.glide = 0; P.frozen = P.legsFrozen = false; P.hp = 100; P.shield = 0; P.armor = { body: M && (M.mode === 'pistols' || M.mode === 'utility') ? { k: 'vest1', dur: ARMORS.vest1.dur } : null, helm: null }; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
+  P.pos.copy(best); P.vel.set(0, 0, 0); P.padT = P.padCD = 0; P.mant = null; P.climb = null; P.revealT = 0; P.sjT = 0; P.glide = 0; P.frozen = P.legsFrozen = false; P.hp = 100; P.shield = 0; P.armor = { body: M && M.c4m ? { k: 'ninja', dur: ARMORS.ninja.dur } : M && (M.mode === 'pistols' || M.mode === 'utility') ? { k: 'vest1', dur: ARMORS.vest1.dur } : null, helm: null }; P.alive = true; P.yaw = Math.atan2(P.pos.x, P.pos.z); P.pitch = 0; P.crouchK = 0; P.h = STAND_H; P.eyeH = STAND_EYE; P.blindT = 0; P.buffT = 0;
   for (const w of W) { w.ammo = w.s.mag; w.cd = 0; } if (!W[cur].owned) cur = slots.find(e => e && e.gun !== undefined).gun; W.forEach((w, k) => w.g.visible = k === cur); selSlot = slotOf(cur); reloadT = 0; recP = recY = 0; stepOff = 0; lastPY = P.pos.y; throwCD = 0; endUse(); clearHold(); resetInv(); resetReserve(); adsTog = false; P.speedT = 0; burstLeft = 0; P.protT = 1.5; refreshItems(); refreshAmmo(); if (M && M.ladder) applyLoadout(true);
 }
 function clearHazards() {
@@ -1897,7 +1916,7 @@ function babyAssist(o) {
 function fire(follow = false) {
   padRumble(.12, .28, 60);
   const w = W[cur], d = w.d, st = w.s; w.ammo--; if (!follow) { w.cd = st.rate; if (d.burst) { burstLeft = d.burst - 1; burstT = d.burstGap || .075; } } vmKick = d.kick * 4; flash.material.opacity = 1; flashLight.intensity = 6; setTimeout(() => flashLight.intensity = 0, 50); sfx(d.id); refreshAmmo();
-  const dmgMul = (P.buffT > 0 ? 2 : 1) * (M && M.mode === 'utility' ? .5 : 1); const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
+  const dmgMul = (P.buffT > 0 ? 2 : 1) * (M && (M.mode === 'utility' || M.c4m) ? .5 : 1); const o = eyePos(); const move = Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 8), sp = (adsK > .5 ? st.spread : (st.hip || st.spread)) * (1 + move * 2.5) * (adsK > .5 ? .5 : 1) * (P.onGround ? 1 : 2) * (1 - P.crouchK * .4);
   recP += rnd(.5, 1) * d.kick * .3 * (adsK > .5 ? .6 : 1); recY += rnd(-.5, .5) * d.kick * .12; P.shakeT = Math.max(P.shakeT, .08);
   if (M && M.zerog) P.vel.addScaledVector(aimDir(0), -d.kick * 8);   // no gravity: every shot nudges you backwards
   P.revealT = 2.5;   // shooting gives away your spot in the trees
@@ -2198,7 +2217,7 @@ function setNetMsg(t) { for (const id of ['netMsg', 'lobbyMsg']) { const e = $(i
 function buildPickupsPreview() { if (!M) hostRollPickups(1); }
 function setCfg(k, v) {
   if (NET.role === 'client') return; CFG[k] = v; save(k, v);
-  if (k === 'mode') { const cm = MAPS.find(m => m.id === CFG.map); if (v === 'snipers' && !(cm && cm.sn)) { CFG.map = 'peaksxl'; save('map', 'peaksxl'); } else if (v === 'battleroom' && !(cm && cm.room)) { CFG.map = 'battleroom'; save('map', 'battleroom'); } else if (v === 'lab' && !(cm && cm.lab)) { CFG.map = 'lab'; save('map', 'lab'); } else if (!cm || !mapOK(cm, v)) { CFG.map = 'plaza'; save('map', 'plaza'); } }
+  if (k === 'mode') { const cm = MAPS.find(m => m.id === CFG.map); if (v === 'snipers' && !(cm && cm.sn)) { CFG.map = 'peaksxl'; save('map', 'peaksxl'); } else if (v === 'battleroom' && !(cm && cm.room)) { CFG.map = 'battleroom'; save('map', 'battleroom'); } else if (v === 'lab' && !(cm && cm.lab)) { CFG.map = 'lab'; save('map', 'lab'); } else if (v === 'c4flash' && !(cm && cm.id === 'shadowxl')) { CFG.map = 'shadowxl'; save('map', 'shadowxl'); } else if (!cm || !mapOK(cm, v)) { CFG.map = 'plaza'; save('map', 'plaza'); } }
   if ((k === 'map' || k === 'mode') && !M) { loadMap(CFG.map, CFG.mode === 'royale'); hostRollPickups(1); }
   renderPickers(); if (NET.role === 'host') NET.net.hostBroadcast({ t: 'cfg', cfg: wireCfg() });
 }

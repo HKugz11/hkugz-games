@@ -605,6 +605,37 @@ MAPS.push({
   spawns: xlSpawns, loot: xlLoot(9801, 14), dmg: [[27, 1.2, 27]],
 });
 
+// ---- Shadow Village XL: a big dusk village made for sneaking. Thick hedges and bushes (crouch in them), climbable trees, bamboo groves,
+// alleys between houses and crates to creep behind. Trees and bushes are the same in every district (the game uses them for stealth); houses, hedges and bamboo differ in every district.
+const SH_R = rng(31337), SH_TREES = [], SH_BUSHES = [];
+for (let t = 0; SH_TREES.length < 9 && t < 500; t++) { const x = (SH_R() * 2 - 1) * 25, z = (SH_R() * 2 - 1) * 25; if (SH_TREES.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < 10)) continue; SH_TREES.push([x, z, .9 + SH_R() * .3, Math.floor(SH_R() * 3), SH_R() * .4]); }
+for (let t = 0; SH_BUSHES.length < 36 && t < 800; t++) { if (SH_BUSHES.length % 3 === 0) { var cx = (SH_R() * 2 - 1) * 25, cz = (SH_R() * 2 - 1) * 25; } const x = cx + (SH_R() - .5) * 5, z = cz + (SH_R() - .5) * 5; if (Math.abs(x) > 28 || Math.abs(z) > 28 || SH_TREES.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < 3.5)) continue; SH_BUSHES.push([x, z, 1.3 + SH_R() * .9]); }
+MAPS.push({
+  id: 'shadowxl', name: 'Shadow Village XL', half: 34, tiles: 3, radar: 105,
+  blurb: 'XL: a big dusk village full of hiding places. Thick bushes and hedges (crouch in them), trees you can climb, bamboo groves, alleys between houses and crates to creep behind. Made for sneaking and C4.',
+  swatch: ['#0b1a2a', '#1f3a4a', '#8aff3a'],
+  theme: { sky: [0x0b1a2a, 0x1f3a4a, 0x6a8a7a], sunStr: .5, fog: [0x1d3a40, 30, 150], floor: ['#35584a', '#2c4a3e', 'rgba(20,60,50,.35)'], ground: 0x1f3a30, wall: 0x14282a,
+    strips: [0x2ee6ff, 0x8aff3a, 0xffd31a, 0xff4fa8], hemi: [0x9ad8c8, 0x203a30, .9], sun: [0xbfe8ff, 1.2], exposure: 1, clouds: 0x3a5a5a, deco: 'stars' },
+  build(b) {
+    const R = rng(9900 + b.tile.k * 53), WOOD = [0x6a4a30, 0x7a5a3a, 0x5a4028, 0x6a5a40], ROOF = [0x8a3a3a, 0x3a5a8a, 0x5a7a4a, 0x7a6a3a], TREE = [0x2f6a38, 0x3a7a3a, 0x2a5a30], TOP = [0x3f8a44, 0x4a9a48, 0x358a3a], BUSH = [0x2a6a30, 0x357a38, 0x2f7034, 0x3a8040];
+    for (const [x, z, s, c, o] of SH_TREES) {   // trees: hide behind a trunk, climb in (jump at it); the low leaves block the view from above
+      b.box(x, 1.75, z, .9, 3.5, .9, 0x5e4026);
+      b.box(x, 3.9 + o, z, 4 * s, 1.4, 4 * s, TREE[c], { leaf: true });
+      b.box(x, 5.2 + o, z, 2.8 * s, 1.2, 2.8 * s, TOP[c], { leaf: true, solid: false });
+      b.box(x, 6.3 + o, z, 1.6 * s, 1.1, 1.6 * s, TOP[(c + 1) % 3], { leaf: true, solid: false });
+    }
+    SH_BUSHES.forEach(([x, z, r], i) => { const hh = .9 + ((i * 7919) % 101) / 101 * .5; b.box(x, hh / 2, z, 2 * r, hh, 2 * r, BUSH[i % 4], { leaf: true, solid: false }); b.box(x + r * .4, hh * .35, z - r * .3, r * 1.3, hh * .7, r * 1.3, BUSH[(i + 1) % 4], { leaf: true, solid: false }); });
+    const keep = [...SH_TREES.map(([x, z]) => [x, z, 6]), ...SH_BUSHES.map(([x, z]) => [x, z, 4])];
+    scatter(R, 34, 8, keep, 13, (x, z) => { const w = 8 + R() * 3, d = 6 + R() * 3, h = 3.2 + R() * 2; b.box(x, h / 2, z, w, h, d, WOOD[Math.floor(R() * 4)]); b.box(x, h + .25, z, w + 1, .5, d + 1, ROOF[Math.floor(R() * 4)]); });   // houses with alleys between them
+    scatter(R, 34, 7, keep, 9, (x, z) => { const along = R() < .5, len = 8 + R() * 6; b.box(x, .9, z, along ? len : 1.4, 1.8, along ? 1.4 : len, 0x2f6a38); });   // hedge walls
+    scatter(R, 34, 3, keep, 14, (x, z) => { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if ((i * 3 + j * 5) % 4 !== 1) b.box(x + (i - 1.5) * 1.1, 3.5, z + (j - 1.5) * 1.1, .45, 7, .45, 0x7aa84a); });   // bamboo groves
+    scatter(R, 34, 6, keep, 6, (x, z) => b.box(x, .65, z, 2.2, 1.3, 1.6, CRATE[Math.floor(R() * 6)]));   // crates to creep behind
+  },
+  trees: SH_TREES.map(([x, z, s, , o]) => [x, z, s, 4.6 + o]),
+  bushes: SH_BUSHES,
+  spawns: ring(0, 0, 22, 8).concat(ring(0, 0, 30, 8, .4)), loot: wild(rng(9955), 34, 24, [[0, 0, 4]]).concat(ring(0, 0, 14, 6, .2), ring(0, 0, 28, 6, .5)), dmg: [],
+});
+
 // ---------------------------------------------------------------------------------------------
 // BATTLE ROOM (room: true, only for the Battle Room mode): a zero-gravity cube like in Ender's Game, 70 m on every side, with floating
 // "stars" (cubes, slabs, bars and stepped blocks) in the middle and a gate in the centre of each end wall. Each army starts around
