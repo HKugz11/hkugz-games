@@ -23,8 +23,8 @@
       <input id="newPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
       <label for="newPin2">Type it again</label>
       <input id="newPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
-      <label for="limit">Play time per day</label>
-      <select id="limit"></select>
+      <label for="limit">Play time per day (minutes)</label>
+      <input id="limit" type="number" inputmode="numeric" min="1" max="600" step="1" value="60" style="max-width:140px">
       <div class="trow"><button class="btn small" type="submit">Turn on the timer</button></div>
     </form>
     <div class="tmsg" id="setupMsg" role="status"></div>
@@ -45,7 +45,7 @@
     <div class="tstat" id="stat"></div>
 
     <h3>Daily limit</h3>
-    <div class="trow" style="margin-top:6px"><select id="limit2"></select><button class="btn small" type="button" id="saveLimit">Save limit</button></div>
+    <div class="trow" style="margin-top:6px"><input id="limit2" type="number" inputmode="numeric" min="1" max="600" step="1" aria-label="Minutes per day" style="max-width:140px"><span>minutes a day</span><button class="btn small" type="button" id="saveLimit">Save limit</button></div>
 
     <h3>Today</h3>
     <div class="trow" style="margin-top:6px">
@@ -79,11 +79,7 @@
 <script>
 (function () {
   var T = window.HKTimer, $ = function (id) { return document.getElementById(id); };
-  var CHOICES = [[30, '30 minutes'], [45, '45 minutes'], [60, '1 hour'], [90, '1 hour 30 minutes'], [120, '2 hours'], [180, '3 hours']];
-  function fill(sel, cur) {
-    sel.innerHTML = ''; var list = CHOICES.slice(); if (!list.some(function (c) { return c[0] === cur; })) list.push([cur, cur + ' minutes']); list.sort(function (a, b) { return a[0] - b[0]; });
-    list.forEach(function (c) { var o = document.createElement('option'); o.value = c[0]; o.textContent = c[1]; if (c[0] === cur) o.selected = true; sel.appendChild(o); });
-  }
+  function mins(id) { var t = $(id).value.trim(), n = Number(t); return t !== '' && isFinite(n) && n >= 1 && n <= 600 && Math.floor(n) === n ? n : 0; }   // whole minutes, 1 to 600
   function say(id, t, cls) { var m = $(id); m.textContent = t; m.className = 'tmsg ' + (cls || ''); }
   function pinOk(a, b) { if (!/^[0-9]{4,8}$/.test(a)) return 'The PIN must be 4 to 8 numbers.'; if (a !== b) return 'The two PINs do not match.'; return ''; }
   function wait(w) { return w ? 'Too many wrong tries. Try again in ' + w + ' second' + (w === 1 ? '' : 's') + '.' : ''; }
@@ -91,7 +87,7 @@
   function min(sec) { return Math.round(sec / 60); }
 
   function renderManage() {
-    var s = T.state(); fill($('limit2'), s.limit);
+    var s = T.state(); $('limit2').value = s.limit;
     var st = $('stat'); st.innerHTML = '';
     function chip(t) { var e = document.createElement('span'); e.textContent = t; st.appendChild(e); }
     chip(s.on ? (s.off ? 'Timer is on (paused for today)' : 'Timer is ON') : 'Timer is OFF');
@@ -102,11 +98,12 @@
   }
 
   var st0 = T.state();
-  if (!st0.exists || !st0.hasPin) { fill($('limit'), 60); show('boxSetup'); } else show('boxLogin');
+  if (!st0.exists || !st0.hasPin) { $('limit').value = 60; show('boxSetup'); } else show('boxLogin');
 
   $('fSetup').addEventListener('submit', function (e) {
     e.preventDefault(); var err = pinOk($('newPin').value.trim(), $('newPin2').value.trim()); if (err) { say('setupMsg', err, 'err'); return; }
-    T.setup($('newPin').value.trim(), +$('limit').value).then(function (ok) {
+    var n = mins('limit'); if (!n) { say('setupMsg', 'Type how many minutes a day (1 to 600).', 'err'); return; }
+    T.setup($('newPin').value.trim(), n).then(function (ok) {
       if (!ok) { say('setupMsg', 'This browser would not save the timer (private window?). Try a normal window.', 'err'); return; }
       $('newPin').value = $('newPin2').value = ''; show('boxManage'); renderManage(); say('manageMsg', 'The timer is on for this device.', 'ok');
     });
@@ -118,7 +115,7 @@
       say('loginMsg', r.wait ? wait(r.wait) : 'That is not the PIN.', 'err');
     });
   });
-  $('saveLimit').addEventListener('click', function () { T.setLimit(+$('limit2').value); renderManage(); say('manageMsg', 'Saved: ' + T.fmt(T.state().limit * 60) + ' a day.', 'ok'); });
+  $('saveLimit').addEventListener('click', function () { var n = mins('limit2'); if (!n) { say('manageMsg', 'Type how many minutes a day (1 to 600).', 'err'); return; } T.setLimit(n); renderManage(); say('manageMsg', 'Saved: ' + T.fmt(T.state().limit * 60) + ' a day.', 'ok'); });
   $('add15').addEventListener('click', function () { T.addMinutes(15); renderManage(); say('manageMsg', 'Added 15 minutes for today.', 'ok'); });
   $('reset').addEventListener('click', function () { T.resetToday(); renderManage(); say('manageMsg', 'Today\'s time is reset.', 'ok'); });
   $('toggle').addEventListener('click', function () { var on = !T.state().on; T.setOn(on); renderManage(); say('manageMsg', on ? 'The timer is on.' : 'The timer is off. Nobody is limited on this device.', 'ok'); });

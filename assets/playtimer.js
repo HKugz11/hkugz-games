@@ -49,11 +49,11 @@
     setup: function (pin, minutes) {   // first time on this device (or a new PIN)
       var salt = newSalt(); return hash(String(pin), salt).then(function (h) {
         var s = fresh(load()) || { v: 1, day: today(), used: 0, extra: 0 };
-        s.v = 1; s.pin = { s: salt, h: h }; s.limit = Math.max(5, Math.min(600, Math.round(minutes) || 60)); s.on = true; s.off = false; s.fail = { n: 0, until: 0 }; return save(s);
+        s.v = 1; s.pin = { s: salt, h: h }; s.limit = Math.max(1, Math.min(600, Math.round(minutes) || 60)); s.on = true; s.off = false; s.fail = { n: 0, until: 0 }; return save(s);
       });
     },
     changePin: function (pin) { var s = fresh(load()); if (!s) return Promise.resolve(false); var salt = newSalt(); return hash(String(pin), salt).then(function (h) { s.pin = { s: salt, h: h }; return save(s); }); },
-    setLimit: function (min) { var s = fresh(load()); if (!s) return false; s.limit = Math.max(5, Math.min(600, Math.round(min) || 60)); return save(s); },
+    setLimit: function (min) { var s = fresh(load()); if (!s) return false; s.limit = Math.max(1, Math.min(600, Math.round(min) || 60)); return save(s); },
     setOn: function (on) { var s = fresh(load()); if (!s) return false; s.on = !!on; s.off = false; return save(s); },
     addMinutes: function (m) { var s = fresh(load()); if (!s) return false; s.extra = (s.extra || 0) + m * 60; return save(s); },
     offToday: function () { var s = fresh(load()); if (!s) return false; s.off = true; return save(s); },
