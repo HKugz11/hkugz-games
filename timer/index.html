@@ -1,0 +1,130 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Play timer - HKugz Games</title>
+<meta name="description" content="For parents: set a daily play-time limit for the games on this device, protected by a PIN.">
+<link rel="icon" type="image/svg+xml" href="../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../assets/logo.png"><link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#42d7f1">
+<link rel="stylesheet" href="../assets/site.css">
+<body>
+<div class="wrap">
+  <header class="hero" style="padding-top:38px">
+    <img class="logo" src="../assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
+    <h1>Play timer</h1>
+    <p>For parents: set a daily limit for the games on this device. Protected by your own PIN.</p>
+  </header>
+
+  <section class="tbox" id="boxSetup" hidden>
+    <h2>Turn on the timer for this device</h2>
+    <p class="tnote">Do this on the phone, tablet or computer your kids use. Pick a PIN only you know. Kids need it to get more time.</p>
+    <form id="fSetup" autocomplete="off">
+      <label for="newPin">Choose a PIN (4 to 8 numbers)</label>
+      <input id="newPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+      <label for="newPin2">Type it again</label>
+      <input id="newPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+      <label for="limit">Play time per day</label>
+      <select id="limit"></select>
+      <div class="trow"><button class="btn small" type="submit">Turn on the timer</button></div>
+    </form>
+    <div class="tmsg" id="setupMsg" role="status"></div>
+  </section>
+
+  <section class="tbox" id="boxLogin" hidden>
+    <h2>Parent PIN</h2>
+    <p class="tnote">Type your PIN to change the timer.</p>
+    <form id="fLogin" autocomplete="off">
+      <input id="loginPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-label="Parent PIN">
+      <div class="trow"><button class="btn small" type="submit">Open settings</button></div>
+    </form>
+    <div class="tmsg" id="loginMsg" role="status"></div>
+  </section>
+
+  <section class="tbox" id="boxManage" hidden>
+    <h2>Timer settings</h2>
+    <div class="tstat" id="stat"></div>
+
+    <h3>Daily limit</h3>
+    <div class="trow" style="margin-top:6px"><select id="limit2"></select><button class="btn small" type="button" id="saveLimit">Save limit</button></div>
+
+    <h3>Today</h3>
+    <div class="trow" style="margin-top:6px">
+      <button class="btn small ghost" type="button" id="add15">+15 minutes</button>
+      <button class="btn small ghost" type="button" id="reset">Reset today's time</button>
+    </div>
+
+    <h3>Timer</h3>
+    <div class="trow" style="margin-top:6px"><button class="btn small ghost" type="button" id="toggle">Turn timer off</button></div>
+
+    <h3>Change PIN</h3>
+    <form id="fPin" autocomplete="off">
+      <div class="trow" style="margin-top:6px">
+        <input id="chPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="New PIN" aria-label="New PIN" style="max-width:150px">
+        <input id="chPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="Again" aria-label="New PIN again" style="max-width:150px">
+        <button class="btn small ghost" type="submit">Change PIN</button>
+      </div>
+    </form>
+    <div class="tmsg" id="manageMsg" role="status"></div>
+  </section>
+
+  <section class="tbox">
+    <h2>How it works</h2>
+    <p class="tnote">The timer counts the minutes the games are open and visible on <b>this browser on this device</b>. When the daily limit is reached, every page shows a "time's up" screen until tomorrow, unless a parent adds time with the PIN. Other devices are not affected, and nothing is sent anywhere: the timer and the PIN (stored scrambled) stay in this browser.</p>
+    <p class="tnote"><b>It is a nudge, not a lock.</b> Clearing this site's data, a private window or a different browser gets around it. For a stronger limit, use <b>Google Family Link</b> (Chromebook, Android), <b>Screen Time</b> (iPad, iPhone) or <b>Microsoft Family Safety</b> (Windows).</p>
+    <p class="tnote">Forgot the PIN? Clearing this site's data in the browser settings removes the timer, but it also removes game progress, so make a <a href="../save/">save code</a> first.</p>
+    <p class="tnote"><a href="../index.html">&larr; Back to all games</a></p>
+  </section>
+</div>
+<script src="../assets/playtimer.js" data-role="settings"></script>
+<script>
+(function () {
+  var T = window.HKTimer, $ = function (id) { return document.getElementById(id); };
+  var CHOICES = [[30, '30 minutes'], [45, '45 minutes'], [60, '1 hour'], [90, '1 hour 30 minutes'], [120, '2 hours'], [180, '3 hours']];
+  function fill(sel, cur) {
+    sel.innerHTML = ''; var list = CHOICES.slice(); if (!list.some(function (c) { return c[0] === cur; })) list.push([cur, cur + ' minutes']); list.sort(function (a, b) { return a[0] - b[0]; });
+    list.forEach(function (c) { var o = document.createElement('option'); o.value = c[0]; o.textContent = c[1]; if (c[0] === cur) o.selected = true; sel.appendChild(o); });
+  }
+  function say(id, t, cls) { var m = $(id); m.textContent = t; m.className = 'tmsg ' + (cls || ''); }
+  function pinOk(a, b) { if (!/^[0-9]{4,8}$/.test(a)) return 'The PIN must be 4 to 8 numbers.'; if (a !== b) return 'The two PINs do not match.'; return ''; }
+  function wait(w) { return w ? 'Too many wrong tries. Try again in ' + w + ' second' + (w === 1 ? '' : 's') + '.' : ''; }
+  function show(which) { ['boxSetup', 'boxLogin', 'boxManage'].forEach(function (id) { $(id).hidden = id !== which; }); }
+  function min(sec) { return Math.round(sec / 60); }
+
+  function renderManage() {
+    var s = T.state(); fill($('limit2'), s.limit);
+    var st = $('stat'); st.innerHTML = '';
+    function chip(t) { var e = document.createElement('span'); e.textContent = t; st.appendChild(e); }
+    chip(s.on ? (s.off ? 'Timer is on (paused for today)' : 'Timer is ON') : 'Timer is OFF');
+    chip('Limit: ' + T.fmt(s.limit * 60) + ' a day');
+    chip('Played today: ' + min(s.used) + ' min');
+    if (s.on && !s.off) chip('Left today: ' + (s.left <= 0 ? '0 min' : T.fmt(s.left)));
+    $('toggle').textContent = s.on ? 'Turn timer off' : 'Turn timer on';
+  }
+
+  var st0 = T.state();
+  if (!st0.exists || !st0.hasPin) { fill($('limit'), 60); show('boxSetup'); } else show('boxLogin');
+
+  $('fSetup').addEventListener('submit', function (e) {
+    e.preventDefault(); var err = pinOk($('newPin').value.trim(), $('newPin2').value.trim()); if (err) { say('setupMsg', err, 'err'); return; }
+    T.setup($('newPin').value.trim(), +$('limit').value).then(function (ok) {
+      if (!ok) { say('setupMsg', 'This browser would not save the timer (private window?). Try a normal window.', 'err'); return; }
+      $('newPin').value = $('newPin2').value = ''; show('boxManage'); renderManage(); say('manageMsg', 'The timer is on for this device.', 'ok');
+    });
+  });
+  $('fLogin').addEventListener('submit', function (e) {
+    e.preventDefault(); var pin = $('loginPin').value.trim(); if (!pin) { say('loginMsg', 'Type the PIN.', 'err'); return; }
+    T.verify(pin).then(function (r) {
+      $('loginPin').value = ''; if (r.ok) { show('boxManage'); renderManage(); say('manageMsg', ''); return; }
+      say('loginMsg', r.wait ? wait(r.wait) : 'That is not the PIN.', 'err');
+    });
+  });
+  $('saveLimit').addEventListener('click', function () { T.setLimit(+$('limit2').value); renderManage(); say('manageMsg', 'Saved: ' + T.fmt(T.state().limit * 60) + ' a day.', 'ok'); });
+  $('add15').addEventListener('click', function () { T.addMinutes(15); renderManage(); say('manageMsg', 'Added 15 minutes for today.', 'ok'); });
+  $('reset').addEventListener('click', function () { T.resetToday(); renderManage(); say('manageMsg', 'Today\'s time is reset.', 'ok'); });
+  $('toggle').addEventListener('click', function () { var on = !T.state().on; T.setOn(on); renderManage(); say('manageMsg', on ? 'The timer is on.' : 'The timer is off. Nobody is limited on this device.', 'ok'); });
+  $('fPin').addEventListener('submit', function (e) {
+    e.preventDefault(); var err = pinOk($('chPin').value.trim(), $('chPin2').value.trim()); if (err) { say('manageMsg', err, 'err'); return; }
+    T.changePin($('chPin').value.trim()).then(function () { $('chPin').value = $('chPin2').value = ''; say('manageMsg', 'PIN changed.', 'ok'); });
+  });
+})();
+</script>

@@ -4,7 +4,7 @@
   var GAMES = [['ba.', 'Blaster Arena'], ['ff.', 'Fort Fight'], ['st.', 'Sky Tower'], ['kr.', 'Kart Rush'], ['gg.', 'Gadget Guard'], ['wd.', 'Wobble Dash'], ['pp.', 'Putt Party'],
     ['hkugz.snake.', 'Snake'], ['hkugz.breakout.', 'Breakout'], ['hkugz.cubeflap.', 'Cube Flap'], ['hkugz.blockstack.', 'Block Stack']];
   var OTHER = 'Other (Tower of Destiny and more)';
-  var SKIP = [/^peerjs/i, /^hksave\./i];                       // network helper data and this page's own notes are never packed
+  var SKIP = [/^peerjs/i, /^hksave\./i, /^hktimer$/i];                       // network helper data and this page's own notes are never packed
   var MAX_KEY = 120, MAX_VALUE = 400000, MAX_TOTAL = 1500000;   // an imported code can never write anything huge
 
   function gameOf(key) { for (var i = 0; i < GAMES.length; i++) if (key.indexOf(GAMES[i][0]) === 0) return GAMES[i][1]; return OTHER; }
@@ -70,7 +70,7 @@
   function apply(read, names) {
     var written = 0, removed = 0;
     allKeys().forEach(function (k) { if (names.indexOf(gameOf(k)) >= 0) { try { localStorage.removeItem(k); removed++; } catch (e) {} } });
-    Object.keys(read.d).forEach(function (k) { if (names.indexOf(gameOf(k)) < 0) return; try { localStorage.setItem(k, read.d[k]); written++; } catch (e) {} });
+    Object.keys(read.d).forEach(function (k) { if (names.indexOf(gameOf(k)) < 0 || skipped(k)) return; try { localStorage.setItem(k, read.d[k]); written++; } catch (e) {} });
     return { written: written, removed: removed };
   }
 

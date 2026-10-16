@@ -1,0 +1,64 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Time's up - HKugz Games</title>
+<link rel="icon" type="image/svg+xml" href="../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../assets/logo.png"><link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#42d7f1">
+<link rel="stylesheet" href="../assets/site.css">
+<body>
+<div class="wrap">
+  <header class="hero" style="padding-top:38px">
+    <img class="logo" src="../assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
+    <h1>That's all the play time for today</h1>
+    <p>Great playing! Time for a break. The games open again tomorrow.</p>
+  </header>
+
+  <section class="tbox" id="boxLocked">
+    <h2>Need more time?</h2>
+    <p class="tnote">Ask a parent. They can add time with their PIN.</p>
+    <form id="f" autocomplete="off">
+      <label for="pin">Parent PIN</label>
+      <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+      <div class="trow"><button class="btn small" id="unlock" type="submit">Unlock</button></div>
+    </form>
+    <div class="tmsg" id="msg" role="status"></div>
+  </section>
+
+  <section class="tbox" id="boxChoose" hidden>
+    <h2>Add play time</h2>
+    <div class="trow">
+      <button class="btn small" type="button" data-min="15">+15 minutes</button>
+      <button class="btn small" type="button" data-min="30">+30 minutes</button>
+      <button class="btn small" type="button" data-min="60">+1 hour</button>
+    </div>
+    <div class="trow">
+      <button class="btn small ghost" type="button" id="noLimit">No more limit today</button>
+      <a class="btn small ghost" href="../timer/">Timer settings</a>
+    </div>
+  </section>
+</div>
+<script src="../assets/playtimer.js" data-role="locked"></script>
+<script>
+(function () {
+  var T = window.HKTimer, $ = function (id) { return document.getElementById(id); }, qs = new URLSearchParams(location.search);
+  function backUrl() {   // go back to the game you were in (only inside this site)
+    try { var u = new URL(qs.get('back') || '', location.href); if (u.origin === location.origin && u.href.indexOf(T.base) === 0 && !/\/(timesup|timer)\//.test(u.pathname)) return u.href; } catch (e) {}
+    return T.base;
+  }
+  function leave() { location.replace(backUrl()); }
+  var st = T.state(); if (!st.on || st.left > 0) { leave(); return; }   // not locked (any more): nothing to do here
+  function msg(t, cls) { var m = $('msg'); m.textContent = t; m.className = 'tmsg ' + (cls || ''); }
+  function waitNote(w) { return w ? 'Too many wrong tries. Try again in ' + w + ' second' + (w === 1 ? '' : 's') + '.' : ''; }
+  if (st.wait) msg(waitNote(st.wait), 'err');
+  $('f').addEventListener('submit', function (e) {
+    e.preventDefault(); var pin = $('pin').value.trim(); if (!pin) { msg('Type the parent PIN.', 'err'); return; }
+    T.verify(pin).then(function (r) {
+      if (r.ok) { $('boxLocked').hidden = true; $('boxChoose').hidden = false; return; }
+      $('pin').value = ''; msg(r.wait ? waitNote(r.wait) : 'That is not the PIN.', 'err');
+    });
+  });
+  document.querySelectorAll('[data-min]').forEach(function (b) { b.addEventListener('click', function () { T.addMinutes(+b.getAttribute('data-min')); leave(); }); });
+  $('noLimit').addEventListener('click', function () { T.offToday(); leave(); });
+})();
+</script>

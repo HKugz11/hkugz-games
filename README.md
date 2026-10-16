@@ -22,6 +22,10 @@ Free browser games, built by HKugz. Everything runs in your browser: no download
 
 Scores and progress are saved only in your own browser (`localStorage`).
 
+## Play timer (for parents)
+
+An opt-in daily play-time limit for one device. A parent opens `timer/` on the kids' phone, tablet or computer, picks a PIN and a daily limit, and turns it on. The games then show how much time is left, warn at 5 minutes and 1 minute, and send every page to a "time's up" screen when the limit is reached; a parent can add time with the PIN. Nothing is on by default, so nobody else is affected, and nothing is sent anywhere: the timer and the scrambled PIN live in that browser's `localStorage` (key `hktimer`, never included in save codes). It is a nudge, not a lock (clearing site data or using another browser gets around it); Google Family Link, Screen Time or Microsoft Family Safety are the stronger option. Every page loads `assets/playtimer.js` in its `<head>`: add the same tag to any new game page.
+
 ## Running locally
 
 It is a plain static site. Serve the folder with any static file server, for example `npx serve` or `python -m http.server`, and open `index.html`.
