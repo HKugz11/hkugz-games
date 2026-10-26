@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Core Strike</title>
 <script src="../../assets/playtimer.js"></script>
-<meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Three maps, 15 guns. No blood. Free, runs in your browser (mouse and keyboard).">
+<meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Three maps, 15 guns, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#11131a">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Core Strike - free browser game">
-<meta property="og:description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Three maps, 15 guns. No blood. Free, runs in your browser (mouse and keyboard).">
+<meta property="og:description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Three maps, 15 guns, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/core-strike/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/core-strike.jpg">
 <meta name="twitter:card" content="summary_large_image">
 
@@ -93,6 +93,8 @@ button{font:inherit;cursor:pointer}
 #coreIcon:empty{display:none}
 #fps{position:absolute;right:8px;bottom:4px;font-size:11px;opacity:.5}
 
+.padf{outline:3px solid #4dff7a!important;outline-offset:2px;box-shadow:0 0 14px rgba(77,255,122,.55)!important}
+#padNote{margin-top:10px;font-size:13px;color:#9dffb6}
 #scope{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 calc(min(46vw,46vh)),#000 calc(min(46vw,46vh) + 1px))}
 #scope::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#000}
 #scope::after{content:'';position:absolute;top:0;bottom:0;left:50%;width:1px;background:#000}
@@ -102,6 +104,9 @@ button{font:inherit;cursor:pointer}
 
 /* ---------- panels ---------- */
 .panel{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,8,12,.55);backdrop-filter:blur(3px)}
+body.low .sq,body.low #timer,body.low .stat,body.low #ammo,body.low .panel{backdrop-filter:none}
+body.low #dmgDir i{filter:none}
+body.lite #feed div{animation:none}
 .card{background:rgba(18,21,30,.94);border:1px solid var(--line);border-radius:16px;padding:22px 26px;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:92vh;overflow:auto}
 h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 .btn{background:#262b3a;border:1px solid var(--line);color:var(--ink);padding:10px 18px;border-radius:10px;font-weight:700;letter-spacing:.06em;transition:transform .08s,background .15s}
@@ -249,6 +254,7 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
       <button class="btn" id="openKeys">CONTROLS</button>
     </div>
     <div id="best"></div><a href="../../" style="display:inline-block;margin-top:14px;color:#f4efe6;opacity:.8;font-size:14px;letter-spacing:.06em;text-decoration:none">&larr; All games</a>
+    <div id="padNote"></div>
   </div>
 </div>
 
@@ -256,28 +262,38 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
   <h2>CONTROLS</h2>
   <div class="keys">
     <div><b>WASD</b> move</div><div><b>Mouse</b> aim / shoot</div><div><b>R-click</b> sniper scope · heavy stab · short throw</div>
-    <div><b>Space</b> jump</div><div><b>C</b> crouch (more accurate)</div><div><b>Shift</b> sprint</div><div><b>Sprint + C</b> slide</div><div><b>X</b> walk (silent)</div><div><b>Hold R-click</b> aim down sights</div>
+    <div><b>Space</b> jump</div><div><b>C</b> or <b>Tab</b> crouch (more accurate)</div><div><b>Shift</b> sprint</div><div><b>Sprint + C</b> slide</div><div><b>X</b> walk (silent)</div><div><b>Hold R-click</b> aim (tighter crosshair)</div>
     <div><b>R</b> reload</div><div><b>1 2 3 4</b> rifle · pistol · knife · grenades</div><div><b>Q</b> last weapon</div>
     <div><b>Wheel</b> switch weapon</div><div><b>B</b> buy menu (in spawn)</div><div><b>E</b> plant / defuse / pick up</div>
-    <div><b>G</b> drop weapon</div><div><b>F</b> inspect weapon</div><div><b>Tab</b> scoreboard</div><div><b>Esc</b> pause</div>
+    <div><b>G</b> drop weapon</div><div><b>F</b> inspect weapon</div><div><b>`</b> (backtick) scoreboard</div><div><b>Esc</b> pause</div>
   </div>
-  <p style="font-size:13px;opacity:.75;margin-top:12px;line-height:1.5">Tips: stop moving before you shoot (moving = shots fly everywhere). Tap or burst at long range; pull your mouse <b>down</b> while spraying. Headshots do 4x. Hold right-click to aim down sights. Shift sprints, but you cannot shoot while sprinting. Running is loud: enemies hear your footsteps, X-walking is silent.</p>
+  <h3 style="margin:14px 0 6px;font-size:14px;letter-spacing:.12em;opacity:.8">CONTROLLER (Xbox / PlayStation style, plug in and press a button)</h3>
+  <div class="keys">
+    <div><b>Left stick</b> move (light push = silent walk)</div><div><b>Right stick</b> look</div><div><b>RT</b> shoot</div>
+    <div><b>LT</b> aim · sniper scope · short throw</div><div><b>A</b> jump</div><div><b>B</b> crouch (slide while sprinting)</div>
+    <div><b>X</b> reload · hold to plant / defuse / pick up</div><div><b>Y</b> buy menu</div><div><b>Click left stick</b> sprint</div>
+    <div><b>LB / RB</b> switch weapon</div><div><b>D-pad</b> rifle · pistol · knife · grenades</div><div><b>Right stick click</b> inspect</div>
+    <div><b>Back</b> scoreboard (hold)</div><div><b>Start</b> pause</div><div><b>Menus</b> stick / D-pad, A picks, B back</div>
+  </div>
+  <p style="font-size:13px;opacity:.75;margin-top:12px;line-height:1.5">Tips: stop moving before you shoot (moving = shots fly everywhere). Tap or burst at long range; pull your mouse <b>down</b> while spraying. Headshots do 4x. Hold right-click (or press Z) to aim: the green crosshair pulls in tight and you zoom in a little (or switch to iron sights in Settings). Snipers use right-click for the full scope. Shift sprints, but you cannot shoot while sprinting. Running is loud: enemies hear your footsteps, X-walking is silent.</p>
   <div class="row"><button class="btn" data-close>BACK</button></div>
 </div></div>
 
 <div id="setP" class="panel hidden"><div class="card">
   <h2>SETTINGS</h2>
   <div class="set">
-    <span>Mouse sensitivity</span><input type="range" id="sSens" min="0.1" max="4" step="0.05"><span class="v" id="vSens"></span>
+    <span>Look sensitivity</span><input type="range" id="sSens" min="0.1" max="4" step="0.05"><span class="v" id="vSens"></span>
     <span>Field of view</span><input type="range" id="sFov" min="65" max="110" step="1"><span class="v" id="vFov"></span>
     <span>Volume</span><input type="range" id="sVol" min="0" max="1" step="0.05"><span class="v" id="vVol"></span>
     <span>Crosshair size</span><input type="range" id="sXs" min="2" max="16" step="1"><span class="v" id="vXs"></span>
     <span>Crosshair gap</span><input type="range" id="sXg" min="0" max="12" step="1"><span class="v" id="vXg"></span>
     <span>Crosshair color</span><div class="swatches" id="sXc"></div><span></span>
     <span>Center dot</span><div class="seg" data-k="xhDot" style="max-width:200px"><button data-v="0">Off</button><button data-v="1">On</button></div><span></span>
-    <span>Graphics</span><div class="seg" data-k="gfx"><button data-v="low">Fast</button><button data-v="high">Pretty</button></div><span></span>
+    <span>Graphics</span><div class="seg" data-k="gfx"><button data-v="lite">Lite</button><button data-v="low">Fast</button><button data-v="high">Pretty</button></div><span></span>
+    <span>Aim style</span><div class="seg" data-k="aimStyle" style="max-width:300px"><button data-v="cross">Tighten crosshair</button><button data-v="iron">Iron sights</button></div><span></span>
+    <span>Aim button</span><div class="seg" data-k="ads" style="max-width:260px"><button data-v="hold">Hold right-click</button><button data-v="toggle">Click to toggle</button></div><span></span>
   </div>
-  <p style="font-size:12px;opacity:.6;margin-top:10px">Graphics change applies next time you load the page.</p>
+  <p style="font-size:12px;opacity:.6;margin-top:10px"><b>Lite</b> is the super minimized mode for Chromebooks and slow computers (fewer pixels, no shadows, simpler players and map). Changing graphics reloads the page. <b>Aim style</b>: <i>Tighten crosshair</i> keeps your gun where it is and pulls the green crosshair in small and tight when you aim; <i>Iron sights</i> slides the gun to the middle of the screen instead (snipers always use their scope). Press <b>Z</b> any time to aim, no right-click needed. A controller works too (see CONTROLS).</p>
   <div class="row"><button class="btn" data-close>DONE</button></div>
 </div></div>
 
@@ -337,7 +353,6 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 
 <div id="clickLock" class="hidden">Click to play</div>
 
-<script src="vendor/peerjs.min.js"></script>
-<script type="module" src="game.js?v=46"></script>
+<script type="module" src="game.js?v=54"></script>
 </body>
 </html>

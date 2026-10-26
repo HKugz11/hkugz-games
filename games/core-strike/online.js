@@ -3,7 +3,7 @@
 //   * Everyone else is a CLIENT: they move and aim on their own machine, send what they shoot, and
 //     draw the match from the snapshots the host sends 20 times a second.
 //   * Data goes peer-to-peer (WebRTC through PeerJS). PeerJS Cloud is only used to introduce players.
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=46';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=49';
 
 export function createOnline(X) {
   const { GS, MP, S, WD, $ } = X;
@@ -55,9 +55,18 @@ export function createOnline(X) {
   function teamCount(sq) { return L.players.filter((p) => p.sq === sq).length; }
 
   // ======================================================================= host / join
+  // PeerJS (93 KB) is only fetched when someone actually opens online play, so the game itself loads lighter
+  let peerLoading = null;
+  function loadPeer() {
+    if (LOCAL || window.Peer) return Promise.resolve();
+    return peerLoading || (peerLoading = new Promise((res, rej) => {
+      const el = document.createElement('script'); el.src = 'vendor/peerjs.min.js'; el.onload = res; el.onerror = () => { peerLoading = null; rej(new Error('could not load online play')); }; document.head.appendChild(el);
+    }));
+  }
   async function host() {
     S.name = cleanName($('onName').value); X.saveS();
     leaveNet(); say('Creating a room…');
+    try { await loadPeer(); } catch (e) { say('Could not load online play. Check your internet and try again.', true); return; }
     for (let tries = 0; tries < 4; tries++) {
       const code = makeCode();
       try {
@@ -77,6 +86,7 @@ export function createOnline(X) {
     if (code.length !== 5) { say('Type the 5 letter room code from your friend.', true); return; }
     S.name = cleanName($('onName').value); X.saveS();
     leaveNet(); say('Connecting…');
+    try { await loadPeer(); } catch (e) { say('Could not load online play. Check your internet and try again.', true); return; }
     try {
       net = new Net(LOCAL ? 'local' : 'peer');
       net.onmsg = (pid, d) => clientMsg(d);

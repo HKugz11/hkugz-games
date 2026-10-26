@@ -1,6 +1,9 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=46';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=49';
+
+// Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
+export const GFX = { lite: false };
 
 // ------------------------------------------------------------------ helpers
 let seed = 4242;
@@ -14,7 +17,7 @@ const rgb = (c, k = 0) => `rgb(${Math.max(0, Math.min(255, c[0] + k))},${Math.ma
 function pix(size, draw) {
   const c = cv(size), x = c.getContext('2d'); draw(x, size);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = GFX.lite ? 1 : 4;
   return t;
 }
 const speckle = (x, S, base, amt, x0 = 0, y0 = 0, w = S, h = S) => { for (let j = y0; j < y0 + h; j++) for (let i = x0; i < x0 + w; i++) { x.fillStyle = rgb(base, Math.round((rnd() - 0.5) * amt)); x.fillRect(i, j, 1, 1); } };
@@ -131,18 +134,14 @@ export function buildWorld(root) {
   const scene = new THREE.Group(); root.add(scene);
   const TH = MAP.theme; seed = 4242 + MAP.seedOff;
   const sunDir = new THREE.Vector3(0.5, 0.75, -0.42).normalize();
-  // sky: clean gradient + blocky clouds
-  const skyGeo = new THREE.SphereGeometry(600, 32, 16), col = [], c = new THREE.Color(), p = skyGeo.attributes.position;
-  const top = new THREE.Color(TH.skyTop), hor = new THREE.Color(TH.skyHor);
-  for (let i = 0; i < p.count; i++) { const t = Math.max(0, p.getY(i) / 600); c.copy(hor).lerp(top, Math.pow(t, 0.6)); col.push(c.r, c.g, c.b); }
+  // sky: clean gradient. Lite uses a small dome (100 m, ~200 triangles) that game.js keeps centred on the camera; it blends into the fog at the horizon.
+  const R = GFX.lite ? 100 : 600, skyGeo = new THREE.SphereGeometry(R, GFX.lite ? 12 : 32, GFX.lite ? 8 : 16), col = [], c = new THREE.Color(), p = skyGeo.attributes.position;
+  const top = new THREE.Color(TH.skyTop), hor = new THREE.Color(GFX.lite ? TH.fog : TH.skyHor);
+  for (let i = 0; i < p.count; i++) { const t = Math.max(0, p.getY(i) / R); c.copy(hor).lerp(top, Math.pow(t, 0.6)); col.push(c.r, c.g, c.b); }
   skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
-  sky.position.set(W, 0, H); scene.add(sky);
-  const clouds = [];
-  for (let i = 0; i < 26; i++) {
-    const a = rnd() * Math.PI * 2, r = 230 + rnd() * 160, x = W + Math.cos(a) * r, z = H + Math.sin(a) * r, y = 70 + rnd() * 50, s = 6 + rnd() * 8;
-    for (let k = 0; k < 5; k++) clouds.push(pt.box(s * (1.5 + rnd() * 2), s * (0.5 + rnd() * 0.5), s * (1 + rnd()), x + (rnd() - 0.5) * s * 3, y + rnd() * s * 0.5, z + (rnd() - 0.5) * s * 2, 0xffffff));
-  }
+  sky.position.set(W, 0, H); sky.renderOrder = -1; sky.frustumCulled = false; scene.add(sky);
+  for (let i = 0; i < 884; i++) rnd(); // keeps the decor layout the same as before the unused cloud boxes were removed
 
 
   const isOpen = (x, z) => x >= 0 && z >= 0 && x < W && z < H && G[z * W + x] !== '#';
@@ -254,9 +253,9 @@ export function buildWorld(root) {
   if (plants.length) addMesh(scene, mergeParts(plants), lam({ map: TEX.grass, vertexColors: true }));
   addMesh(scene, mergeParts(glow), new THREE.MeshBasicMaterial({ vertexColors: true }), false, false);
 
-  // ---- skyline ----
+  // ---- skyline (skipped in Lite) ----
   const sk = new BoxBatch(), roofs = [], palms = [];
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < (GFX.lite ? 0 : 70); i++) {
     const a = rnd() * Math.PI * 2, r = 66 + rnd() * 80, x = W + Math.cos(a) * r * 1.15, z = H + Math.sin(a) * r;
     const w = 6 + rnd() * 12, d = 6 + rnd() * 12, h = 7 + rnd() * 16;
     sk.add(x - w / 2, 0, z - d / 2, x + w / 2, h, z + d / 2, { c0: [0.85, 0.85, 0.85] });
@@ -267,9 +266,11 @@ export function buildWorld(root) {
       for (let k = 0; k < 4; k++) { const an = k / 4 * Math.PI * 2 + 0.4; palms.push([GEO.box, m4(px2 + Math.cos(an) * 1.4, ph, pz + Math.sin(an) * 1.4, 3, 0.25, 1, 0, -an, -0.35), 0x4fa83c]); }
     }
   }
-  addMesh(scene, sk.geometry(), lam({ map: TEX.wall, vertexColors: true }), false, false);
-  addMesh(scene, mergeParts(roofs), lam({ map: TEX.plain, vertexColors: true }), false, false);
-  addMesh(scene, mergeParts(palms), lam({ map: TEX.plain, vertexColors: true }), false, false);
+  if (!GFX.lite) {
+    addMesh(scene, sk.geometry(), lam({ map: TEX.wall, vertexColors: true }), false, false);
+    addMesh(scene, mergeParts(roofs), lam({ map: TEX.plain, vertexColors: true }), false, false);
+    addMesh(scene, mergeParts(palms), lam({ map: TEX.plain, vertexColors: true }), false, false);
+  }
   const sand = addMesh(scene, new THREE.PlaneGeometry(1400, 1400), lam({ color: TH.ground }), false, false);
   sand.rotation.x = -Math.PI / 2; sand.position.set(W, -0.03, H);
 
@@ -283,7 +284,7 @@ export function buildWorld(root) {
     m.position.set(cx * CS + 1 + dx * 1.01, 2.4, cz * CS + 1 + dz * 1.01); m.rotation.y = Math.atan2(dx, dz); m.receiveShadow = true; scene.add(m);
   };
   for (const [cx, cz, dx, dz, text, bg] of MAP.signs) sign(cx, cz, dx, dz, text, bg);
-  return { sunDir, group: scene };
+  return { sunDir, group: scene, sky: GFX.lite ? sky : null };
 }
 export function disposeWorld(group) {
   const keep = new Set(Object.values(TEX).flat());
@@ -376,6 +377,35 @@ export function tpGuns() {
   TP_GUNS.sec = mergeParts([pt.box(0.035, 0.045, 0.19, 0.1, 0.02, -0.5, 0x2c2e33), pt.box(0.032, 0.1, 0.05, 0.1, -0.04, -0.43, 0x1e2024, -0.28)]);
   TP_GUNS.knife = mergeParts([pt.box(0.03, 0.04, 0.1, 0.13, -0.03, -0.3, 0x2a2a2a), pt.box(0.012, 0.05, 0.1, 0.13, -0.03, -0.4, 0xd9e0e8, -0.3), pt.box(0.012, 0.04, 0.08, 0.13, -0.07, -0.47, 0xd9e0e8, -0.9), pt.box(0.012, 0.03, 0.06, 0.13, -0.12, -0.5, 0xd9e0e8, -1.4)]);
   return TP_GUNS;
+}
+
+// Lite soldiers: the same look, but glued into 4 meshes (2 legs, body, arms + the held gun) instead of ~9.
+// Geometry that is already vertex-coloured (soldierParts / tpGuns) is moved and joined without touching its colours.
+function joinGeo(list) {
+  const pos = [], nor = [], uv = [], col = [], v = new THREE.Vector3(), nm = new THREE.Matrix3();
+  for (const [g0, m] of list) {
+    const g = g0.index ? g0.toNonIndexed() : g0, p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv, c = g.attributes.color;
+    nm.getNormalMatrix(m);
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(m); pos.push(v.x, v.y, v.z);
+      v.fromBufferAttribute(n, i).applyMatrix3(nm).normalize(); nor.push(v.x, v.y, v.z);
+      uv.push(u ? u.getX(i) : 0, u ? u.getY(i) : 0); col.push(c.getX(i), c.getY(i), c.getZ(i));
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.computeBoundingSphere(); return g;
+}
+const liteCache = {};
+export function soldierPartsLite(side) {
+  if (liteCache[side]) return liteCache[side];
+  const sp = soldierParts(side), tg = tpGuns(), I = new THREE.Matrix4(), T = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z);
+  return (liteCache[side] = {
+    legL: joinGeo([[sp.thighL, I], [sp.shin, T(0, -0.31, 0)]]), legR: joinGeo([[sp.thighR, I], [sp.shin, T(0, -0.31, 0)]]),
+    body: joinGeo([[sp.torso, I], [sp.head, T(0, 1.55, 0)]]),
+    armsPrim: joinGeo([[sp.arms, I], [tg.prim, I]]), armsSec: joinGeo([[sp.arms, I], [tg.sec, I]]), armsKnife: joinGeo([[sp.arms, I], [tg.knife, I]]),
+  });
 }
 
 // ------------------------------------------------------------------ first-person guns (low-poly, round barrels and scopes)
