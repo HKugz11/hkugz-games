@@ -1,8 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=40';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=46';
 import { initAudio, setVolume, setListener, SFX } from './audio.js';
-import { buildWorld, soldierParts, tpGuns, charMat, lensMats, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld } from './art.js?v=40';
+import { createOnline } from './online.js?v=46';
+import { buildWorld, soldierParts, tpGuns, charMat, lensMats, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld } from './art.js?v=46';
 
 const $ = (id) => document.getElementById(id);
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -15,7 +16,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Mat
 const V = () => new THREE.Vector3();
 
 // ---------------- settings ----------------
-const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', map: 'sandstone' };
+const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', map: 'sandstone', name: '' };
 const S = { ...DEFAULTS };
 try { Object.assign(S, JSON.parse(localStorage.getItem('cs.settings') || localStorage.getItem('coreStrike') || '{}')); } catch { }
 const saveS = () => { try { localStorage.setItem('cs.settings', JSON.stringify(S)); } catch { } };
@@ -23,6 +24,10 @@ let STATS = { wins: 0, losses: 0, range: 0 };
 try { Object.assign(STATS, JSON.parse(localStorage.getItem('cs.stats') || localStorage.getItem('coreStrikeStats') || '{}')); } catch { }
 const saveStats = () => { try { localStorage.setItem('cs.stats', JSON.stringify(STATS)); } catch { } };
 const LOW = S.gfx === 'low';
+// online play: role is 'none' (single player), 'host' (runs the match) or 'client' (draws what the host sends)
+const MP = { on: false, role: 'none', idx: -1, pid: 0, cfg: null, nid: 0 };
+let MPH = null;
+const mySq = () => (GS.player ? GS.player.squad : 0);
 
 // ---------------- renderer ----------------
 const canvas = $('c');
@@ -252,7 +257,7 @@ function makeSoldier(a) {
   const gunP = mk(TG.prim, arms), gunS = mk(TG.sec, arms), gunK = mk(TG.knife, arms);
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   flash.scale.setScalar(0.5); flash.visible = false; arms.add(flash);
-  if (a.squad === 0 && !a.isPlayer) {
+  if (GS.player && a.squad === GS.player.squad && !a.isPlayer) {
     const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d');
     x.font = 'bold 34px "Chakra Petch",Arial'; x.textAlign = 'center'; x.lineWidth = 6; x.strokeStyle = 'rgba(0,0,0,.8)'; x.strokeText(a.name, 128, 44); x.fillStyle = '#9dffb0'; x.fillText(a.name, 128, 44);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
@@ -273,7 +278,7 @@ class Actor {
       id: aidN++, name, squad, isPlayer, side: 0, pos: V(), vel: V(), yaw: 0, pitch: 0, hp: 100, armor: 0, helmet: false, kit: false, alive: false,
       money: 800, prim: null, sec: null, nades: { he: 0, flash: 0, smoke: 0, molly: 0 }, slot: 'sec', lastSlot: 'knife', nadeSel: 'he', crouch: false, crouchAmt: 0, walk: false,
       onGround: true, rc: 0, lastShot: -9, nextFire: 0, reloadT: 0, switchT: 0, scoped: 0, rescope: 0, blindT: 0, act: null, kills: 0, deaths: 0, hs: 0, dmg: 0,
-      roundKills: 0, stepAcc: 0, mesh: null, brain: null, respawnT: 0, protT: 0, spawnT: 0, spotT: -99, tagT: 0, fullReset: true, shots: 0, hits: 0,
+      roundKills: 0, stepAcc: 0, mesh: null, brain: null, respawnT: 0, protT: 0, spawnT: 0, spotT: -99, tagT: 0, fullReset: true, shots: 0, hits: 0, idx: -1, human: !!isPlayer, remote: false, pid: -1,
     });
   }
 }
@@ -352,6 +357,12 @@ const coreMesh = new THREE.Group();
   const l = new THREE.PointLight(0xff8a2a, 6, 6); l.position.y = 0.5; coreMesh.add(l); coreMesh.userData.light = l;
 }
 scene.add(coreMesh);
+function coreBeep(c, dt) {
+  c.beepT -= dt;
+  const rate = clamp(c.timer / 40, 0.08, 1);
+  if (c.beepT <= 0) { c.beepT = 0.12 + rate * 0.9; SFX.beep(c.pos); coreMesh.userData.light.intensity = 30; }
+  coreMesh.userData.light.intensity *= Math.pow(0.02, dt * 3);
+}
 function resetCore(carrier) {
   GS.core = { state: carrier ? 'carried' : 'none', carrier, pos: V(), timer: 40, site: null, beepT: 0, smoked: false, mollied: false };
 }
@@ -422,13 +433,15 @@ function fireWeapon(a) {
   a.rc += 1; a.lastShot = GS.time;
   const o = eyePos(a);
   const n = def.pellets || 1;
-  let anyHit = false;
+  let anyHit = false, d0 = null;
   for (let i = 0; i < n; i++) {
     const r = Math.sqrt(Math.random()) * (def.pellets ? def.cone : spread) * DEG + (def.pellets ? Math.random() * spread * 0.3 * DEG : 0);
     const th = Math.random() * Math.PI * 2;
     const d = fwd(baseY + Math.cos(th) * r, baseP + Math.sin(th) * r);
+    if (i === 0) d0 = d.clone();
     if (traceShot(a, o, d, def, w.id, i === 0)) anyHit = true;
   }
+  if (MP.on && d0) { if (MP.role === 'host') MPH.shotFx(a, w.id, o, d0); else if (a.isPlayer) MPH.clientShot(a, w.id, o, d0); }
   if (anyHit) a.hits++;
   if (def.quiet) SFX.suppressed(a.pos, a.isPlayer); else SFX.shot(def.snd, a.pos, a.isPlayer);
   noiseEvent(a.pos, def.quiet ? 22 : 45, a);
@@ -471,6 +484,10 @@ function traceShot(a, o, d, def, wid, showTracer) {
   return false;
 }
 function damage(v, amt, att, part, wid, dir) {
+  if (MP.role === 'client') {   // clients only report what they hit; the host works out the damage
+    if (att && att.isPlayer && v !== att && v.alive && att.side !== v.side) { showHit(part === 'head' ? 'hs' : '', false); if (part === 'head') SFX.head(); else SFX.hit(); MPH.claim(v, amt, att, part, wid); }
+    return;
+  }
   if (!v.alive || v.protT > 0) return;
   if (att && att !== v && att.side === v.side && GS.mode !== 'range') return;
   let dmg = amt;
@@ -488,34 +505,25 @@ function damage(v, amt, att, part, wid, dir) {
     hurtFx(dmg, att, dir);
     if (part === 'head' && v.helmet) SFX.armorHit(); else SFX.hurt();
     v.pitch += 0.6 * DEG * Math.min(3, dmg / 20);
-  }
+  } else if (v.remote && MPH) MPH.hurt(v, dmg, att, part === 'head');
   if (v.brain && att && att !== v) { v.brain.hurtT = GS.time; v.brain.hurtBy = att; v.brain.heardPos = att.pos.clone(); v.brain.heardT = GS.time; }
   if (v.hp <= 0.5) kill(v, att, wid, part === 'head');
 }
-function kill(v, k, wid, hs) {
-  v.alive = false; v.hp = 0; v.deaths++; v.act = null; v.scoped = 0;
+// everything you see and hear when someone is eliminated (runs on every player's machine)
+function killFx(v, k, wid, hs, quiet) {
   if (v.mesh) v.mesh.g.visible = false;
   const c = SIDE[v.side], hx = (n) => '#' + n.toString(16).padStart(6, '0');
   const p = v.pos;
-  for (let i = 0; i < (LOW ? 22 : 46); i++) {
-    const y = p.y + rand(0.1, 1.8);
-    spawnP(p.x + rand(-0.3, 0.3), y, p.z + rand(-0.3, 0.3), rand(-4, 4), rand(2, 7), rand(-4, 4), rand(1.2, 2.4), rand(0.08, 0.2), pick([hx(c.main), hx(c.main), hx(c.vest), hx(c.pants), '#222226', hx(c.visor)]), 16);
+  if (!quiet) {
+    for (let i = 0; i < (LOW ? 22 : 46); i++) {
+      const y = p.y + rand(0.1, 1.8);
+      spawnP(p.x + rand(-0.3, 0.3), y, p.z + rand(-0.3, 0.3), rand(-4, 4), rand(2, 7), rand(-4, 4), rand(1.2, 2.4), rand(0.08, 0.2), pick([hx(c.main), hx(c.main), hx(c.vest), hx(c.pants), '#222226', hx(c.visor)]), 16);
+    }
+    burst(p.x, p.y + 1.1, p.z, 24, 7, ['#ffffff', '#ffe27a', '#9dffb0', '#ff9ad5', '#7ad7ff'], 0.06, 0.9, 6, 2);
+    SFX.pop(p);
   }
-  burst(p.x, p.y + 1.1, p.z, 24, 7, ['#ffffff', '#ffe27a', '#9dffb0', '#ff9ad5', '#7ad7ff'], 0.06, 0.9, 6, 2);
-  SFX.pop(p);
-  if (k && k !== v && k.side !== v.side) {
-    k.kills++; if (hs) k.hs++; k.roundKills++;
-    if (GS.mode === 'comp') addMoney(k, (WD[wid] && WD[wid].reward) || 300, 'elimination');
-    if (GS.mode === 'dm') { GS.score[k.squad]++; if (GS.score[k.squad] >= GS.target) endMatch(); }
-  }
-  if (GS.mode === 'comp') {
-    const drop = v.prim || (v.sec && v.sec.id !== 'p9' ? v.sec : null);
-    if (drop) addDrop(drop, p);
-    if (GS.core.carrier === v) dropCore(v);
-  }
-  if (v.brain && k && k !== v && k.side !== v.side && GS.mode === 'comp' && GS.state === 'live') teamCall(v, k.pos, 32, 4, 0.9);
   feed(k, v, wid, hs);
-  if (v.isPlayer) { GS.deathT = GS.time; GS.killer = k; vmRoot.visible = false; $('scope').classList.add('hidden'); }
+  if (v.isPlayer) { v.act = null; v.scoped = 0; GS.deathT = GS.time; GS.killer = k; vmRoot.visible = false; $('scope').classList.add('hidden'); }
   if (k && k.isPlayer && k !== v) {
     SFX.kill();
     const msg = $('killmsg'); const st = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'ACE!'][Math.min(k.roundKills, 5)];
@@ -524,16 +532,35 @@ function kill(v, k, wid, hs) {
     if (st && GS.mode === 'comp') SFX.streak();
     clearTimeout(msg._t); msg._t = setTimeout(() => (msg.innerHTML = ''), 1800);
   }
+}
+function kill(v, k, wid, hs) {
+  v.alive = false; v.hp = 0; v.deaths++; v.act = null; v.scoped = 0;
+  if (k && k !== v && k.side !== v.side) {
+    k.kills++; if (hs) k.hs++; k.roundKills++;
+    if (GS.mode === 'comp') addMoney(k, (WD[wid] && WD[wid].reward) || 300, 'elimination');
+    if (GS.mode === 'dm') { GS.score[k.squad]++; if (GS.score[k.squad] >= GS.target) endMatch(); }
+  }
+  if (GS.mode === 'comp') {
+    const drop = v.prim || (v.sec && v.sec.id !== 'p9' ? v.sec : null);
+    if (drop && !MP.on) addDrop(drop, v.pos);
+    if (GS.core.carrier === v) dropCore(v);
+  }
+  if (v.brain && k && k !== v && k.side !== v.side && GS.mode === 'comp' && GS.state === 'live') teamCall(v, k.pos, 32, 4, 0.9);
+  killFx(v, k, wid, hs);
+  if (MP.role === 'host') MPH.killEvent(v, k, wid, hs);
   if (GS.mode === 'range') { GS.score[0]++; setTimeout(() => { if (GS.mode === 'range' && GS.state === 'live') spawnDummy(v); }, 400); }
-  if (GS.mode === 'dm') v.respawnT = v.isPlayer ? 3 : rand(2, 3.5);
+  if (GS.mode === 'dm') v.respawnT = (v.isPlayer || v.remote) ? 3 : rand(2, 3.5);
+}
+function moneyPop(amt, why) {
+  const d = document.createElement('div'); d.textContent = `+$${amt} ${why}`; d.style.color = '#7dff9a';
+  $('moneyPop').appendChild(d); setTimeout(() => d.remove(), 2600);
 }
 function addMoney(a, amt, why) {
   if (GS.mode !== 'comp') return;
   const before = a.money; a.money = clamp(a.money + amt, 0, 16000);
-  if (a.isPlayer && a.money !== before) {
-    const d = document.createElement('div'); d.textContent = `+$${a.money - before} ${why}`; d.style.color = '#7dff9a';
-    $('moneyPop').appendChild(d); setTimeout(() => d.remove(), 2600);
-  }
+  if (a.money === before) return;
+  if (a.isPlayer) moneyPop(a.money - before, why);
+  else if (a.remote && MPH) MPH.money(a, a.money - before, why);
 }
 function startReload(a) {
   const w = curW(a); if (!w || !WD[w.id].mag || a.reloadT > 0 || w.res <= 0 || w.mag >= WD[w.id].mag) return;
@@ -566,12 +593,18 @@ function melee(a, heavy) {
 
 // grenades
 const nadeMeshes = {};
+function spawnNade(a, type, p, v, id, fake) {
+  const m = new THREE.Mesh(geoBox, new THREE.MeshLambertMaterial({ color: WD[type].col })); m.scale.set(0.12, 0.15, 0.12); m.castShadow = true; scene.add(m);
+  const n = { type, x: p[0], y: p[1], z: p[2], vx: v[0], vy: v[1], vz: v[2], t: 0, owner: a, m, still: 0, id, fake: !!fake };
+  GS.nades.push(n); return n;
+}
 function throwNade(a, type, dir, speed) {
   if (!a.nades[type]) return;
   a.nades[type]--;
   const o = eyePos(a).addScaledVector(dir, 0.4);
-  const m = new THREE.Mesh(geoBox, new THREE.MeshLambertMaterial({ color: WD[type].col })); m.scale.set(0.12, 0.15, 0.12); m.castShadow = true; scene.add(m);
-  GS.nades.push({ type, x: o.x, y: o.y, z: o.z, vx: dir.x * speed + a.vel.x * 0.6, vy: dir.y * speed + 1.5, vz: dir.z * speed + a.vel.z * 0.6, t: 0, owner: a, m, still: 0 });
+  const tv = [dir.x * speed + a.vel.x * 0.6, dir.y * speed + 1.5, dir.z * speed + a.vel.z * 0.6];
+  if (MP.role === 'client') { const id = MPH.clientNade(a, type, o.x, o.y, o.z, tv[0], tv[1], tv[2]); spawnNade(a, type, [o.x, o.y, o.z], tv, id, true); }
+  else { const n = spawnNade(a, type, [o.x, o.y, o.z], tv, ++MP.nid, false); if (MP.role === 'host') MPH.nadeEvent(n); }
   a.nextFire = GS.time + 0.8;
   if (a.isPlayer) { SFX.pin(); VMS.slash = 0.7; }
   if (!hasNade(a)) { if (a.slot === 'nade') { a.slot = a.lastSlot !== 'nade' && slotOK(a, a.lastSlot) ? a.lastSlot : bestSlot(a); a.switchT = 0.4; if (a.isPlayer) vmSet(); } }
@@ -594,29 +627,29 @@ function updateNades(dt) {
     n.m.position.set(n.x, n.y, n.z); n.m.rotation.x += dt * 8; n.m.rotation.z += dt * 5;
     const spd = Math.hypot(n.vx, n.vy, n.vz);
     if (spd < 0.3) n.still += dt;
-    const go = n.type === 'smoke' ? (n.still > 0.4 && n.t > 1) || n.t > 3.5 : n.type === 'molly' ? (n.landed && n.t > 0.3) || n.t > 2.8 : n.t > 1.6;
-    if (go) { detonate(n); scene.remove(n.m); n.m.material.dispose(); GS.nades.splice(i, 1); }
+    const go = n.fake ? n.t > 7 : n.type === 'smoke' ? (n.still > 0.4 && n.t > 1) || n.t > 3.5 : n.type === 'molly' ? (n.landed && n.t > 0.3) || n.t > 2.8 : n.t > 1.6;
+    if (go) { if (!n.fake) { detonate(n); if (MP.role === 'host') MPH.detEvent(n); } scene.remove(n.m); n.m.material.dispose(); GS.nades.splice(i, 1); }
   }
 }
-function detonate(n) {
+function detonate(n, fxOnly) {
   const p = V().set(n.x, n.y + 0.2, n.z);
   if (n.type === 'he') {
     explosionFx(p, false); SFX.boom(p, false); GS.shake = Math.max(GS.shake, 0.4 / (1 + GS.player.pos.distanceTo(p) / 6));
     for (const e of GS.actors) {
-      if (!e.alive) continue;
+      if (!e.alive || fxOnly) continue;
       const c = chestPos(e), d = c.distanceTo(p);
       if (d > 7.8 || !losClear(p, c, false)) continue;
       if (e !== n.owner && e.side === n.owner.side && GS.mode !== 'range') continue;
       const lethal = 4.4, hit = d <= lethal ? 500 : 100 * Math.pow(1 - (d - lethal) / 3.4, 1.2);   // inside 4.4 m = one shot
       damage(e, hit * (e === n.owner ? 0.5 : 1), n.owner, 'body', 'he', c.clone().sub(p).normalize());
     }
-    noiseEvent(p, 50, n.owner);
+    if (!fxOnly) noiseEvent(p, 50, n.owner);
   } else if (n.type === 'flash') {
     SFX.flashbang(p);
     burst(p.x, p.y, p.z, 30, 10, ['#ffffff', '#e8f4ff'], 0.05, 0.5, 4);
     explosionFx(p, false, 0xffffff);
     for (const e of GS.actors) {
-      if (!e.alive) continue;
+      if (!e.alive || (fxOnly && !e.isPlayer)) continue;
       const ep = eyePos(e), d = ep.distanceTo(p);
       if (d > 32 || !losClear(p, ep)) continue;
       const to = _v1.subVectors(p, ep).normalize(), dot = to.dot(fwd(e.yaw, e.pitch));
@@ -625,9 +658,9 @@ function detonate(n) {
       if (t > e.blindT) e.blindT = t;
       if (e.isPlayer && t > 0.8) SFX.ring(Math.min(t, 2.5));
     }
-    if (n.owner.brain && GS.mode === 'comp') teamCall(n.owner, p, 32, 2.6, 0.8);
+    if (!fxOnly && n.owner.brain && GS.mode === 'comp') teamCall(n.owner, p, 32, 2.6, 0.8);
   } else if (n.type === 'molly') {
-    SFX.boom(p, false); explosionFx(p, false, 0xff7a1a); noiseEvent(p, 30, n.owner);
+    SFX.boom(p, false); explosionFx(p, false, 0xff7a1a); if (!fxOnly) noiseEvent(p, 30, n.owner);
     const f = { x: n.x, y: hPos(n.x, n.z), z: n.z, r: 2.7, t: 7, tick: 0.1, owner: n.owner, disc: null };
     f.disc = new THREE.Mesh(new THREE.CircleGeometry(f.r, 24), new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
     f.disc.rotation.x = -Math.PI / 2; f.disc.position.set(f.x, f.y + 0.05, f.z); scene.add(f.disc); GS.fires.push(f);
@@ -649,7 +682,7 @@ function updateFires(dt) {
     const f = GS.fires[i]; f.t -= dt; f.tick -= dt;
     if (Math.random() < dt * 45) spawnP(f.x + rand(-f.r, f.r) * 0.8, f.y + 0.1, f.z + rand(-f.r, f.r) * 0.8, rand(-0.3, 0.3), rand(1.6, 3.4), rand(-0.3, 0.3), rand(0.3, 0.7), rand(0.1, 0.24), pick(['#ffcf4a', '#ff8a2a', '#ff5a1a']), -2);
     f.disc.material.opacity = (0.32 + 0.16 * Math.sin(GS.time * 13 + i)) * Math.min(1, f.t / 1.2);
-    if (f.tick <= 0) {
+    if (f.tick <= 0 && MP.role !== 'client') {
       f.tick = 0.4;
       for (const e of GS.actors) {
         if (!e.alive || Math.hypot(e.pos.x - f.x, e.pos.z - f.z) > f.r || e.pos.y > f.y + 0.9) continue;
@@ -779,8 +812,19 @@ function startRound() {
   const P = GS.player;
   sleeveMat.color.setHex(SIDE_SLEEVE[P.side]);
   const lastRound = GS.round === GS.maxRounds, match = GS.score[0] === GS.target - 1 || GS.score[1] === GS.target - 1;
-  banner(half ? 'SWITCHING SIDES' : `ROUND ${GS.round}`, `You are ${SIDE[P.side].name} — ${P.side === 0 ? 'plant the core at A or B' : 'stop the core from being planted'}${match ? ' · MATCH POINT' : lastRound ? ' · LAST ROUND' : ''}`);
+  roundBannerLocal(half, lastRound, match);
   if (GS.core.carrier === P) setTimeout(() => toast('You carry the CORE — hold E on a site to plant'), 2500);
+  if (MP.role === 'host') MPH.roundStart(half);
+}
+function roundBannerLocal(half, lastRound, match) {
+  const P = GS.player; sleeveMat.color.setHex(SIDE_SLEEVE[P.side]);
+  banner(half ? 'SWITCHING SIDES' : `ROUND ${GS.round}`, `You are ${SIDE[P.side].name} — ${P.side === 0 ? 'plant the core at A or B' : 'stop the core from being planted'}${match ? ' · MATCH POINT' : lastRound ? ' · LAST ROUND' : ''}`, '#fff', 3000, true);
+}
+function roundEndFx(winSide, reason) {
+  const why = { elim: `${SIDE[1 - winSide].name} eliminated`, time: 'Time ran out', boom: 'The core detonated!', defuse: 'The core was defused!' }[reason] || '';
+  const w = GS.actors.find((a) => a.side === winSide);
+  banner(`${SIDE[winSide].name} WIN`, why, SIDE[winSide].css, 3000, true);
+  SFX.fanfare(!!w && w.squad === mySq());
 }
 function endRound(winSide, reason) {
   if (GS.state !== 'live') return;
@@ -793,10 +837,8 @@ function endRound(winSide, reason) {
     if (a.squad === sq) addMoney(a, winAmt, 'round win');
     else addMoney(a, lossAmt + (a.side === 0 && GS.core.state === 'planted' ? 800 : 0), 'round loss');
   }
-  const why = { elim: `${SIDE[1 - winSide].name} eliminated`, time: 'Time ran out', boom: 'The core detonated!', defuse: 'The core was defused!' }[reason];
-  const mine = sq === 0;
-  banner(`${SIDE[winSide].name} WIN`, why, SIDE[winSide].css);
-  SFX.fanfare(mine);
+  roundEndFx(winSide, reason);
+  if (MP.role === 'host') MPH.roundEnd(winSide, reason);
 }
 function updateRound(dt) {
   if (GS.mode === 'dm') {
@@ -815,7 +857,7 @@ function updateRound(dt) {
     const before = Math.ceil(GS.phaseT);
     GS.phaseT -= dt;
     if (Math.ceil(GS.phaseT) !== before && before <= 3 && before > 0) SFX.countdown(false);
-    if (GS.phaseT <= 0) { GS.state = 'live'; SFX.countdown(true); banner('GO!', '', '#ffd04a', 900); }
+    if (GS.phaseT <= 0) { GS.state = 'live'; SFX.countdown(true); banner('GO!', '', '#ffd04a', 900); if (MP.role === 'host') MPH.event('go'); }
   } else if (GS.state === 'live') {
     GS.buyLeft -= dt;
     if (c.state !== 'planted') GS.roundT -= dt;
@@ -831,23 +873,22 @@ function updateRound(dt) {
     }
   }
   if (c.state === 'planted' && (GS.state === 'live' || GS.state === 'end')) {
-    c.timer -= dt; c.beepT -= dt;
-    const rate = clamp(c.timer / 40, 0.08, 1);
-    if (c.beepT <= 0) { c.beepT = 0.12 + rate * 0.9; SFX.beep(c.pos); coreMesh.userData.light.intensity = 30; }
-    coreMesh.userData.light.intensity *= Math.pow(0.02, dt * 3);
+    c.timer -= dt; coreBeep(c, dt);
     if (c.timer <= 0) {
       c.state = 'boom';
       const p = c.pos.clone().setY(c.pos.y + 0.5);
       explosionFx(p, true); SFX.boom(p, true); GS.shake = 1.2;
       coreMesh.visible = false;
+      if (MP.role === 'host') MPH.event('boom');
       for (const e of GS.actors) if (e.alive) { const d = e.pos.distanceTo(c.pos); const dmg = 500 * Math.exp(-(d * d) / (2 * 7 * 7)); if (dmg > 1) damage(e, dmg, null, 'body', 'core', null); }
       if (GS.state === 'live') endRound(0, 'boom');
     }
   }
 }
 function endMatch() {
-  if (GS.state === 'over') return;
+  if (GS.state === 'over' && !$('end').classList.contains('hidden')) return;
   GS.state = 'over'; document.exitPointerLock && document.exitPointerLock();
+  if (MP.role === 'host') MPH.matchEnd();
   const P = GS.player, hsP = P.kills ? Math.round(P.hs / P.kills * 100) : 0;
   let title, sc;
   if (GS.mode === 'range') {
@@ -858,10 +899,10 @@ function endMatch() {
     $('endStats').innerHTML = stat(GS.score[0], 'POPPED') + stat(acc + '%', 'ACCURACY') + stat(GS.rangeHS, 'HEADSHOTS') + stat(STATS.range, 'BEST');
     $('endMvp').textContent = '';
   } else {
-    const win = GS.score[0] > GS.score[1], draw = GS.score[0] === GS.score[1];
+    const ms = mySq(), win = GS.score[ms] > GS.score[1 - ms], draw = GS.score[0] === GS.score[1];
     title = draw ? 'DRAW' : win ? 'VICTORY' : 'DEFEAT';
     if (!draw) { win ? STATS.wins++ : STATS.losses++; saveStats(); }
-    sc = `${GS.score[0]} — ${GS.score[1]}`;
+    sc = `${GS.score[mySq()]} — ${GS.score[1 - mySq()]}`;
     $('endStats').innerHTML = stat(P.kills, 'ELIMS') + stat(P.deaths, 'DEATHS') + stat(hsP + '%', 'HEADSHOT %') + stat(Math.round(P.dmg), 'DAMAGE');
     const mvp = GS.actors.slice().sort((a, b) => b.kills * 100 + b.dmg / 10 - (a.kills * 100 + a.dmg / 10))[0];
     $('endMvp').textContent = `MVP: ${mvp.name} (${mvp.kills} elims)`;
@@ -885,12 +926,13 @@ function dmSpawn(a) {
   a.pos.set(cellX(bestC), 0, cellZ(bestC)); a.vel.set(0, 0, 0); a.yaw = Math.random() * 6.28; a.pitch = 0;
   a.hp = 100; a.armor = 100; a.helmet = true; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
   a.sec = newGun('p9');
-  a.prim = newGun(a.isPlayer ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow']));
+  a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow']));
   a.nades = { he: 1, flash: 1, smoke: 0, molly: 0 };
   a.slot = 'prim';
   if (a.brain) { a.brain.path = []; a.brain.goal = -1; a.brain.target = null; a.brain.roam = -1; }
   if (a.mesh) a.mesh.g.visible = !a.isPlayer;
   if (a.isPlayer) { vmRoot.visible = true; vmId = ''; vmSet(); sleeveMat.color.setHex(SIDE_SLEEVE[a.side]); }
+  if (a.remote && MPH) MPH.spawn(a);
 }
 // aim range
 function startRange() {
@@ -948,7 +990,7 @@ function buy(a, id) {
     if (a[def.slot] && a[def.slot].id !== id && GS.mode === 'comp') addDrop(a[def.slot], a.pos);
     a[def.slot] = newGun(id);
     if (GS.mode === 'range') a[def.slot].res = 999;
-    if (a.isPlayer && def.slot === 'prim') a.dmPick = id;
+    if ((a.isPlayer || a.remote) && def.slot === 'prim') a.dmPick = id;
     a.slot = def.slot; a.switchT = 0.4;
   }
   if (a.isPlayer) { vmSet(); }
@@ -1440,7 +1482,7 @@ function updatePlayer(dt) {
   if (pressed.has('Digit4')) equip(P, 'nade');
   if (pressed.has('KeyQ') && slotOK(P, P.lastSlot)) equip(P, P.lastSlot);
   if (pressed.has('KeyR') && def.mag) startReload(P);
-  if (pressed.has('KeyG') && GS.mode === 'comp') { if (GS.core.carrier === P && P.slot === 'knife') dropCore(P); else dropCurrent(P); }
+  if (pressed.has('KeyG') && GS.mode === 'comp' && !MP.on) { if (GS.core.carrier === P && P.slot === 'knife') dropCore(P); else dropCurrent(P); }
   if (pressed.has('KeyF')) VMS.inspect = 1.6;
   const wasSprint = P.sprint;
   P.crouch = !!keys.KeyC; P.walk = !!keys.KeyX;
@@ -1524,14 +1566,14 @@ function updateActorTimers(a, dt) {
     a.act.t += dt;
     if (a.act.type === 'plant' && (c.carrier !== a || GS.state !== 'live')) a.act = null;
     else if (a.act.type === 'defuse' && (c.state !== 'planted' || a.pos.distanceTo(c.pos) > 2)) a.act = null;
-    if (a.act && a.act.t >= a.act.need) {
+    if (a.act && a.act.t >= a.act.need && MP.role !== 'client') {
       if (a.act.type === 'plant') {
         c.state = 'planted'; c.carrier = null; c.pos.set(a.pos.x, a.pos.y, a.pos.z); c.site = zoneAt(a.pos.x, a.pos.z); c.timer = 40; c.beepT = 0;
-        addMoney(a, 300, 'plant'); SFX.plant(); banner('CORE PLANTED', `Site ${c.site.toUpperCase()} · 40 seconds`, '#ff9a3d', 2200);
+        addMoney(a, 300, 'plant'); SFX.plant(); if (MP.role === 'host') MPH.event('plant'); banner('CORE PLANTED', `Site ${c.site.toUpperCase()} · 40 seconds`, '#ff9a3d', 2200);
         for (const b of GS.actors) if (b.brain) b.brain.goal = -1;
         feedText(`${a.name} planted the core at ${c.site.toUpperCase()}`);
       } else {
-        c.state = 'defused'; SFX.defused(); addMoney(a, 300, 'defuse');
+        c.state = 'defused'; SFX.defused(); addMoney(a, 300, 'defuse'); if (MP.role === 'host') MPH.event('defused');
         feedText(`${a.name} defused the core!`);
         if (GS.state === 'live') endRound(1, 'defuse');
       }
@@ -1542,7 +1584,7 @@ function updateActorTimers(a, dt) {
 function updateCore(dt) {
   const c = GS.core; if (!c || GS.mode !== 'comp') { coreMesh.visible = false; return; }
   const P = GS.player;
-  if (c.state === 'dropped') {
+  if (c.state === 'dropped' && MP.role !== 'client') {
     for (const a of GS.actors) if (a.alive && a.side === 0 && Math.hypot(a.pos.x - c.pos.x, a.pos.z - c.pos.z) < 1.1 && Math.abs(a.pos.y - c.pos.y) < 1.2) {
       c.state = 'carried'; c.carrier = a; GS.fetcher = null; if (a.isPlayer) toast('You picked up the CORE'); break;
     }
@@ -1558,11 +1600,11 @@ function updateCore(dt) {
   } else coreMesh.visible = false;
   coreMesh.userData.glow.material.color.setHex(c.state === 'planted' && c.beepT > 0.05 + clamp(c.timer / 40, 0.08, 1) * 0.8 ? 0xff2a2a : 0xffa030);
   // execute decision for attackers
-  if (GS.state === 'live' && !GS.execute) {
+  if (GS.state === 'live' && !GS.execute && MP.role !== 'client') {
     const atk = GS.actors.filter((a) => a.alive && a.side === 0 && a.brain && !a.brain.lurk);
     const waiting = atk.filter((a) => a.brain.cur && a.brain.cur.stage && reached(a, a.brain.cur.cell, 3.2)).length;
     const elapsed = GS.time - GS.roundStart - GS.phaseT;
-    if ((waiting >= Math.min(3, atk.length) && waiting > 0) || GS.roundT < 62 || (c.carrier === P && P.alive && 'ab'.includes(zoneAt(P.pos.x, P.pos.z))) || elapsed > 70 || elapsed > GS.rushAt) {
+    if ((waiting >= Math.min(3, atk.length) && waiting > 0) || GS.roundT < 62 || (c.carrier && c.carrier.human && c.carrier.alive && 'ab'.includes(zoneAt(c.carrier.pos.x, c.carrier.pos.z))) || elapsed > 70 || elapsed > GS.rushAt) {
       GS.execute = true; for (const a of atk) a.brain.goal = -1;
     }
   }
@@ -1570,7 +1612,8 @@ function updateCore(dt) {
 function setHint(t) { const h = $('hint'); if (h._t !== t) { h._t = t; h.textContent = t; } }
 
 // ---------------- HUD ----------------
-function banner(big, sub = '', color = '#fff', ms = 3000) {
+function banner(big, sub = '', color = '#fff', ms = 3000, local = false) {
+  if (MP.role === 'host' && !local) MPH.banner(big, sub, color, ms);
   const b = $('banner');
   b.innerHTML = `<div class="big" style="color:${color}">${big}</div>${sub ? `<div class="sub">${sub}</div>` : ''}`;
   clearTimeout(b._t); b._t = setTimeout(() => (b.innerHTML = ''), ms);
@@ -1585,7 +1628,7 @@ function feed(k, v, wid, hs) {
   f.prepend(d); while (f.children.length > 6) f.lastChild.remove();
   setTimeout(() => d.remove(), 7000);
 }
-function feedText(t) { const f = $('feed'), d = document.createElement('div'); d.textContent = t; d.style.color = '#ffb13d'; f.prepend(d); setTimeout(() => d.remove(), 6000); }
+function feedText(t) { if (MP.role === 'host') MPH.feedTextEvent(t); const f = $('feed'), d = document.createElement('div'); d.textContent = t; d.style.color = '#ffb13d'; f.prepend(d); setTimeout(() => d.remove(), 6000); }
 function showHit(cls, killed) {
   const h = $('hitm'); h.className = killed ? 'kill' : cls; h.style.transition = 'none'; h.style.opacity = 1;
   requestAnimationFrame(() => { h.style.transition = 'opacity .35s'; h.style.opacity = 0; });
@@ -1614,9 +1657,9 @@ function updateHUD() {
     setText('scL', GS.score[0]); setText('scR', ''); setHTML('pipL', ''); setHTML('pipR', '');
     setText('timer', fmtT(GS.roundT)); setText('sideTag', `AIM RANGE · ${GS.rangeHS} headshots`);
   } else {
-    setText('scL', GS.score[0]); setText('scR', GS.score[1]);
+    const ms = mySq(); setText('scL', GS.score[ms]); setText('scR', GS.score[1 - ms]);
     const pip = (sq) => GS.actors.filter((a) => a.squad === sq).map((a) => `<i class="${a.alive ? '' : 'dead'}"></i>`).join('');
-    setHTML('pipL', pip(0)); setHTML('pipR', pip(1));
+    setHTML('pipL', pip(ms)); setHTML('pipR', pip(1 - ms));
     $('sqL').style.color = SIDE[P.side].css; $('sqR').style.color = SIDE[1 - P.side].css;
     $('sqL').style.borderBottomColor = SIDE[P.side].css; $('sqR').style.borderBottomColor = SIDE[1 - P.side].css;
     let tt = GS.mode === 'dm' ? GS.roundT : GS.state === 'freeze' ? GS.phaseT : c.state === 'planted' ? c.timer : GS.roundT;
@@ -1703,10 +1746,10 @@ function updateBoard() {
   if ($('board').classList.contains('hidden')) return;
   const P = GS.player;
   const rows = (sq) => GS.actors.filter((a) => a.squad === sq).sort((a, b) => b.kills - a.kills).map((a) =>
-    `<tr class="${a.isPlayer ? 'me' : ''} ${a.alive ? '' : 'dead'}"><td>${a.isPlayer ? 'You' : a.name}${GS.core && GS.core.carrier === a && sq === 0 ? ' ◆' : ''}</td><td>${a.kills}</td><td>${a.deaths}</td><td>${a.kills ? Math.round(a.hs / a.kills * 100) : 0}%</td><td>${Math.round(a.dmg)}</td><td>${sq === 0 && GS.mode === 'comp' ? '$' + a.money : ''}</td></tr>`).join('');
+    `<tr class="${a.isPlayer ? 'me' : ''} ${a.alive ? '' : 'dead'}"><td>${a.isPlayer ? 'You' : a.name}${GS.core && GS.core.carrier === a && sq === mySq() ? ' ◆' : ''}</td><td>${a.kills}</td><td>${a.deaths}</td><td>${a.kills ? Math.round(a.hs / a.kills * 100) : 0}%</td><td>${Math.round(a.dmg)}</td><td>${sq === mySq() && GS.mode === 'comp' ? '$' + a.money : ''}</td></tr>`).join('');
   const head = '<tr><th>NAME</th><th>K</th><th>D</th><th>HS</th><th>DMG</th><th></th></tr>';
-  setHTML('boardCard', `<div class="tn" style="color:${SIDE[P.side].css}">YOUR SQUAD · ${SIDE[P.side].name} · ${GS.score[0]}</div><table>${head}${rows(0)}</table>` +
-    (GS.mode !== 'range' ? `<div class="tn" style="color:${SIDE[1 - P.side].css}">ENEMY · ${SIDE[1 - P.side].name} · ${GS.score[1]}</div><table>${head}${rows(1)}</table>` : ''));
+  setHTML('boardCard', `<div class="tn" style="color:${SIDE[P.side].css}">YOUR SQUAD · ${SIDE[P.side].name} · ${GS.score[mySq()]}</div><table>${head}${rows(mySq())}</table>` +
+    (GS.mode !== 'range' ? `<div class="tn" style="color:${SIDE[1 - P.side].css}">ENEMY · ${SIDE[1 - P.side].name} · ${GS.score[1 - mySq()]}</div><table>${head}${rows(1 - mySq())}</table>` : ''));
 }
 
 // buy menu
@@ -1724,7 +1767,8 @@ function renderBuy() {
 }
 $('buyGrid').addEventListener('click', (e) => {
   const b = e.target.closest('.item'); if (!b) return;
-  if (buy(GS.player, b.dataset.id)) SFX.buy(); else SFX.deny();
+  if (MP.role === 'client') { if (canBuy(GS.player, b.dataset.id)) { SFX.buy(); MPH.clientBuy(b.dataset.id); } else SFX.deny(); }
+  else if (buy(GS.player, b.dataset.id)) SFX.buy(); else SFX.deny();
   renderBuy();
 });
 function toggleBuy() {
@@ -1821,8 +1865,23 @@ function animateActors(dt) {
 
 // ---------------- main loop ----------------
 let last = performance.now(), fpsAcc = 0, fpsN = 0;
+function clientStep(dt) {
+  if (GS.state === 'freeze') { const b = Math.ceil(GS.phaseT); GS.phaseT -= dt; if (Math.ceil(GS.phaseT) !== b && b <= 3 && b > 0) SFX.countdown(false); }
+  else if (GS.state === 'live') { GS.buyLeft -= dt; if (GS.core.state !== 'planted') GS.roundT -= dt; }
+  else if (GS.state === 'end') GS.phaseT -= dt;
+  const c = GS.core; if (c.state === 'planted' && GS.state !== 'over') { c.timer -= dt; coreBeep(c, dt); }
+  if (GS.state === 'over') return;
+  for (const a of GS.actors) if (a.alive) updateActorTimers(a, dt);
+  updatePlayer(dt);
+  MPH.mirrorTick(dt);
+  const P = GS.player;
+  if (P.alive && Math.floor(GS.time * 10) !== Math.floor((GS.time - dt) * 10)) for (const e of GS.actors) if (e.alive && e.side !== P.side && canSee(P, e, 0.9)) e.spotT = GS.time;
+  updateNades(dt); updateSmokes(dt); updateFires(dt); updateCore(dt);
+  MPH.clientTick(dt);
+}
 function step(dt) {
   GS.time += dt;
+  if (MP.role === 'client') { clientStep(dt); return; }
   updateRound(dt);
   if (GS.state === 'over') return;
   for (const a of GS.actors) if (a.alive) updateActorTimers(a, dt);
@@ -1833,6 +1892,7 @@ function step(dt) {
   const P = GS.player;
   if (P.alive && Math.floor(GS.time * 10) !== Math.floor((GS.time - dt) * 10)) for (const e of GS.actors) if (e.alive && e.side !== P.side && canSee(P, e, 0.9)) e.spotT = GS.time;
   updateNades(dt); updateSmokes(dt); updateFires(dt); updateCore(dt);
+  if (MP.role === 'host') MPH.hostTick(dt);
 }
 // adaptive quality: if the game runs slow, lower resolution, then turn shadows off
 const QL = { shadows: renderer.shadowMap.enabled, t: 0, n: 0, cool: 2, frame: 0 };
@@ -1861,7 +1921,7 @@ function frame(now) {
     renderer.clear(); renderer.render(scene, camera);
     return;
   }
-  if (!GS.paused && GS.state !== 'over') {
+  if ((!GS.paused || MP.on) && GS.state !== 'over') {
     const n = dt > 0.025 ? 2 : 1;
     for (let i = 0; i < n; i++) step(dt / n);
   }
@@ -1882,8 +1942,80 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
+// ---------------- online play helpers ----------------
+function startMatchMP(cfg, myIdx, role) {
+  MP.on = true; MP.role = role; MP.idx = myIdx; MP.cfg = cfg; MP.nid = 0;
+  setMap(cfg.map);
+  for (const a of GS.actors) if (a.mesh) scene.remove(a.mesh.g);
+  GS.actors = []; clearWorld();
+  GS.mode = cfg.mode; GS.score = [0, 0]; GS.loss = [0, 0]; GS.round = 0; GS.lastPlan = null;
+  GS.target = GS.mode === 'dm' ? (cfg.length === 'short' ? 40 : 75) : cfg.length === 'short' ? 5 : 9;
+  GS.halfAt = GS.target - 1; GS.maxRounds = 2 * (GS.target - 1);
+  const botN = [0, 0];
+  cfg.slots.forEach((s, i) => {
+    const a = new Actor(String(s.n).slice(0, 12), s.sq, i === myIdx);
+    a.idx = i; a.side = s.sq; a.human = !s.bot; a.pid = s.bot ? -1 : (s.pid | 0); a.remote = a.human && i !== myIdx;
+    if (s.bot && role === 'host') a.brain = newBrain(a, botN[s.sq]++ % 5);
+    GS.actors.push(a);
+  });
+  GS.player = GS.actors[myIdx];
+  for (const a of GS.actors) { makeSoldier(a); a.money = 800; }
+  $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('playing');
+  $('again').classList.add('hidden'); $('toLobby').classList.toggle('hidden', role !== 'host');
+  GS.paused = false; resetCore(null);
+  const P = GS.player; P.alive = false; vmRoot.visible = false;
+  if (role === 'host') {
+    if (GS.mode === 'comp') startRound();
+    else { GS.state = 'live'; GS.roundT = cfg.length === 'short' ? 300 : 480; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
+  } else GS.state = 'freeze';
+  lock();
+}
+function reviveLocal() {
+  const P = GS.player;
+  P.hp = 100; P.alive = true; P.act = null; P.blindT = 0; P.reloadT = 0; P.switchT = 0; P.rc = 0; P.scoped = 0; P.rescope = 0; P.roundKills = 0; P.crouch = false; P.crouchAmt = 0; P.tagT = 0; P.onGround = true; P.protT = 0;
+  if (P.mesh) P.mesh.g.visible = false;
+  vmRoot.visible = true; vmRefresh(); sleeveMat.color.setHex(SIDE_SLEEVE[P.side]); GS.deathT = 0; $('scope').classList.add('hidden');
+}
+function vmRefresh() { vmId = ''; vmSet(); }
+function sleeveTint() { sleeveMat.color.setHex(SIDE_SLEEVE[GS.player.side]); }
+function hurtLocal(dmg, att, head) {
+  const P = GS.player; if (!P || !P.alive) return;
+  hurtFx(dmg, att, null);
+  if (head && P.helmet) SFX.armorHit(); else SFX.hurt();
+  P.pitch += 0.6 * DEG * Math.min(3, dmg / 20);
+}
+function remoteShotFx(a, wid, o, d) {
+  const def = WD[wid]; if (!def) return;
+  const oo = Array.isArray(o) ? V().set(+o[0] || 0, +o[1] || 0, +o[2] || 0) : o.clone();
+  const dd = Array.isArray(d) ? V().set(+d[0] || 0, +d[1] || 0, +d[2] || 0) : d.clone();
+  if (dd.lengthSq() < 0.01) return; dd.normalize();
+  const hw = rayWorld(oo, dd, 220), len = hw ? hw.t : 140;
+  if (!def.melee) tracer(oo.clone().addScaledVector(dd, 0.8), oo.clone().addScaledVector(dd, len));
+  a.lastShot = GS.time;
+  if (a.mesh) { a.mesh.flash.visible = true; a.mesh.flashT = 0.05; a.mesh.flash.material.rotation = Math.random() * 6; }
+  if (def.melee) SFX.knife(a.pos, false); else if (def.quiet) SFX.suppressed(a.pos, false); else SFX.shot(def.snd, a.pos, false);
+  if (MP.role === 'host' && !def.melee) noiseEvent(a.pos, def.quiet ? 22 : 45, a);
+}
+function netDetonate(id, type, p, owner) {
+  for (let i = GS.nades.length - 1; i >= 0; i--) { const n = GS.nades[i]; if (n.id === id) { scene.remove(n.m); n.m.material.dispose(); GS.nades.splice(i, 1); } }
+  detonate({ type, x: +p[0] || 0, y: +p[1] || 0, z: +p[2] || 0, owner: owner || GS.player }, true);
+}
+function netEvent(d) {
+  if (d.e === 'boom') { const c = GS.core, p = c.pos.clone().setY(c.pos.y + 0.5); explosionFx(p, true); SFX.boom(p, true); GS.shake = 1.2; coreMesh.visible = false; }
+  else if (d.e === 'go') SFX.countdown(true);
+  else if (d.e === 'plant') SFX.plant();
+  else if (d.e === 'defused') SFX.defused();
+}
+function botTakeover(a) {
+  a.brain = newBrain(a, a.idx % 5); const b = a.brain;
+  if (GS.mode === 'comp') {
+    b.home = pick(a.side === 1 ? [...SITES.a.holdsDef, ...SITES.b.holdsDef, ...MID_HOLDS] : SITES[GS.plan].holdsAtk); b.homeSite = null;
+    b.route = ROUTES[GS.plan][0].slice(); b.plantCell = pick(SITES[GS.plan].plant);
+  }
+}
+
 // ---------------- menus ----------------
-$('mapSeg').innerHTML = MAP_LIST.map((m) => `<button data-v="${m.id}">${m.name}<small>${m.blurb}</small></button>`).join('');
+$('mapSeg').innerHTML = $('onMapSeg').innerHTML = MAP_LIST.map((m) => `<button data-v="${m.id}">${m.name}<small>${m.blurb}</small></button>`).join('');
 function syncSeg() {
   document.querySelectorAll('.seg').forEach((seg) => {
     const k = seg.dataset.k; seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(S[k]) === b.dataset.v));
@@ -1917,13 +2049,14 @@ $('pKeys').onclick = () => $('keysP').classList.remove('hidden');
 $('play').onclick = () => { initAudio(S.vol); startMatch(); };
 $('again').onclick = () => { initAudio(S.vol); startMatch(); };
 $('resume').onclick = () => { lock(); if (DEBUG || softLock) { GS.paused = false; $('pause').classList.add('hidden'); } };
-function toMenu() {
+function toMenu() { if (MPH) MPH.leave(); resetToMenu(); }
+function resetToMenu() {
   GS.state = 'menu'; GS.paused = false;
   for (const a of GS.actors) if (a.mesh) scene.remove(a.mesh.g);
   GS.actors = []; clearWorld(); coreMesh.visible = false;
   ['hud', 'pause', 'end', 'buy', 'board', 'clickLock'].forEach((id) => $(id).classList.add('hidden'));
   $('scope').classList.add('hidden'); $('flash').style.opacity = 0; $('smokeV').style.opacity = 0;
-  $('menu').classList.remove('hidden'); syncSeg(); document.body.classList.remove('playing');
+  $('menu').classList.remove('hidden'); syncSeg(); document.body.classList.remove('playing'); $('again').classList.remove('hidden'); $('toLobby').classList.add('hidden');
   document.exitPointerLock && document.exitPointerLock();
 }
 $('quit').onclick = toMenu; $('toMenu').onclick = toMenu;
@@ -1931,4 +2064,8 @@ syncSeg();
 coreMesh.visible = false;
 $('loading').remove();
 
-if (DEBUG) window.__cs = { renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu };
+if (DEBUG) window.__cs = { MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ };
+
+MPH = createOnline({ GS, MP, S, WD, $, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
+  makeSoldier, botTakeover, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
+  spawnNade, netDetonate, remoteShotFx, killFx, hurtLocal, roundEndFx, roundBannerLocal, netEvent, endMatch, moneyPop, reviveLocal, vmRefresh, renderBuy, clearWorld, sleeveTint });

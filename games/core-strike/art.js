@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=40';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=46';
 
 // ------------------------------------------------------------------ helpers
 let seed = 4242;

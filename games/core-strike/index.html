@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Core Strike</title>
 <script src="../../assets/playtimer.js"></script>
-<meta name="description" content="A 5v5 tactical shooter vs bots: buy guns, then plant or defuse the core. Three maps, 15 guns, smart bots. No blood. Free, runs in your browser (mouse and keyboard).">
+<meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Three maps, 15 guns. No blood. Free, runs in your browser (mouse and keyboard).">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#11131a">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Core Strike - free browser game">
-<meta property="og:description" content="A 5v5 tactical shooter vs bots: buy guns, then plant or defuse the core. Three maps, 15 guns, smart bots. No blood. Free, runs in your browser.">
+<meta property="og:description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Three maps, 15 guns. No blood. Free, runs in your browser (mouse and keyboard).">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/core-strike/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/core-strike.jpg">
 <meta name="twitter:card" content="summary_large_image">
 
@@ -170,6 +170,17 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 #endStats b{display:block;font-size:26px}
 #endStats small{font-size:11px;letter-spacing:.14em;opacity:.65}
 #clickLock{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(8,10,14,.85);padding:14px 22px;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer}
+#onlineP input{background:#1b2030;border:1px solid var(--line);color:var(--ink);padding:10px 12px;border-radius:9px;font:inherit;font-size:16px;width:100%}
+#onlineP .opt{max-width:420px}
+.codebox{display:flex;align-items:center;gap:12px;justify-content:center;font-size:13px;letter-spacing:.14em;margin-bottom:12px}
+.codebox b{font-size:34px;letter-spacing:.3em;color:var(--acc)}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.team{background:rgba(36,41,56,.7);border-radius:12px;padding:10px;min-height:150px}
+.team h3{font-size:14px;letter-spacing:.2em;margin-bottom:8px}.t0 h3{color:var(--o)}.t1 h3{color:var(--b)}
+.pl{padding:6px 10px;background:rgba(255,255,255,.07);border-radius:8px;margin-bottom:6px;font-weight:600}.pl.me{outline:2px solid var(--acc)}.pl.bots{opacity:.5;font-weight:500}.pl small{opacity:.6;font-weight:500}
+.fine{font-size:12px;opacity:.65;line-height:1.5;margin-top:10px}
+#onCfg{margin-top:12px}
+@media (max-width:760px){.teams{grid-template-columns:1fr}}
 @media (max-height:820px){.logo{font-size:42px}.logo br{display:none}.tag{margin:6px 0 10px}.opt{margin-bottom:8px}.seg button{padding:6px 6px}.row{margin-top:10px}#best{margin-top:6px}}
 @media (max-width:760px){#buyGrid{grid-template-columns:repeat(2,1fr)}.logo{font-size:46px}.keys{columns:1}}
 </style>
@@ -233,6 +244,7 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
     </div></div>
     <div class="row">
       <button class="btn go" id="play">PLAY</button>
+      <button class="btn" id="playOnline">PLAY ONLINE</button>
       <button class="btn" id="openSet">SETTINGS</button>
       <button class="btn" id="openKeys">CONTROLS</button>
     </div>
@@ -292,11 +304,40 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
   <div id="endScore"></div>
   <div id="endStats"></div>
   <div id="endMvp" style="opacity:.85"></div>
-  <div class="row" style="justify-content:center"><button class="btn go" id="again">PLAY AGAIN</button><button class="btn" id="toMenu">MENU</button></div>
+  <div class="row" style="justify-content:center"><button class="btn go" id="again">PLAY AGAIN</button><button class="btn go hidden" id="toLobby">BACK TO LOBBY</button><button class="btn" id="toMenu">MENU</button></div>
+</div></div>
+
+<div id="onlineP" class="panel hidden"><div class="card" style="width:min(720px,95vw)">
+  <h2>PLAY ONLINE</h2>
+  <div id="onHome">
+    <p class="fine" style="margin-top:0">Play with friends over the internet. One person hosts and shares the 5 letter room code. Up to 6 players; bots fill the rest of each team.</p>
+    <div class="opt"><label>YOUR NAME</label><input id="onName" maxlength="12" placeholder="Player" autocomplete="off"></div>
+    <div class="row"><button class="btn go" id="onHost">HOST A GAME</button></div>
+    <div class="opt" style="margin-top:18px"><label>OR JOIN A FRIEND'S GAME</label>
+      <div class="row" style="margin-top:0"><input id="onCode" maxlength="5" placeholder="CODE" autocomplete="off" style="width:130px;text-transform:uppercase;letter-spacing:.25em;text-align:center"><button class="btn" id="onJoin">JOIN</button></div></div>
+    <div id="onMsg" style="min-height:22px;margin-top:10px;font-size:14px"></div>
+    <div class="row"><button class="btn" id="onBack">BACK</button></div>
+    <p class="fine">Privacy: a free matchmaking service (PeerJS) only introduces players. Game data goes straight between your computers, so the people you play with can see your internet address, like in any online game. The host keeps the match running, so the host should keep this tab open and visible.</p>
+  </div>
+  <div id="onLobby" class="hidden">
+    <div class="codebox">ROOM CODE <b id="onShow">-----</b> <button class="btn" id="onCopy">COPY</button></div>
+    <div class="teams"><div class="team t0"><h3>RAIDERS</h3><div id="teamL0"></div></div><div class="team t1"><h3>WARDENS</h3><div id="teamL1"></div></div></div>
+    <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" id="onSwitch">SWITCH TEAM</button></div>
+    <div id="onCfg">
+      <div class="opt"><label>MAP</label><div class="seg" data-k="map" id="onMapSeg"></div></div>
+      <div class="opt"><label>MODE</label><div class="seg" data-k="mode"><button data-v="comp">Competitive<small>plant / defuse rounds</small></button><button data-v="dm">Deathmatch<small>respawns, free guns</small></button></div></div>
+      <div class="opt"><label>BOT SKILL</label><div class="seg" data-k="diff"><button data-v="easy">Chill</button><button data-v="normal">Normal</button><button data-v="hard">Sweaty</button><button data-v="insane">Pro</button></div></div>
+      <div class="opt"><label>MATCH LENGTH</label><div class="seg" data-k="length"><button data-v="short">Short</button><button data-v="long">Full</button></div></div>
+    </div>
+    <div id="onSummary" class="fine hidden"></div>
+    <div id="onStatus" class="fine"></div>
+    <div class="row"><button class="btn go" id="onStart">START MATCH</button><button class="btn" id="onLeave">LEAVE</button></div>
+  </div>
 </div></div>
 
 <div id="clickLock" class="hidden">Click to play</div>
 
-<script type="module" src="game.js?v=40"></script>
+<script src="vendor/peerjs.min.js"></script>
+<script type="module" src="game.js?v=46"></script>
 </body>
 </html>
