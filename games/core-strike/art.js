@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=104';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=106';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };

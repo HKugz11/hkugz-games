@@ -159,7 +159,7 @@ export function createOnline(X) {
       case 'act': {
         if (!d.on) { a.act = null; break; }
         const c = GS.core;
-        if (d.type === 'plant' && GS.mode === 'comp' && GS.state === 'live' && a.alive && a.side === 0 && c.carrier === a && 'ab'.includes(X.zoneAt(a.pos.x, a.pos.z))) a.act = { type: 'plant', t: 0, need: 3.2 };
+        if (d.type === 'plant' && GS.mode === 'comp' && GS.state === 'live' && a.alive && a.side === 0 && c.carrier === a && X.plantSite(a.pos.x, a.pos.z)) a.act = { type: 'plant', t: 0, need: 3.2 };
         else if (d.type === 'defuse' && GS.mode === 'comp' && GS.state === 'live' && a.alive && a.side === 1 && c.state === 'planted' && a.pos.distanceTo(c.pos) < 2) a.act = { type: 'defuse', t: 0, need: a.kit ? 5 : 10 };
         break;
       }

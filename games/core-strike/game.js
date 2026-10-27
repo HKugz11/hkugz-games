@@ -1,9 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=104';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=104';
-import { createOnline } from './online.js?v=104';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=104';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=106';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=106';
+import { createOnline } from './online.js?v=106';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=106';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -18,7 +18,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Mat
 const V = () => new THREE.Vector3();
 
 // ---------------- settings ----------------
-const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', name: '' };
+const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', ranked: 'on', name: '' };
 const S = { ...DEFAULTS };
 try { Object.assign(S, JSON.parse(localStorage.getItem('cs.settings') || localStorage.getItem('coreStrike') || '{}')); } catch { }
 const saveS = () => { try { localStorage.setItem('cs.settings', JSON.stringify(S)); } catch { } };
@@ -68,7 +68,7 @@ function rankBadgeHTML() {
 }
 function renderRank() {
   const el = $('rankBadge'); if (!el) return;
-  el.innerHTML = rankBadgeHTML() + (GS.menuMsg ? `<span class="warn">${GS.menuMsg}</span>` : '');
+  el.innerHTML = rankBadgeHTML() + (S.mode === 'comp' && S.ranked === 'off' ? '<span class="warn" style="color:#9db3ff">Unranked match: your rank will not change</span>' : '') + (GS.menuMsg ? `<span class="warn">${GS.menuMsg}</span>` : '');
 }
 function rankListHTML() {
   const me = rankInfo(RANK.rp), placing = rankPlacing();
@@ -77,7 +77,7 @@ function rankListHTML() {
     const L = LEAGUES[li], here = !placing && me.li === li, lo = li * 300;
     rows += `<div class="rl ${here ? 'here' : ''}" style="--rc:${L[1]}">${rankShield({ col: L[1] }, li === 6 ? 'E' : 'I')}<b>${L[0]}</b><span>${li === 6 ? '1800+ RP' : DIVS.map((d, i) => `${d} ${lo + i * 100}`).join(' · ')}</span>${here ? `<em>${me.name} · ${RANK.rp} RP</em>` : ''}</div>`;
   }
-  return rows + `<p class="fine">Win Competitive matches against bots to earn rank points (RP); lose and you drop a little. Your first 3 ranked matches are placement matches (wins count double). Chill bots can only take you up to Silver I, Normal up to Platinum I, Sweaty up to Master I, and Pro bots all the way to Elite. Leaving a match early counts as a loss. Online matches with friends are not ranked.</p>
+  return rows + `<p class="fine">Win Competitive matches against bots to earn rank points (RP); lose and you drop a little. Your first 3 ranked matches are placement matches (wins count double). Chill bots can only take you up to Silver I, Normal up to Platinum I, Sweaty up to Master I, and Pro bots all the way to Elite. Leaving a match early counts as a loss. Pick Unranked in the menu for matches that do not count. Online matches with friends are not ranked.</p>
   <p class="fine">Your record: ${RANK.w} wins · ${RANK.l} losses · ${RANK.d} draws · best ${rankInfo(RANK.peak).name} (${RANK.peak} RP)</p>`;
 }
 function rankEndHTML(r) {
@@ -911,7 +911,7 @@ function startMatch() {
   }
   for (const a of GS.actors) { makeSoldier(a); a.money = 800; }
   $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('playing');
-  GS.paused = false; resetCore(null); GS.rankDone = GS.mode !== 'comp'; GS.menuMsg = '';
+  GS.paused = false; resetCore(null); GS.rankDone = GS.mode !== 'comp' || S.ranked === 'off'; GS.menuMsg = '';   // an Unranked match never changes your rank
   if (GS.mode === 'comp') startRound();
   else if (GS.mode === 'dm') { GS.state = 'live'; GS.roundT = lenOf(S.length).dmTime; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
   else startRange();
@@ -1058,6 +1058,7 @@ function endMatch() {
     $('endStats').innerHTML = stat(P.kills, 'ELIMS') + stat(P.deaths, 'DEATHS') + stat(hsP + '%', 'HEADSHOT %') + stat(Math.round(P.dmg), 'DAMAGE');
     const mvp = GS.actors.slice().sort((a, b) => b.kills * 100 + b.dmg / 10 - (a.kills * 100 + a.dmg / 10))[0];
     $('endMvp').textContent = `MVP: ${mvp.name} (${mvp.kills} elims)`;
+    if (GS.mode === 'comp' && !MP.on && S.ranked === 'off') $('endRank').innerHTML = '<div class="rk"><div class="rkt">UNRANKED MATCH</div><div class="rkn">No rank points were won or lost</div></div>';
     if (GS.mode === 'comp' && !MP.on && !GS.rankDone) {   // a ranked match: rank points up or down
       GS.rankDone = true; const r = settleRank(draw ? 'draw' : win ? 'win' : 'loss', Math.abs(GS.score[ms] - GS.score[1 - ms]), mvp === P);
       $('endRank').innerHTML = rankEndHTML(r); if (!draw && win) { const a0 = rankInfo(r.before), b0 = rankInfo(r.after); if (b0.step > a0.step) SFX.streak(); }
@@ -1217,6 +1218,16 @@ function botBuy(a) {
   a.slot = bestSlot(a);
 }
 
+// which bomb site is this spot in? The A / B floor zone, or very close to a site's middle or one of its plant spots (so the edge of a zone can never stop a plant)
+function plantSite(x, z) {
+  const zn = zoneAt(x, z); if (zn === 'a' || zn === 'b') return zn;
+  for (const k of ['a', 'b']) {
+    const s = SITES[k]; if (Math.hypot(x - s.center[0] * CS, z - s.center[1] * CS) < 7) return k;
+    for (const c of s.plant) if (Math.hypot(x - cellX(c), z - cellZ(c)) < 4) return k;
+  }
+  return null;
+}
+const plantCellFor = (k) => { const l = SITES[k].plant.filter((c) => plantSite(cellX(c), cellZ(c)) === k); return l.length ? pick(l) : SITES[k].plant[0]; };
 // ---------------- bots ----------------
 // =====================================================================================================
 // SMART BOTS. Add ?oldbots to the address to play against the old brains (used to compare them in the dev simulations).
@@ -1411,18 +1422,18 @@ function planAttack(atk, N, dd) {
     const br = b.brain, role = b === carrier ? 'carrier' : order[Math.min(i, order.length - 1)];
     const st = kind === 'slow' ? lurkSpot(used) : stages.X[i % stages.X.length];
     used.push(st);
-    give(br, { site: X, role, goAt: go + (role === 'entry' ? 0 : role === 'support' ? 0.8 : role === 'trade' ? 1.6 : role === 'carrier' ? 2.8 : 2.2), stage: st, lurk: false, plantCell: pick(SITES[X].plant) });
+    give(br, { site: X, role, goAt: go + (role === 'entry' ? 0 : role === 'support' ? 0.8 : role === 'trade' ? 1.6 : role === 'carrier' ? 2.8 : 2.2), stage: st, lurk: false, plantCell: plantCellFor(X) });
     br.route = routeFor(b, st, cost, kind !== 'rush');
   });
   groupY.forEach((b, i) => {
     const br = b.brain, st = lane(Y, used); used.push(st);
     const fake = kind === 'fake';
-    give(br, { site: Y, role: fake ? 'fake' : 'support', goAt: fake ? fakeGo : go, stage: st, lurk: false, plantCell: pick(SITES[Y].plant), swapAt: fake ? fakeGo + rand(10, 16) : 0, swapTo: X });
+    give(br, { site: Y, role: fake ? 'fake' : 'support', goAt: fake ? fakeGo : go, stage: st, lurk: false, plantCell: plantCellFor(Y), swapAt: fake ? fakeGo + rand(10, 16) : 0, swapTo: X });
     br.route = routeFor(b, st, cost, true);
   });
   if (lurker) {
     const br = lurker.brain, st = lurkSpot(used); used.push(st);
-    give(br, { site: X, role: 'lurk', lurk: true, goAt: go + rand(8, 20), stage: st, plantCell: pick(SITES[X].plant), lurkSite: Math.random() < 0.5 ? X : Y });
+    give(br, { site: X, role: 'lurk', lurk: true, goAt: go + rand(8, 20), stage: st, plantCell: plantCellFor(X), lurkSite: Math.random() < 0.5 ? X : Y });
     br.route = routeFor(lurker, st, cost, true);
   }
   // exact entry / support spots in the site for the people who hit it
@@ -1462,7 +1473,7 @@ function planDefense(def, N, dd) {
 function adoptBot(a) {   // a human left the match: this bot steps in with a simple role
   const N = navFor(), b = a.brain;
   if (a.side === 1) { const k = Math.random() < 0.5 ? 'a' : 'b'; b.site = k; b.role = 'anchor'; b.hold = pickSpot(N.hold[k], [], 5) ; if (b.hold < 0) b.hold = pick(WALKABLE); b.watch = []; }
-  else { const X = GS.plan || 'a'; b.site = X; b.role = 'support'; b.goAt = Math.max(rtNow() + 4, GS.strat ? GS.strat.goAt : 30); b.stage = pickSpot(N.stage[X], [], 5); if (b.stage < 0) b.stage = N.site[X]; b.route = routeFor(a, b.stage, newCost(1), true); b.entry = pickSpot(N.post[X], [], 4); b.plantCell = pick(SITES[X].plant); }
+  else { const X = GS.plan || 'a'; b.site = X; b.role = 'support'; b.goAt = Math.max(rtNow() + 4, GS.strat ? GS.strat.goAt : 30); b.stage = pickSpot(N.stage[X], [], 5); if (b.stage < 0) b.stage = N.site[X]; b.route = routeFor(a, b.stage, newCost(1), true); b.entry = pickSpot(N.post[X], [], 4); b.plantCell = plantCellFor(X); }
 }
 // guns decide a few roles after the buy phase
 function assignRoles2() {
@@ -1501,7 +1512,7 @@ function compGoal2(a, b) {
       return { cell: b.postSpot, hold: true, exact: true, post: true };
     }
     // swap sites (the fake group, or a lurker who changes lanes)
-    if (b.swapAt && rt >= b.swapAt && b.site !== b.swapTo) { b.site = b.swapTo; b.role = 'support'; b.goAt = rt + 5; b.stage = pickSpot(N.stage[b.site], [], 5); if (b.stage < 0) b.stage = N.site[b.site]; b.route = routeFor(a, b.stage, newCost(0.8), false); b.ri = 0; b.entry = pickSpot(N.post[b.site], [], 4); b.plantCell = pick(SITES[b.site].plant); b.swapAt = 0; }
+    if (b.swapAt && rt >= b.swapAt && b.site !== b.swapTo) { b.site = b.swapTo; b.role = 'support'; b.goAt = rt + 5; b.stage = pickSpot(N.stage[b.site], [], 5); if (b.stage < 0) b.stage = N.site[b.site]; b.route = routeFor(a, b.stage, newCost(0.8), false); b.ri = 0; b.entry = pickSpot(N.post[b.site], [], 4); b.plantCell = plantCellFor(b.site); b.swapAt = 0; }
     if (b.role === 'lurk' && !b.lurkDone && rt >= b.goAt) { b.lurkDone = true; b.site = b.lurkSite || b.site; b.stage = pickSpot(N.stage[b.site], [], 5); if (b.stage < 0) b.stage = N.site[b.site]; b.route = routeFor(a, b.stage, newCost(1.4), true); b.ri = 0; b.entry = pickSpot(N.post[b.site], [], 4); b.goAt = rt + 6; b.role = 'support'; }
     while (b.ri < b.route.length - 1 && reached(a, b.route[b.ri], 1.8)) b.ri++;
     const last = b.route.length ? b.route[b.route.length - 1] : b.stage;
@@ -1630,7 +1641,7 @@ function smartThink(a, b) {
       GS.switched = true; const cost = newCost(1);
       for (const o of GS.actors) if (o.alive && o.brain && o.side === 0 && o.brain.site === X && o.brain.role !== 'lurk') {
         const ob = o.brain; ob.site = Y; ob.stage = pickSpot(N.stage[Y], [], 6); if (ob.stage < 0) ob.stage = N.site[Y];
-        ob.route = routeFor(o, ob.stage, cost, true); ob.ri = 0; ob.entry = pickSpot(N.post[Y], [], 4); ob.plantCell = pick(SITES[Y].plant); ob.goAt = Math.max(ob.goAt, rt + 8 + (ob.goAt - GS.strat.goAt));
+        ob.route = routeFor(o, ob.stage, cost, true); ob.ri = 0; ob.entry = pickSpot(N.post[Y], [], 4); ob.plantCell = plantCellFor(Y); ob.goAt = Math.max(ob.goAt, rt + 8 + (ob.goAt - GS.strat.goAt));
       }
       GS.plan = Y; GS.firstGo = Math.min(...GS.actors.filter((o) => o.alive && o.brain && o.side === 0 && o.brain.site).map((o) => o.brain.goAt)) - 0.1;
       const st = (GS.stat ||= {}); st.switches = (st.switches || 0) + 1;
@@ -1725,7 +1736,7 @@ function setupBrains() {
     const b = a.brain = newBrain(a, i);
     if (i >= 2 && atk.length >= 3 && Math.random() < (i === 3 ? 0.5 : 0.25)) { b.lurk = true; b.lurkSpot = pick(lurkSpots); }
     b.route = (Math.random() < 0.5 ? rs[0] : rs[1]).slice();
-    b.plantCell = pick(SITES[plan].plant);
+    b.plantCell = plantCellFor(plan);
   });
   // defenders: a different setup every round (2-2-1, 3-1-1, 1-3-1 ...) and different spots
   const aH = shuffle(SITES.a.holdsDef.slice()), bH = shuffle(SITES.b.holdsDef.slice()), mH = shuffle(MID_HOLDS.slice());
@@ -1872,7 +1883,7 @@ function botThink(a, b) {
   // plant / defuse
   const c = GS.core;
   if (GS.mode === 'comp' && GS.state === 'live' && !a.act) {
-    if (goal.plant && c.carrier === a && reached(a, b.plantCell, 0.9) && 'ab'.includes(zoneAt(a.pos.x, a.pos.z)) && !b.vis) a.act = { type: 'plant', t: 0, need: 3.2 };
+    if (goal.plant && c.carrier === a && reached(a, b.plantCell, 0.9) && plantSite(a.pos.x, a.pos.z) && !b.vis) a.act = { type: 'plant', t: 0, need: 3.2 };
     if (goal.defuse && c.state === 'planted' && Math.hypot(a.pos.x - c.pos.x, a.pos.z - c.pos.z) < 1.3 && (!b.vis || c.timer < (a.kit ? 6 : 11))) a.act = { type: 'defuse', t: 0, need: a.kit ? 5 : 10 };
     const dc = Math.hypot(a.pos.x - c.pos.x, a.pos.z - c.pos.z);
     if (goal.defuse && a.nades.smoke && !c.smoked && !a.act && dc > 3 && dc < 11 && Math.random() < 0.15 + 0.5 * dd.team) { c.smoked = true; lob(a, c.pos, 'smoke'); }
@@ -2302,7 +2313,7 @@ function updatePlayer(dt) {
   }
   // E: plant / defuse / pickup
   const c = GS.core;
-  const site = zoneAt(P.pos.x, P.pos.z);
+  const site = plantSite(P.pos.x, P.pos.z);
   let hint = '';
   if (GS.mode === 'comp' && (GS.state === 'live')) {
     if (P.side === 0 && c.carrier === P && (site === 'a' || site === 'b') && P.onGround) {
@@ -2315,6 +2326,10 @@ function updatePlayer(dt) {
     }
   }
   if (P.act && !keys.KeyE) P.act = null;
+  if (!hint && GS.mode === 'comp' && GS.state === 'live' && P.side === 0 && c.carrier === P && !P.act) {   // carrying the bomb but not at a site yet: say so when a site is close
+    hint = 'Take the bomb to site A or B, then hold E to plant';
+    for (const k of ['a', 'b']) { const s = SITES[k]; if (Math.hypot(P.pos.x - s.center[0] * CS, P.pos.z - s.center[1] * CS) < 24) hint = `Walk into site ${k.toUpperCase()} to plant the bomb`; }
+  }
   if (!hint && !P.act) {
     let near = null, nd = 1.8;
     for (const d of GS.drops) { const dd = Math.hypot(d.g.position.x - P.pos.x, d.g.position.z - P.pos.z); if (dd < nd) { nd = dd; near = d; } }
@@ -2374,7 +2389,7 @@ function updateActorTimers(a, dt) {
     else if (a.act.type === 'defuse' && (c.state !== 'planted' || a.pos.distanceTo(c.pos) > 2)) a.act = null;
     if (a.act && a.act.t >= a.act.need && MP.role !== 'client') {
       if (a.act.type === 'plant') {
-        c.state = 'planted'; c.carrier = null; c.pos.set(a.pos.x, a.pos.y, a.pos.z); c.site = zoneAt(a.pos.x, a.pos.z); c.timer = BOMB_TIME; c.beepT = 0; c.rot = a.yaw; c.plantedAt = GS.time;
+        c.state = 'planted'; c.carrier = null; c.pos.set(a.pos.x, a.pos.y, a.pos.z); c.site = plantSite(a.pos.x, a.pos.z) || zoneAt(a.pos.x, a.pos.z); c.timer = BOMB_TIME; c.beepT = 0; c.rot = a.yaw; c.plantedAt = GS.time;
         { const fx = -Math.sin(a.yaw) * 0.75, fz = -Math.cos(a.yaw) * 0.75; if (!blocked(a.pos.x + fx, a.pos.z + fz, a.pos.y)) { c.pos.x += fx; c.pos.z += fz; } }   // it lies on the floor just in front of the planter
         addMoney(a, 300, 'plant'); SFX.plant(); SFX.armed(c.pos); if (MP.role === 'host') MPH.event('plant'); banner('BOMB PLANTED', `Site ${c.site.toUpperCase()} · ${BOMB_TIME} seconds`, '#ff9a3d', 2200);
         for (const b of GS.actors) if (b.brain) b.brain.goal = -1;
@@ -2447,13 +2462,13 @@ function updateCore(dt) {
   }
   // execute decision for attackers
   if (NB && GS.state === 'live' && MP.role !== 'client') {
-    if (!GS.allIn && (GS.roundT < 38 || (c.carrier && c.carrier.human && c.carrier.alive && 'ab'.includes(zoneAt(c.carrier.pos.x, c.carrier.pos.z))))) GS.allIn = true;
+    if (!GS.allIn && (GS.roundT < 38 || (c.carrier && c.carrier.human && c.carrier.alive && plantSite(c.carrier.pos.x, c.carrier.pos.z)))) GS.allIn = true;
     if (!GS.execute && (GS.allIn || rtNow() >= (GS.firstGo || 40))) { GS.execute = true; for (const a of GS.actors) if (a.alive && a.side === 0 && a.brain) a.brain.goal = -1; }
   } else if (GS.state === 'live' && !GS.execute && MP.role !== 'client') {
     const atk = GS.actors.filter((a) => a.alive && a.side === 0 && a.brain && !a.brain.lurk);
     const waiting = atk.filter((a) => a.brain.cur && a.brain.cur.stage && reached(a, a.brain.cur.cell, 3.2)).length;
     const elapsed = GS.time - GS.roundStart - GS.phaseT;
-    if ((waiting >= Math.min(3, atk.length) && waiting > 0) || GS.roundT < 62 || (c.carrier && c.carrier.human && c.carrier.alive && 'ab'.includes(zoneAt(c.carrier.pos.x, c.carrier.pos.z))) || elapsed > 70 || elapsed > GS.rushAt) {
+    if ((waiting >= Math.min(3, atk.length) && waiting > 0) || GS.roundT < 62 || (c.carrier && c.carrier.human && c.carrier.alive && plantSite(c.carrier.pos.x, c.carrier.pos.z)) || elapsed > 70 || elapsed > GS.rushAt) {
       GS.execute = true; for (const a of atk) a.brain.goal = -1;
     }
   }
@@ -2897,7 +2912,7 @@ function botTakeover(a) {
   if (NB && GS.mode === 'comp') { adoptBot(a); return; }
   if (GS.mode === 'comp') {
     b.home = pick(a.side === 1 ? [...SITES.a.holdsDef, ...SITES.b.holdsDef, ...MID_HOLDS] : SITES[GS.plan].holdsAtk); b.homeSite = null;
-    b.route = ROUTES[GS.plan][0].slice(); b.plantCell = pick(SITES[GS.plan].plant);
+    b.route = ROUTES[GS.plan][0].slice(); b.plantCell = plantCellFor(GS.plan);
   }
 }
 
@@ -2908,7 +2923,7 @@ function syncSeg() {
     const k = seg.dataset.k; seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(S[k]) === b.dataset.v));
   });
   const comp = S.mode === 'comp';
-  $('optSide').style.display = comp ? '' : 'none';
+  $('optSide').style.display = comp ? '' : 'none'; $('optRank').style.display = comp ? '' : 'none';
   $('optDiff').style.display = S.mode === 'range' ? 'none' : '';
   $('optLen').style.display = S.mode === 'range' ? 'none' : '';
   const lsm = $('optLen').querySelectorAll('small'), dm = S.mode === 'dm';
@@ -2961,8 +2976,8 @@ $('quit').onclick = toMenu; $('toMenu').onclick = toMenu;
 syncSeg();
 $('loading').remove();
 
-if (DEBUG) window.__cs = { endMatch, RANK, rankInfo, settleRank, rankEndHTML, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
+if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
 
 MPH = createOnline({ GS, MP, S, WD, $, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
-  makeSoldier, botTakeover, shotDamage, undoBuy, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
+  makeSoldier, botTakeover, shotDamage, undoBuy, plantSite, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
   spawnNade, netDetonate, remoteShotFx, killFx, hurtLocal, roundEndFx, roundBannerLocal, netEvent, endMatch, moneyPop, reviveLocal, vmRefresh, renderBuy, clearWorld, sleeveTint });
