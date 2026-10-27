@@ -1,9 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=107';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=107';
-import { createOnline } from './online.js?v=107';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=107';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=109';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=109';
+import { createOnline } from './online.js?v=109';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=109';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -323,7 +323,7 @@ function gunOK(id) {
 }
 const pickGun = (list) => { const l = list.filter(gunOK); return l.length ? pick(l) : null; };
 const GEAR = {
-  kevlar: { name: 'Kevlar Vest', price: 650, desc: '100 armor (body)' },
+  kevlar: { name: 'Kevlar Vest', price: 650, desc: '100 armor: soaks about a third of body damage' },
   helm: { name: 'Vest + Helmet', price: 1000, desc: 'Armor + head protection' },
   kit: { name: 'Defuse Kit', price: 400, desc: 'Defuse in 5 s (Wardens only)' },
 };
@@ -631,7 +631,10 @@ function damage(v, amt, att, part, wid, dir) {
   }
   let dmg = amt;
   const armored = v.armor > 0 && part !== 'legs' && (part !== 'head' || v.helmet) && wid !== 'bomb';
-  if (armored) { const pen = (WD[wid] && WD[wid].pen) || 0.5; const real = dmg * pen; v.armor = Math.max(0, v.armor - (dmg - real) * 0.5); dmg = real; }
+  if (armored) {   // the vest soaks bullet damage; rifles, SMGs and LMGs (pen 0.6 to 0.87) lose another 12% to a vest on the body, while snipers and hand cannons (0.87+) punch through and pistols were already weak against it
+    let pen = (WD[wid] && WD[wid].pen) || 0.5; if (part !== 'head' && pen >= 0.6 && pen < 0.87) pen -= 0.12;
+    const real = dmg * pen; v.armor = Math.max(0, v.armor - (dmg - real) * 0.5); dmg = real;
+  }
   dmg = Math.min(dmg, v.hp);
   v.hp -= dmg; v.tagT = Math.max(v.tagT, (WD[wid] && WD[wid].stagger) || 0.3);
   if (att && att !== v) att.dmg += dmg;
@@ -642,7 +645,7 @@ function damage(v, amt, att, part, wid, dir) {
   }
   if (v.isPlayer) {
     hurtFx(dmg, att, dir);
-    if (part === 'head' && v.helmet) SFX.armorHit(); else SFX.hurt();
+    if ((part === 'head' && v.helmet) || (armored && dmg < amt * 0.9)) SFX.armorHit(); else SFX.hurt();   // the vest clanks when it takes a hit
     v.pitch += 0.6 * DEG * Math.min(3, dmg / 20);
   } else if (v.remote && MPH) MPH.hurt(v, dmg, att, part === 'head');
   if (v.brain && att && att !== v) { v.brain.hurtT = GS.time; v.brain.hurtBy = att; v.brain.heardPos = att.pos.clone(); v.brain.heardT = GS.time; }
@@ -2978,6 +2981,6 @@ $('loading').remove();
 
 if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
 
-MPH = createOnline({ GS, MP, S, WD, $, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
+MPH = createOnline({ GS, MP, S, WD, $, get worldW() { return W * CS; }, get worldH() { return H * CS; }, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
   makeSoldier, botTakeover, shotDamage, undoBuy, plantSite, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
   spawnNade, netDetonate, remoteShotFx, killFx, hurtLocal, roundEndFx, roundBannerLocal, netEvent, endMatch, moneyPop, reviveLocal, vmRefresh, renderBuy, clearWorld, sleeveTint });

@@ -16,7 +16,6 @@ export function createOnline(X) {
   const cleanName = (s) => String(s || '').replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Player';
   const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
   const LOCAL = new URLSearchParams(location.search).get('net') === 'local';
-  const MAXW = 90, MAXH = 82;
 
   let net = null, L = null, myPid = 0, lastAct = '', accSnap = 0, accMe = 0, lastSnapT = 0, nidCounter = 0, graceUntil = 0;
   const say = (t, bad) => { const el = $('onMsg'); el.textContent = t || ''; el.style.color = bad ? '#ff8a7a' : '#9dffb0'; };
@@ -131,7 +130,7 @@ export function createOnline(X) {
     switch (d.t) {
       case 'me': {
         if (!a.alive || !Array.isArray(d.p)) return;
-        a.pos.set(clampN(num(d.p[0]), -2, MAXW), clampN(num(d.p[1]), -1, 30), clampN(num(d.p[2]), -2, MAXH));
+        a.pos.set(clampN(num(d.p[0]), -2, X.worldW + 2), clampN(num(d.p[1]), -1, 30), clampN(num(d.p[2]), -2, X.worldH + 2));   // stay inside THIS map (the big maps are well over 100 m wide)
         a.vel.set(num(d.v && d.v[0]), 0, num(d.v && d.v[1])); a.yaw = num(d.y); a.pitch = clampN(num(d.a), -1.6, 1.6);
         const f = d.f | 0; a.crouch = !!(f & 1); a.sprint = !!(f & 2); a.walk = !!(f & 4); a.onGround = !!(f & 8); a.scoped = (f >> 4) & 3;
         const sl = SL[d.s | 0]; if (sl && X.slotOK(a, sl)) a.slot = sl;
