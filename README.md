@@ -2,7 +2,7 @@
 
 # HKugz Games
 
-Free browser games, built by HKugz. Everything runs in your browser: no downloads, no sign-ups, no ads, no tracking.
+Free browser games, built by HKugz. Everything runs in your browser: no downloads, no sign-ups needed, no ads, no tracking.
 
 | Game | Type |
 |---|---|
@@ -25,7 +25,13 @@ Scores and progress are saved only in your own browser (`localStorage`).
 
 ## Play timer (for parents)
 
-An opt-in daily play-time limit for one device. A parent opens `timer/` on the kids' phone, tablet or computer, picks a PIN and a daily limit, and turns it on. The games then show how much time is left, warn at 5 minutes and 1 minute, and send every page to a "time's up" screen when the limit is reached; a parent can add time with the PIN. Nothing is on by default, so nobody else is affected, and nothing is sent anywhere: the timer and the scrambled PIN live in that browser's `localStorage` (key `hktimer`, never included in save codes). It is a nudge, not a lock (clearing site data or using another browser gets around it); Google Family Link, Screen Time or Microsoft Family Safety are the stronger option. Every page loads `assets/playtimer.js` in its `<head>`: add the same tag to any new game page.
+An opt-in daily play-time limit for one device. A parent opens `timer/` on the kids' phone, tablet or computer, picks a PIN and a daily limit, and turns it on. The games then show how much time is left, warn at 5 minutes and 1 minute, and send every page to a "time's up" screen when the limit is reached; a parent can add time with the PIN. Nothing is on by default, so nobody else is affected, and nothing is sent anywhere: the timer and the scrambled PIN live in that browser's `localStorage` (key `hktimer`, never included in save codes). It is a nudge, not a lock (clearing site data or using another browser gets around it); Google Family Link, Screen Time or Microsoft Family Safety are the stronger option. Every page loads `assets/playtimer.js` in its `<head>`: add the same tag to any new game page. Pages with online play also load `assets/friends-config.js` and `assets/hkfriends.js` (the friends panel).
+
+## Friends, accounts and game invites (optional, off until a server is set up)
+
+An optional **Friends** panel on the hub and in Blaster Arena, Fort Fight and Core Strike: make an account (a username and a password, nothing else), add friends by username or friend code, see who is online, and **invite an online friend to your room**. They see the invite on the hub (or inside a game) and press Join, and the game opens already joined to your room (`games/<game>/?join=CODE`). There is **no chat**: an invite is only a game and a 5-letter room code. You can block and report players. No Google, no tracking, and every game works with no account.
+
+GitHub Pages cannot store accounts, so the feature needs the small server in [`server/`](server/README.md) (one Node.js file, no packages, meant for the Ubuntu server). Nothing about friends shows up or is sent until `assets/friends-config.js` names that server. **Before switching it on, a parent should read [`docs/FRIENDS-SAFETY.md`](docs/FRIENDS-SAFETY.md)**: what is stored, what a stranger could do, and what is *not* protected. It also works with the play timer: the timer and "time's up" pages do not load the friends panel, and a joined game is timed like any other page.
 
 ## Running locally
 

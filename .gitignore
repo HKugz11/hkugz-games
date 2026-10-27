@@ -1,0 +1,5 @@
+# the friends server's secrets and saved accounts must never be committed
+server/config.json
+server/data/
+server/*.log
+node_modules/

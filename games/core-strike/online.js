@@ -375,6 +375,17 @@ export function createOnline(X) {
   $('playOnline').onclick = () => { X.initAudio(S.vol); openPanel(); };
   $('toLobby').onclick = () => backToLobby();
 
+  // Friends on the HKugz Games hub (assets/hkfriends.js): publish the room code so a friend can be invited, and an invite link (?join=CODE) opens this room.
+  window.HKRoom = { game: 'core-strike', get code() { return L ? L.code : ''; } };
+  {
+    const j = cleanCode(new URLSearchParams(location.search).get('join'));
+    if (j.length === 5) {
+      try { const u = new URL(location.href); u.searchParams.delete('join'); history.replaceState(null, '', u); } catch (e) {}
+      const unlock = () => X.initAudio(S.vol); addEventListener('pointerdown', unlock, { once: true }); addEventListener('keydown', unlock, { once: true });
+      setTimeout(() => { openPanel(); $('onCode').value = j; join(); }, 300);
+    }
+  }
+
   return { openPanel, leave, hostTick, roundStart, spawn, hurt, killEvent, money, shotFx, nadeEvent, detEvent, banner, event, feedTextEvent, roundEnd, matchEnd,
     mirrorTick, clientTick, claim, clientShot, clientNade, clientBuy, sendLoadout, applySnapshot, isLobbyOpen: () => !$('onlineP').classList.contains('hidden'), L: () => L };
 }

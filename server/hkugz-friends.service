@@ -1,0 +1,23 @@
+# Example systemd unit for the Ubuntu server. See server/README.md.
+# Copy to /etc/systemd/system/hkugz-friends.service, change User and the two paths, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now hkugz-friends
+[Unit]
+Description=HKugz Friends server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=hyrum
+WorkingDirectory=/home/hyrum/hkugz-games/server
+ExecStart=/usr/bin/node /home/hyrum/hkugz-games/server/server.js
+Restart=on-failure
+RestartSec=5
+# the server only needs its own folder
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/hyrum/hkugz-games/server/data
+
+[Install]
+WantedBy=multi-user.target

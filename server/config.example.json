@@ -1,0 +1,13 @@
+{
+  "port": 8787,
+  "host": "0.0.0.0",
+  "dataDir": "./data",
+  "allowedOrigins": ["https://hkugz11.github.io"],
+  "signupCode": "CHANGE-ME-to-a-secret-word",
+  "signupsOpen": true,
+  "maxUsers": 300,
+  "trustProxy": false,
+  "siteDir": "",
+  "tls": { "cert": "", "key": "" },
+  "log": false
+}

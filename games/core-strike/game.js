@@ -2,7 +2,7 @@
 import * as THREE from './three.module.min.js';
 import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=49';
 import { initAudio, setVolume, setListener, SFX } from './audio.js';
-import { createOnline } from './online.js?v=49';
+import { createOnline } from './online.js?v=50';
 import { buildWorld, soldierParts, soldierPartsLite, tpGuns, charMat, lensMats, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=49';
 
 const $ = (id) => document.getElementById(id);

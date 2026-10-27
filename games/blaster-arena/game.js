@@ -422,6 +422,7 @@ let recP = 0, recY = 0, throwCD = 0, spamLock = false, throwAnim = 0, useK = 0, 
 const bots = [], botById = new Map(), projs = [], nades = [], smokes = [], fires = [], remotes = new Map();
 const score = { me: 0, bots: 0 };
 const NET = { role: 'solo', me: 0, net: null, roster: [], code: '' };
+window.HKRoom = { game: 'blaster-arena', get code() { return NET.net ? NET.code : ''; } };   // friends panel (assets/hkfriends.js): the room code to invite friends to
 let M = null;   // the current match (settings + mode state)
 const isHost = () => NET.role !== 'client', isMP = () => NET.role !== 'solo';
 const hex = c => '#' + c.toString(16).padStart(6, '0');
@@ -2399,3 +2400,12 @@ buildBushOverlay();
 window.__ba = { padStep, pad, babyAssist, worldT, aimDir, eyePos, SPAWNS, WAYPOINTS, LOOT_SPOTS, CHEST_SPOTS, getHalf: () => HALF, getMap: () => curMap, labPanels, labAim, labPress, labClick, setBag, gases, projs, detonateC4, triggerC4, giveItem, spawnNade, detonate, slots, brTick, startBattle, endBattle, zgFreeze, zgKick, applySuit, gateTouch, pickZ, S, ARMORS, stealthR, BUSHES, P, bots, W, S, CFG, NET, remotes, step, render, selectWeapon, fire, get state() { return state; }, get M() { return M; }, set mouse(v) { mouseL = v; }, shot: () => { step(0.001); render(); return canvas.toDataURL('image/png'); }, setState: s => state = s, score, world, hitEntity, pickups, pkById, DIFF, keys, inv, ITEMS, nades, smokes, fires, startUse, playerThrow,
   get use() { return use; }, resetInv, spawnNade, detonate, damagePlayer, get resScale() { return resScale; }, camera, humansAlive, stormOutside, slots, reserve, AMMO, giveGun, interact, nearestInteract, selectSlot, lootUseful, chests, promptText, FREE, startReload, hostOpenChest, openChestFx, addChest, nextCh, get curBig() { return curBig; }, giveItem, equipItem, useHeld, dropSlot, itemSlot, afterSpent, GFX, QL, get holdItem() { return holdItem; }, get selSlot() { return selSlot; }, set adsTog(v) { adsTog = v; }, get adsTog() { return adsTog; }, RARITY, applyRarity, rollGun, rollLoot, WDEF, MAPS, MODES, cycleWeapon, invHTML, loadMap, startSolo, hostStart, netHost, netJoin, leaveMatch, buildSnap, applySnap, setCfg, botById, tryCollect, applyLoot, hostGrant, get HALF() { return HALF; }, SPAWNS, WAYPOINTS, LOOT_SPOTS, hostPlayerDied, endHost, checkEnd, hordeStartWave, botsAlive, spawnPlayer, renderer, scene, PADS, PERCHES, padCheck, TREES, treeHidden, SCOPES, updateScopeUI, get myScope() { return myScope; }, set myScope(v) { myScope = v; }, get thermalView() { return thermalView; } };
 requestAnimationFrame(loop);
+// an invite link (?join=CODE) from a friend goes straight into that room
+{
+  const j = cleanCode(QS.get('join'));
+  if (j.length === 5) {
+    try { const u = new URL(location.href); u.searchParams.delete('join'); history.replaceState(null, '', u); } catch (e) {}
+    const unlock = () => audioInit(); addEventListener('pointerdown', unlock, { once: true }); addEventListener('keydown', unlock, { once: true });
+    $('joinCode').value = j; netJoin(j);
+  }
+}

@@ -368,3 +368,14 @@ requestAnimationFrame(loop);
 
 // debug hook for the test runner
 if (DEBUG) window.__ff = { get P() { return P; }, get M() { return M; }, get info() { return info; }, get state() { return state; }, W, PC, world, keys, mouse, cam, aim, step, render, startMode, resumeGame, enterBuild, leaveBuild, CFG, renderer, scene, camera, props, WEAPONS, placeCamera, endMatch, toMenu, MODES, hooks, NET, botUpdate, makeAI, Actor, damageActor, killActor, raycastAll, get hudDirty() { return hudDirty; } };
+
+// friends panel (assets/hkfriends.js): the room code to invite friends to, and an invite link (?join=CODE) that opens that room
+window.HKRoom = { game: 'fort-fight', get code() { return NET.isOnline() ? NET.ON.code : ''; } };
+{
+  const j = NET.cleanCode(new URLSearchParams(location.search).get('join'));
+  if (j.length === 5) {
+    try { const u = new URL(location.href); u.searchParams.delete('join'); history.replaceState(null, '', u); } catch (e) {}
+    const unlock = () => audioInit(); addEventListener('pointerdown', unlock, { once: true }); addEventListener('keydown', unlock, { once: true });
+    $('joinCode').value = j; $('joinBtn').click();
+  }
+}
