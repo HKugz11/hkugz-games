@@ -18,7 +18,7 @@ const DEFAULTS = {
   allowedOrigins: ['https://hkugz11.github.io'],   // websites allowed to call the API from a browser (the games site itself is always allowed)
   signupCode: '',            // if set, nobody can make an account without it (recommended: a closed group of friends)
   signupsOpen: true, maxUsers: 300, ipSignupsPerHour: 5, allSignupsPerHour: 30,
-  requestsPerMinute: 900,    // per IP address. Behind a tunnel every visitor looks like the same address, so this is then one limit for everybody
+  requestsPerMinute: 1500,    // per IP address. Behind a tunnel every visitor looks like the same address, so this is then one limit for everybody
   trustProxy: false,         // true only when a real reverse proxy (nginx, Caddy) in front sets X-Forwarded-For; a plain tunnel does not
   siteDir: '',               // folder of the games site to serve too (optional)
   tls: { cert: '', key: '' }, // paths to a certificate + key to serve https directly

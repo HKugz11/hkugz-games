@@ -7,8 +7,19 @@ a { color: inherit; }
 header.hero { padding: 54px 0 26px; text-align: center; }
 header.hero h1 { margin: 0; font-size: clamp(34px, 6vw, 58px); letter-spacing: -.02em; text-shadow: 0 3px 0 rgba(255, 255, 255, .45); }
 header.hero p { margin: 10px auto 0; max-width: 560px; font-size: 18px; opacity: .8; }
-.badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
-.badge { background: rgba(255, 255, 255, .55); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+/* top of the hub: real buttons in one row, the plain facts as quiet text underneath */
+.toolbar { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+.tbtn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; background: #fff; color: var(--ink); font-weight: 800; font-size: 15px; text-decoration: none; border: 0; border-radius: 14px; cursor: pointer; box-shadow: 0 4px 0 rgba(11, 42, 51, .22), 0 8px 18px rgba(8, 60, 80, .16); transition: transform .12s ease, box-shadow .12s ease; }
+.tbtn:hover { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(11, 42, 51, .22), 0 12px 22px rgba(8, 60, 80, .2); }
+.tbtn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(11, 42, 51, .22); }
+.tbtn:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; }
+.tbtn svg { flex: none; color: var(--accent2); }
+.cnt { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #1bb552; color: #fff; }
+.cnt.new { background: var(--accent); color: #1a0c00; }
+.tbtn[hidden], .cnt[hidden], .tstatus[hidden] { display: none; }
+@media (max-width: 480px) { .toolbar { flex-direction: column; align-items: stretch; max-width: 320px; margin-left: auto; margin-right: auto; } .tbtn { justify-content: center; } }
+.tstatus { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: rgba(11, 42, 51, .12); }
+.facts { margin: 14px auto 0; font-size: 13px; font-weight: 600; opacity: .62; }
 h2.section { margin: 38px 0 14px; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; opacity: .75; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
 .card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; text-decoration: none; display: flex; flex-direction: column; transition: transform .15s ease, box-shadow .15s ease; }

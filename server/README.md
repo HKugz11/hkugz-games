@@ -93,7 +93,7 @@ Run these on the server, in the `server` folder, while the server is running:
 | `allowedOrigins` | the GitHub Pages site | websites whose pages may call the server from a browser (the games site served by this server is always allowed) |
 | `signupCode` | empty | if set, nobody can make an account without it. **Strongly recommended.** |
 | `signupsOpen`, `maxUsers` | `true`, `300` | switch sign-ups off, or cap the number of accounts |
-| `ipSignupsPerHour`, `allSignupsPerHour`, `requestsPerMinute` | `5`, `30`, `900` | rate limits |
+| `ipSignupsPerHour`, `allSignupsPerHour`, `requestsPerMinute` | `5`, `30`, `1500` | rate limits (a page that is on screen asks every 5 seconds) |
 | `trustProxy` | `false` | set `true` only behind a real reverse proxy that sets `X-Forwarded-For` |
 | `siteDir` | empty | serve the games site from this folder too |
 | `tls` | empty | certificate and key paths for HTTPS |
@@ -102,4 +102,4 @@ Run these on the server, in the `server` folder, while the server is running:
 
 ## The API (for reference)
 
-`GET /api/info`, and `POST` (JSON) to `/api/signup`, `/api/login`, `/api/logout`, `/api/poll` (about every 8 seconds from a page that is on screen; it is also how "online" works), `/api/friend/request|respond|cancel|remove`, `/api/block`, `/api/unblock`, `/api/report`, `/api/invite`, `/api/invite/dismiss`, `/api/settings`, `/api/code/reset`, `/api/password`, `/api/account/delete`. Everything after log-in sends `Authorization: Bearer <session token>`. There are no cookies. Answers are JSON; errors look like `{"error": "plain words"}`.
+`GET /api/info`, and `POST` (JSON) to `/api/signup`, `/api/login`, `/api/logout`, `/api/poll` (about every 5 seconds from a page that is on screen, or every 12 seconds from a background tab if pop-up notifications are on; it is also how "online" works), `/api/friend/request|respond|cancel|remove`, `/api/block`, `/api/unblock`, `/api/report`, `/api/invite`, `/api/invite/dismiss`, `/api/settings`, `/api/code/reset`, `/api/password`, `/api/account/delete`. Everything after log-in sends `Authorization: Bearer <session token>`. There are no cookies. Answers are JSON; errors look like `{"error": "plain words"}`.

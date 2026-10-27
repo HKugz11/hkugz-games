@@ -9,6 +9,7 @@ This is the safety note for the optional **accounts, friends and game invites** 
 - You can make an account with a **username and a password**. That is all. No email, no real name, no birthday, no phone number.
 - With an account you can add friends (by their username or their friend code), see which friends are online, and **invite an online friend to a game**. The friend sees the invite on the hub (or inside a game) and can press Join.
 - There is **no chat and no messages** of any kind. An invite is only a game name and a 5-letter room code.
+- When a friend invites you, a popup with a **Join** button appears (and a short chime plays, which you can turn off). **Enter** joins it. If you are already in a game, the first Enter only asks you to press it again, so one stray key can not end your match. You can also turn on **pop-up notifications** in Settings (your browser has to say yes), which show the invite even when the tab is in the background.
 - You can remove a friend, **block** someone, or **report** someone. You can also hide ("appear offline"), switch off being found by username, get a new friend code, change your password, or delete your account.
 
 ## What the server stores
@@ -28,7 +29,9 @@ This is the safety note for the optional **accounts, friends and game invites** 
 
 Nothing is sent to anyone else: no analytics, no ads, no Google, no fonts or scripts from other sites. The only outside service involved is the one the games already use (PeerJS, for introducing players in online games).
 
-On the player's own device the browser keeps the session token in `localStorage` (key `hkfriends`).
+On the player's own device the browser keeps the session token in `localStorage` (key `hkfriends`), the two sound/pop-up choices (`hkfriends_prefs`), and, only for the tab's lifetime, the ids of invites it has already chimed for (`sessionStorage`). Nothing about notifications is stored on the server.
+
+**How often the page talks to the server:** a page that is on screen asks "anything new?" every 5 seconds (3 seconds while the panel is open); that is also how "online" works. A tab in the background says nothing and shows as offline, **unless** the player turned on pop-up notifications: then it asks every 12 seconds so the invite can reach them, and they keep showing as online.
 
 ## What a stranger could do
 
@@ -51,10 +54,11 @@ Assuming the server is set up as recommended (with a **sign-up code**, see `serv
 4. **Rate limits are only as good as the address the server can see.** If the server sits behind a plain tunnel (playit.gg), every visitor looks like the same address, so the "per address" limits become one limit for everybody. That is still a brake on floods, but one attacker could use up the shared allowance and block sign-ups or log-ins for a while. (A wrong-password lock can also be triggered on purpose against one account; it is capped at 15 minutes.) A proper reverse proxy (nginx, Caddy) with `"trustProxy": true` gives real per-address limits.
 5. **No password reset by email**, because there is no email. A forgotten password is fixed by the operator with `node admin.js resetpw NAME`, and the operator has to be sure it really is that person (for example by asking in real life).
 6. **Moderation is one person.** Reports are a list that the operator reads with `node admin.js reports`. Nobody is watching all the time. Please agree who looks at it and how often (a weekly look is a sensible minimum), and what happens when the operator is away. A report also blocks the person, so the reporter is protected straight away.
-7. **Names are not checked for meaning.** There is a small list of banned words (admin, staff, hkugz and so on) and a phone-number check, not a swear-word filter. Report and ban are the safety net.
-8. **Room codes and in-game names are not part of this system.** After pressing Join, a player is in a normal game room: they can see the other players' in-game names (typed by each player, up to 12 characters) and, because the games connect directly (WebRTC), other players in the room can see their network address. That is how the games already worked, and the games' pages say so.
-9. **Age rules.** The sign-up form asks people to tick "I am 13 or older, or a parent or guardian said it is OK". Anyone can tick it, so it is a reminder and a record of intent, not a check. Whether a username plus friends list for under-13s counts as personal information under US children's privacy law (COPPA) is a question for an adult to settle (the FTC hotline or a lawyer), not something the code can answer.
-10. **Backups and "what if nobody looks after it".** Saved data is one file (`server/data/db.json`, with a copy of the previous save). If the disk dies and nobody made a backup, accounts are lost. If the person running the server stops, the safe shutdown is: set `window.HK_FRIENDS_API = ""` in `assets/friends-config.js` (everything disappears from the site), stop the server and delete `server/data/`.
+7. **A pop-up shows on the screen.** An invite notification contains the friend's username and the game name, and it appears wherever the browser shows notifications (including over a screen share or a shared family computer's screen). Turn it off in Settings on shared devices. The chime is off in Settings too.
+8. **Names are not checked for meaning.** There is a small list of banned words (admin, staff, hkugz and so on) and a phone-number check, not a swear-word filter. Report and ban are the safety net.
+9. **Room codes and in-game names are not part of this system.** After pressing Join, a player is in a normal game room: they can see the other players' in-game names (typed by each player, up to 12 characters) and, because the games connect directly (WebRTC), other players in the room can see their network address. That is how the games already worked, and the games' pages say so.
+10. **Age rules.** The sign-up form asks people to tick "I am 13 or older, or a parent or guardian said it is OK". Anyone can tick it, so it is a reminder and a record of intent, not a check. Whether a username plus friends list for under-13s counts as personal information under US children's privacy law (COPPA) is a question for an adult to settle (the FTC hotline or a lawyer), not something the code can answer.
+11. **Backups and "what if nobody looks after it".** Saved data is one file (`server/data/db.json`, with a copy of the previous save). If the disk dies and nobody made a backup, accounts are lost. If the person running the server stops, the safe shutdown is: set `window.HK_FRIENDS_API = ""` in `assets/friends-config.js` (everything disappears from the site), stop the server and delete `server/data/`.
 
 ## Questions to go through together
 

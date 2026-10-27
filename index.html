@@ -6,9 +6,9 @@
 <title>HKugz Games</title>
 <script src="assets/playtimer.js"></script>
 <script src="assets/friends-config.js"></script>
-<script src="assets/hkfriends.js" defer></script>
+<script src="assets/hkfriends.js?v=3" defer></script>
 <meta name="description" content="Free browser games built by HKugz: a 3D robot shooter, a building shooter, a kart racer, a tower defense game, an obstacle race, mini golf, a 3D obby tower, classics like Snake and Breakout, and original one-button games.">
-<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/site.css?v=2">
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="assets/logo.png"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="theme-color" content="#42d7f1">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
@@ -23,7 +23,12 @@
     <img class="logo" src="assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
     <h1>HKugz Games</h1>
     <p>Free games you can play right here in your browser. No downloads, no sign-ups needed.</p>
-    <div class="badges"><span class="badge">Works on phones</span><span class="badge">Saves your best scores</span><span class="badge">Made from scratch</span><a class="badge" href="save/" style="text-decoration:none;color:inherit">Save codes</a><a class="badge" id="hkFriendsBtn" href="#" hidden style="text-decoration:none;color:inherit;cursor:pointer">Friends</a><span class="badge" id="hkTimerBadge" hidden></span></div>
+    <div class="toolbar">
+      <a class="tbtn" id="hkFriendsBtn" href="#" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.2c2.9-.3 4.9 1.2 4.9 4.3"/></svg><span>Friends</span><b class="cnt" id="hkFriendsOn" hidden></b><b class="cnt new" id="hkFriendsNew" hidden></b></a>
+      <a class="tbtn" href="save/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><path d="M8 21v-7h8v7"/></svg><span>Save codes</span></a>
+    </div>
+    <span class="tstatus" id="hkTimerBadge" hidden></span>
+    <p class="facts">Works on phones &middot; Saves your best scores &middot; Made from scratch</p>
   </header>
 
   <h2 class="section">Featured</h2>
