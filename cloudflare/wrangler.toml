@@ -15,3 +15,5 @@ new_sqlite_classes = ["World"]
 # Safe to keep in the public repo. The SIGNUP_CODE and ADMIN_TOKEN secrets are NOT here: they are set with `wrangler secret put`.
 [vars]
 ALLOWED_ORIGINS = "https://hkugz11.github.io"
+# Names the owner of the site may take even though they contain a blocked word (admin, hkugz, ...). Exact name only, and the first person to sign up with it gets it.
+OWNER_NAMES = "hkugz"

@@ -64,6 +64,29 @@ Set `"siteDir": ".."` in `config.json` and restart. The server then serves the h
 
 Moving the site off `hkugz11.github.io` to its own address also fixes one weak spot named in the safety note (item 3: other code on the same address can read the log-in).
 
+## Moving from Cloudflare to the Ubuntu server
+
+Both versions run the same rules file and keep the same data, so the accounts can be carried over. Nobody has to sign up again, and everybody keeps their password, friends, blocks and friend code. The only thing that resets is that everybody has to **log in once more**.
+
+1. **Set the Ubuntu server up first** (the sections above) and get `https://NAME:PORT/api/info` working, but do not point the hub at it yet.
+2. **Save the accounts from Cloudflare** (on the computer that has this repo, Command Prompt; it finds the Cloudflare server and the admin secret by itself):
+   ```
+   cd /d C:\Users\hyrum\games-site\server
+   node admin.js export friends-export.json
+   ```
+   Copy `friends-export.json` to the Ubuntu server (a USB stick, `scp`, ...). It holds everybody's scrambled passwords and friend lists, so keep it private, never commit it (it is in `.gitignore`), and delete it after the move.
+3. **Put it into the Ubuntu server.** On the server: `sudo systemctl stop hkugz-friends`, then
+   ```
+   cd ~/hkugz-games/server
+   node admin.js import ~/friends-export.json
+   sudo systemctl start hkugz-friends
+   ```
+   (`import` refuses to overwrite accounts that are already there unless you add `--force`; a copy is kept as `data/db.json.before-import`.) `node admin.js users` should now list everybody.
+4. **Switch the hub over.** Set `window.HK_FRIENDS_API` in `assets/friends-config.js` to the Ubuntu address, commit and push.
+5. Anything people did on Cloudflare after step 2 is not in the copy, so do steps 2 to 4 quickly, or close sign-ups first with `node admin.js signups close` and open them again on the new server.
+
+The sign-up code is not part of the export: set `signupCode` in the new `config.json`.
+
 ## Looking after it
 
 Run these on the server, in the `server` folder, while the server is running:
@@ -99,6 +122,7 @@ Run these on the server, in the `server` folder, while the server is running:
 | `tls` | empty | certificate and key paths for HTTPS |
 | `log` | `false` | log a line for each sign-up (never IPs or passwords) |
 | `blockedNames` | admin, staff, ... | words that may not appear in a username |
+| `ownerNames` | empty | exact names that are allowed even though they contain a blocked word, for example `["hkugz"]` so the person who runs the site can have it (first come, first served) |
 
 ## The API (for reference)
 

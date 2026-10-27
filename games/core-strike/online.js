@@ -1,5 +1,5 @@
 // Core Strike online play.
-//   * The HOST runs the match: bots, rounds, money, the core, grenades and all damage.
+//   * The HOST runs the match: bots, rounds, money, the bomb, grenades and all damage.
 //   * Everyone else is a CLIENT: they move and aim on their own machine, send what they shoot, and
 //     draw the match from the snapshots the host sends 20 times a second.
 //   * Data goes peer-to-peer (WebRTC through PeerJS). PeerJS Cloud is only used to introduce players.
@@ -177,7 +177,7 @@ export function createOnline(X) {
     const part = d.p === 'head' ? 'head' : d.p === 'legs' ? 'legs' : 'body';
     let dmg;
     if (def.melee) dmg = clampN(num(d.a), 1, 200);
-    else dmg = part === 'head' ? Math.max(def.dmg * 4, 400) : def.dmg * Math.pow(def.range, dist / 10) * (part === 'legs' ? 0.75 : 1);
+    else dmg = X.shotDamage(def, part, dist);
     const dir = X.V3(v.pos.x - k.pos.x, 0, v.pos.z - k.pos.z).normalize();
     X.damage(v, dmg, k, part, wid, dir);
   }
@@ -294,7 +294,7 @@ export function createOnline(X) {
     P.pos.set(num(d.sp[0]), 0, num(d.sp[1])); P.vel.set(0, 0, 0); P.yaw = num(d.sp[2]); P.pitch = 0;
     X.reviveLocal(); graceUntil = GS.time + 0.7;
     X.roundBannerLocal(!!d.half, !!d.last, !!d.match);
-    if (d.core === P.idx) setTimeout(() => X.toast('You carry the CORE — hold E on a site to plant'), 2500);
+    if (d.core === P.idx) setTimeout(() => X.toast('You carry the BOMB — hold E on a site to plant'), 2500);
   }
 
   // ----------------------------------------------------------------------- snapshots (client)
@@ -305,7 +305,7 @@ export function createOnline(X) {
     GS.score = [m.sc[0] | 0, m.sc[1] | 0]; GS.loss = [m.ls[0] | 0, m.ls[1] | 0]; GS.execute = !!m.ex; GS.plan = m.pl === 'b' ? 'b' : 'a';
     const c = GS.core; const prevCarrier = c.carrier;
     c.state = CST[m.c[0]] || 'none'; c.carrier = m.c[1] >= 0 ? GS.actors[m.c[1]] || null : null; c.pos.set(num(m.c[2]), num(m.c[3]), num(m.c[4])); c.timer = num(m.c[5]); c.site = m.c[6] || null;
-    if (c.carrier === P && prevCarrier !== P) X.toast('You picked up the CORE');
+    if (c.carrier === P && prevCarrier !== P) X.toast('You picked up the BOMB');
     for (let i = 0; i < GS.actors.length && i < m.a.length; i++) {
       const a = GS.actors[i], t = m.a[i], f = t[7] | 0, alive = !!(f & 1);
       if (a.side !== (t[17] | 0)) { a.side = t[17] | 0; X.makeSoldier(a); if (a === P) X.sleeveTint(); }
@@ -316,7 +316,7 @@ export function createOnline(X) {
         if (!alive && P.alive && GS.time > graceUntil) { P.alive = false; X.killFx(P, GS.killer || null, 'p9', false, true); }
         continue;
       }
-      a.hp = t[5]; a.crouch = !!(f & 2); a.sprint = !!(f & 4); a.onGround = !!(f & 32); a.scoped = (f >> 8) & 3;
+      a.hp = t[5]; a.actVis = (f & 64) ? 'plant' : (f & 128) ? 'defuse' : ''; a.crouch = !!(f & 2); a.sprint = !!(f & 4); a.onGround = !!(f & 32); a.scoped = (f >> 8) & 3;
       const nx = t[0], ny = t[1], nz = t[2];
       if (alive && (!a.alive || a.tx === undefined || Math.hypot(nx - a.pos.x, nz - a.pos.z) > 8)) { a.pos.set(nx, ny, nz); a.tx = nx; a.tz = nz; a.ty = ny; a.vel.set(0, 0, 0); }
       else if (alive) { a.vel.set((nx - a.tx) / dtS, 0, (nz - a.tz) / dtS); a.tx = nx; a.ty = ny; a.tz = nz; }

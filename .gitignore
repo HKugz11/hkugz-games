@@ -7,3 +7,6 @@ cloudflare/.dev.vars
 cloudflare/.wrangler/
 cloudflare/node_modules/
 cloudflare/.admin-token
+friends-export-*.json
+server/friends-export-*.json
+cloudflare/friends-export-*.json

@@ -1,9 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=61';
-import { initAudio, setVolume, setListener, SFX } from './audio.js';
-import { createOnline } from './online.js?v=51';
-import { buildWorld, soldierParts, soldierPartsLite, tpGuns, charMat, lensMats, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=61';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=101';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=101';
+import { createOnline } from './online.js?v=101';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=101';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -201,38 +201,58 @@ const muzzleLight = new THREE.PointLight(0xffc060, 0, 9); scene.add(muzzleLight)
 const boomLight = new THREE.PointLight(0xffa040, 0, 20); scene.add(boomLight);
 
 // ---------------- weapons ----------------
-function pattern(n, climb, sway) {
-  const out = [[0, 0]]; let p = 0, y = 0;
-  for (let i = 1; i < n + 2; i++) {
-    if (i < 10) { p += climb * (1 - i * 0.045); y += Math.sin(i * 1.7) * 0.06 * sway; }
-    else { p += climb * 0.06; y += ((Math.floor((i - 10) / 7) % 2) ? 1 : -1) * sway * 0.38; }
-    out.push([p, y]);
-  }
+// Every gun has its OWN spray pattern, the same every time, so you can learn it: [pitch up, yaw] in degrees for the Nth bullet of a spray.
+function seeded(id) { let h = 2166136261; for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; }; }
+const PATK = {
+  ak: (i, c, s) => [c * Math.min(i, 10) * (1 - 0.04 * Math.min(i, 10)) + 0.05 * c * Math.max(0, i - 10), s * 1.2 * Math.sin((i - 2) * 0.45) * clamp((i - 2) / 4, 0, 1)],   // hard climb, then it snakes
+  m4: (i, c, s) => [c * Math.min(i, 7) * (1 - 0.05 * Math.min(i, 7)) + 0.03 * c * Math.max(0, i - 7), s * (0.07 * Math.min(i, 12) + 0.35 * Math.sin(i * 0.33))],   // short climb, drifts right a little
+  burst: (i, c, s) => [c * (Math.floor(i / 3) * 1.1 + (i % 3) * 0.35), s * 0.7 * Math.sin(Math.floor(i / 3) * 1.3 + (i % 3) * 0.4)],   // every burst kicks up and swings
+  smg: (i, c, s, r) => [c * Math.min(i, 12) * 0.7, s * 3 * (r() - 0.5)],   // low kick, jittery sideways
+  sweep: (i, c, s) => [c * Math.min(i, 15) * 0.5, s * 2.4 * Math.sin(i * 0.3) * clamp(i / 8, 0, 1)],   // wide sweeping left and right
+  jitter: (i, c, s, r) => [c * Math.min(i, 10) * 0.6, s * 5 * (r() - 0.5)],   // loose and random
+  lmg: (i, c, s) => [c * Math.min(i, 25) * (0.5 - 0.008 * Math.min(i, 25)), s * (0.4 + 0.05 * i) * Math.sin(i * 0.18)],   // calm at first, then it wanders more and more
+  tap: (i, c) => [c * i * 0.8, 0],   // pistols: a little kick per shot
+  cannon: (i, c, s) => [c * i, s * 0.4 * (i % 2 ? 1 : -1)],
+  ghost: (i, c, s) => [c * Math.min(i, 8) * 0.6, s * 0.35 * Math.sin(i * 0.9)],   // light and quiet: a small climb and a gentle weave   // big single kicks
+};
+function pattern(def, id) {
+  const n = def.mag, r = seeded(id), f = PATK[def.patk] || PATK.tap, out = [[0, 0]];
+  for (let i = 1; i < n + 2; i++) out.push(f(i, def.recoil * 0.5, def.recoil, r));
   return out;
 }
+// new fields: auto (hold to fire) · burst + burstGap (bullets per trigger pull) · shell (pump guns load one shell at a time and can fire mid-reload) · spin (LMG winds up) · bloom (spread grows the longer you spray)
+// first (first bullet of a spray is extra accurate) · runGun (can shoot straight out of a sprint) · stagger (seconds the target is slowed) · suppress (bullets that miss still rattle enemies) · draw (seconds to take it out) · settle (scope wobble time)
 const WD = {
   knife: { name: 'Karambit', slot: 'knife', melee: true, speed: 7.0, reward: 1500 },
-  p9: { name: 'P-9 Classic', slot: 'sec', price: 200, dmg: 30, rpm: 400, mag: 12, res: 120, reload: 2.1, speed: 6.8, inacc: 0.55, moveInacc: 2.2, airInacc: 7, pen: 0.47, range: 0.9, recoil: 1.2, rec: 6, reward: 300, tier: 0, snd: [2900, 0.11, 0.9], acc: '#2f7f9e', desc: 'Free starter pistol. Fast taps.' },
-  viper: { name: 'Viper .50', slot: 'sec', price: 700, dmg: 53, rpm: 267, mag: 7, res: 35, reload: 2.2, speed: 6.6, inacc: 0.7, moveInacc: 4, airInacc: 9, pen: 0.93, range: 0.93, recoil: 3.2, rec: 3.5, reward: 300, tier: 1, snd: [1700, 0.26, 1.5], acc: '#ffd04a', desc: 'Hand cannon. Headshot = one tap.' },
-  buzz: { name: 'Buzz SMG', slot: 'prim', price: 1250, dmg: 26, rpm: 857, auto: true, mag: 30, res: 120, reload: 2.3, speed: 6.6, inacc: 0.9, moveInacc: 1.8, airInacc: 6, pen: 0.6, range: 0.85, recoil: 0.5, rec: 10, reward: 600, tier: 2, snd: [3400, 0.08, 0.7], acc: '#6f7f3a', desc: 'Runs fast, shoots fast. $600 per kill.' },
-  thumper: { name: 'Thumper', slot: 'prim', price: 1100, dmg: 22, pellets: 9, cone: 3.8, rpm: 70, mag: 7, res: 32, reload: 2.8, speed: 6.3, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.75, range: 0.6, recoil: 4, rec: 2.5, reward: 900, tier: 2, snd: [1300, 0.34, 1.7], acc: '#7a3340', desc: 'Shotgun. Deadly up close. $900 per kill.' },
-  raptor: { name: 'Raptor AR', slot: 'prim', price: 2700, dmg: 36, rpm: 600, auto: true, mag: 30, res: 90, reload: 2.5, speed: 6.0, inacc: 0.3, moveInacc: 5.5, airInacc: 10, pen: 0.775, range: 0.98, recoil: 1.0, rec: 7, reward: 300, tier: 3, snd: [2000, 0.17, 1.2], acc: '#b0662e', desc: 'Hard hitter. Headshot = one tap.' },
-  sentinel: { name: 'Sentinel AR', slot: 'prim', price: 2900, dmg: 33, rpm: 666, auto: true, mag: 25, res: 75, reload: 3.0, speed: 6.1, inacc: 0.24, moveInacc: 4.8, airInacc: 10, pen: 0.7, range: 0.97, recoil: 0.8, rec: 7.5, reward: 300, tier: 3, snd: [1300, 0.1, 0.8], acc: '#3b6fa8', desc: 'Accurate, easy spray, quiet.', quiet: true },
-  longbow: { name: 'Longbow', slot: 'prim', price: 4750, dmg: 115, rpm: 41, mag: 5, res: 30, reload: 3.6, speed: 5.2, inacc: 6, scopedInacc: 0.03, moveInacc: 9, airInacc: 15, pen: 0.975, range: 0.995, recoil: 5, rec: 2, scope: true, reward: 100, tier: 4, snd: [1100, 0.5, 2.1], acc: '#4f5b3c', desc: 'Sniper. One shot to the body. Right-click to scope.' },
-  tec: { name: 'Rattler', slot: 'sec', price: 500, dmg: 27, rpm: 520, mag: 24, res: 120, reload: 2.2, speed: 6.7, inacc: 0.8, moveInacc: 1.3, airInacc: 6, pen: 0.5, range: 0.85, recoil: 0.9, rec: 8, reward: 300, tier: 1, snd: [3000, 0.1, 0.8], acc: '#a8793a', desc: 'Machine pistol. Fast, loose, great on the move.' },
-  revolver: { name: 'Peacemaker', slot: 'sec', price: 650, dmg: 86, rpm: 115, mag: 6, res: 24, reload: 3.2, speed: 6.5, inacc: 0.5, moveInacc: 6, airInacc: 10, pen: 0.95, range: 0.96, recoil: 5.2, rec: 2.2, reward: 300, tier: 1, snd: [1500, 0.32, 1.9], acc: '#b8913f', desc: 'Slow six-shooter. Two body shots kill.' },
-  chopper: { name: 'Chopper', slot: 'prim', price: 1400, dmg: 24, rpm: 800, auto: true, mag: 50, res: 100, reload: 3.4, speed: 6.3, inacc: 0.75, moveInacc: 2.4, airInacc: 7, pen: 0.7, range: 0.88, recoil: 0.55, rec: 9, reward: 300, tier: 2, snd: [3100, 0.09, 0.8], acc: '#556b8a', desc: '50-round SMG. Strong while moving.' },
-  scatter: { name: 'Scatter', slot: 'prim', price: 1800, dmg: 18, pellets: 6, cone: 3.2, rpm: 210, mag: 8, res: 32, reload: 3.2, speed: 6.2, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.62, recoil: 2.8, rec: 3, reward: 900, tier: 2, snd: [1400, 0.3, 1.5], acc: '#6a7a3a', desc: 'Semi-auto shotgun. Fires fast up close.' },
-  carbine: { name: 'Carbine', slot: 'prim', price: 2050, dmg: 29, rpm: 666, auto: true, mag: 25, res: 90, reload: 2.4, speed: 6.2, inacc: 0.28, moveInacc: 4.6, airInacc: 10, pen: 0.68, range: 0.96, recoil: 0.8, rec: 7, reward: 300, tier: 3, snd: [2300, 0.12, 0.9], acc: '#6a6e75', desc: 'Budget rifle. Easy spray.' },
-  ranger: { name: 'Ranger', slot: 'prim', price: 1750, dmg: 88, rpm: 48, mag: 10, res: 30, reload: 2.6, speed: 6.4, inacc: 4, scopedInacc: 0.05, moveInacc: 7, airInacc: 12, pen: 0.9, range: 0.995, recoil: 3.2, rec: 2.5, scope: true, zoomLv: 1, reward: 300, tier: 3, snd: [1400, 0.3, 1.6], acc: '#7a5a34', desc: 'Light bolt sniper. Fast to move. Right-click to scope.' },
-  dmr: { name: 'Marksman', slot: 'prim', price: 3000, dmg: 68, rpm: 190, mag: 12, res: 36, reload: 3.1, speed: 5.8, inacc: 3, scopedInacc: 0.06, moveInacc: 8, airInacc: 13, pen: 0.88, range: 0.99, recoil: 2.4, rec: 4, scope: true, zoomLv: 1, reward: 300, tier: 4, snd: [1500, 0.25, 1.5], acc: '#4e5f43', desc: 'Semi-auto sniper. Two body shots kill.' },
-  lmg: { name: 'Hammer LMG', slot: 'prim', price: 5200, dmg: 32, rpm: 750, auto: true, mag: 100, res: 200, reload: 5.8, speed: 4.9, inacc: 0.5, moveInacc: 7, airInacc: 12, pen: 0.8, range: 0.95, recoil: 1.1, rec: 4, reward: 300, tier: 4, snd: [1700, 0.2, 1.4], acc: '#4a4f3a', desc: '100 rounds. Slow and heavy. Suppresses.' },
+  p9: { name: 'P-9 Classic', slot: 'sec', price: 200, dmg: 30, rpm: 400, mag: 12, res: 120, reload: 2.1, speed: 6.8, inacc: 0.55, moveInacc: 2.2, airInacc: 7, pen: 0.47, range: 0.9, recoil: 1.2, rec: 7, reward: 300, tier: 0, snd: [2900, 0.11, 0.9], acc: '#2f7f9e', patk: 'tap', first: 0.5, draw: 0.22, desc: 'Free starter. Accurate quick taps, pulls out fast.' },
+  viper: { name: 'Viper .50', slot: 'sec', price: 700, dmg: 53, rpm: 240, mag: 7, res: 35, reload: 2.2, speed: 6.6, inacc: 0.7, moveInacc: 4, airInacc: 9, pen: 0.93, range: 0.93, recoil: 3.2, rec: 3, reward: 300, tier: 1, snd: [1700, 0.26, 1.5], acc: '#ffd04a', patk: 'cannon', stagger: 0.55, draw: 0.38, desc: 'Hand cannon. Huge kick, shoves who it hits. Headshot = one tap.' },
+  buzz: { name: 'Buzz SMG', slot: 'prim', price: 1250, dmg: 26, rpm: 857, auto: true, mag: 30, res: 120, reload: 2.3, speed: 6.6, inacc: 0.9, moveInacc: 1.8, airInacc: 6, pen: 0.6, range: 0.85, recoil: 0.5, rec: 10, reward: 600, tier: 2, snd: [3400, 0.08, 0.7], acc: '#6f7f3a', patk: 'smg', runGun: true, draw: 0.25, stagger: 0.2, desc: 'Fastest fire, shoots straight out of a sprint. $600 per kill.' },
+  thumper: { name: 'Thumper', slot: 'prim', price: 1100, dmg: 22, pellets: 9, cone: 2.6, rpm: 70, mag: 7, res: 32, reload: 2.8, shell: 0.55, speed: 6.3, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.75, range: 0.7, recoil: 4, rec: 2.5, reward: 900, tier: 2, snd: [1300, 0.34, 1.7], acc: '#7a3340', patk: 'cannon', stagger: 0.6, draw: 0.5, desc: 'Pump shotgun, tight spread. Loads one shell at a time. $900 per kill.' },
+  raptor: { name: 'Raptor AR', slot: 'prim', price: 2700, dmg: 36, rpm: 600, auto: true, mag: 30, res: 90, reload: 2.5, speed: 6.0, inacc: 0.3, moveInacc: 5.5, airInacc: 10, pen: 0.775, range: 0.98, recoil: 1.0, rec: 7, reward: 300, tier: 3, snd: [2000, 0.17, 1.2], acc: '#b0662e', patk: 'ak', draw: 0.5, desc: 'Hard hitter that kicks and snakes. Headshot = one tap.' },
+  sentinel: { name: 'Sentinel AR', slot: 'prim', price: 2900, dmg: 33, rpm: 666, auto: true, mag: 25, res: 75, reload: 3.0, speed: 6.1, inacc: 0.24, moveInacc: 4.8, airInacc: 10, pen: 0.7, range: 0.97, recoil: 0.8, rec: 7.5, reward: 300, tier: 3, snd: [1300, 0.1, 0.8], acc: '#3b6fa8', patk: 'm4', first: 0.3, draw: 0.5, desc: 'Quiet and laser accurate, easy to control.', quiet: true },
+  longbow: { name: 'Longbow', slot: 'prim', price: 4750, dmg: 115, rpm: 41, mag: 5, res: 30, reload: 3.6, speed: 5.2, inacc: 6, scopedInacc: 0.03, moveInacc: 9, airInacc: 15, pen: 0.975, range: 0.995, recoil: 5, rec: 2, scope: true, settle: 0.4, reward: 100, tier: 4, snd: [1100, 0.5, 2.1], acc: '#4f5b3c', patk: 'cannon', stagger: 0.5, draw: 0.8, desc: 'Heavy sniper: one shot to the body. The scope wobbles a moment after you aim.' },
+  tec: { name: 'Rattler', slot: 'sec', price: 500, dmg: 24, rpm: 600, auto: true, mag: 30, res: 120, reload: 2.2, speed: 6.7, inacc: 0.9, moveInacc: 1.0, airInacc: 6, pen: 0.42, range: 0.8, recoil: 0.9, rec: 8, reward: 300, tier: 1, snd: [3000, 0.1, 0.8], acc: '#a8793a', patk: 'jitter', bloom: 0.09, runGun: true, draw: 0.22, desc: 'Full-auto machine pistol. Sprays wild, great on the move.' },
+  revolver: { name: 'Peacemaker', slot: 'sec', price: 650, dmg: 88, rpm: 110, mag: 6, res: 24, reload: 3.2, speed: 6.5, inacc: 0.5, moveInacc: 6, airInacc: 10, pen: 0.95, range: 0.96, recoil: 5.2, rec: 2.2, reward: 300, tier: 1, snd: [1500, 0.32, 1.9], acc: '#b8913f', patk: 'cannon', stagger: 0.7, draw: 0.45, desc: 'Slow six-shooter that shoves hard. Two body shots kill.' },
+  chopper: { name: 'Chopper', slot: 'prim', price: 1400, dmg: 24, rpm: 800, auto: true, mag: 50, res: 100, reload: 3.4, speed: 6.3, inacc: 0.75, moveInacc: 2.4, airInacc: 7, pen: 0.7, range: 0.88, recoil: 0.55, rec: 9, reward: 300, tier: 2, snd: [3100, 0.09, 0.8], acc: '#556b8a', patk: 'sweep', bloom: 0.06, draw: 0.4, desc: '50 rounds, sweeps wide when you hold it down. Strong while moving.' },
+  scatter: { name: 'Scatter', slot: 'prim', price: 1800, dmg: 18, pellets: 6, cone: 4.8, rpm: 240, mag: 8, res: 32, reload: 3.2, shell: 0.4, speed: 6.2, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.55, recoil: 2.8, rec: 3.5, reward: 900, tier: 2, snd: [1400, 0.3, 1.5], acc: '#6a7a3a', patk: 'cannon', stagger: 0.35, draw: 0.45, desc: 'Semi-auto shotgun, wide spread. Fires fast up close, loads shell by shell.' },
+  carbine: { name: 'Carbine', slot: 'prim', price: 2050, dmg: 31, rpm: 900, burst: 3, burstGap: 0.2, mag: 25, res: 90, reload: 2.4, speed: 6.2, inacc: 0.28, moveInacc: 4.6, airInacc: 10, pen: 0.68, range: 0.96, recoil: 0.9, rec: 6, reward: 300, tier: 3, snd: [2300, 0.12, 0.9], acc: '#6a6e75', patk: 'burst', first: 0.6, draw: 0.4, desc: 'Three-round bursts. Cheap, accurate, great at range.' },
+  ranger: { name: 'Ranger', slot: 'prim', price: 1750, dmg: 88, rpm: 48, mag: 10, res: 30, reload: 2.6, speed: 6.4, inacc: 4, scopedInacc: 0.05, moveInacc: 7, airInacc: 12, pen: 0.9, range: 0.995, recoil: 3.2, rec: 2.5, scope: true, zoomLv: 1, settle: 0.15, reward: 300, tier: 3, snd: [1400, 0.3, 1.6], acc: '#7a5a34', patk: 'cannon', stagger: 0.35, draw: 0.45, desc: 'Light bolt sniper: fast to move, fast to scope.' },
+  dmr: { name: 'Marksman', slot: 'prim', price: 3000, dmg: 68, rpm: 190, mag: 12, res: 36, reload: 3.1, speed: 5.8, inacc: 3, scopedInacc: 0.06, moveInacc: 8, airInacc: 13, pen: 0.88, range: 0.99, recoil: 2.4, rec: 4, scope: true, zoomLv: 1, settle: 0.22, reward: 300, tier: 4, snd: [1500, 0.25, 1.5], acc: '#4e5f43', patk: 'cannon', stagger: 0.3, draw: 0.6, desc: 'Semi-auto sniper: two body shots kill, quick follow-up.' },
+  lmg: { name: 'Hammer LMG', slot: 'prim', price: 5200, dmg: 32, rpm: 750, auto: true, spin: 0.28, mag: 100, res: 200, reload: 5.8, speed: 4.9, inacc: 0.5, moveInacc: 7, airInacc: 12, pen: 0.8, range: 0.95, recoil: 1.1, rec: 4, bloom: 0.04, suppress: true, reward: 300, tier: 4, snd: [1700, 0.2, 1.4], acc: '#4a4f3a', patk: 'lmg', draw: 0.9, desc: 'Winds up before it roars, 100 rounds. Misses still rattle enemies.' },
   he: { name: 'HE Grenade', nade: true, price: 300, speed: 6.9, reward: 300, max: 1, col: '#4caf50', desc: 'Boom. Big damage in a small area.' },
   flash: { name: 'Flashbang', nade: true, price: 200, speed: 6.9, max: 2, col: '#e6f0ff', desc: 'Blinds anyone looking at it.' },
   smoke: { name: 'Smoke', nade: true, price: 300, speed: 6.9, max: 1, col: '#9aa0a6', desc: 'Wall of smoke for 18 s.' },
   molly: { name: 'Molotov', nade: true, price: 400, speed: 6.9, max: 1, reward: 300, col: '#e0742a', desc: 'Bursts into flames. Burns an area for 7 s.' },
+  // ---- five more guns (they sit before 'bomb' so the old guns keep their numbers in online play)
+  trio: { name: 'Trio', slot: 'sec', price: 450, dmg: 24, rpm: 780, burst: 3, burstGap: 0.26, mag: 15, res: 90, reload: 2.1, speed: 6.7, inacc: 0.6, moveInacc: 2.4, airInacc: 7, pen: 0.5, range: 0.88, recoil: 1.1, rec: 7, reward: 300, tier: 1, snd: [2800, 0.11, 0.9], acc: '#d96a4a', patk: 'burst', first: 0.5, draw: 0.24, desc: 'Burst pistol: three quick shots per click. Cheap and accurate.' },
+  duster: { name: 'Duster', slot: 'sec', price: 600, dmg: 24, pellets: 10, cone: 5.5, rpm: 140, mag: 2, res: 20, reload: 2.3, speed: 6.6, inacc: 0.5, moveInacc: 1.5, airInacc: 4, pen: 0.55, range: 0.5, recoil: 4.2, rec: 2.5, reward: 600, tier: 1, snd: [1200, 0.32, 1.7], acc: '#8a5a3a', patk: 'cannon', stagger: 0.6, draw: 0.35, desc: 'Sawed-off double barrel. Two shots, huge spread, deadly up close. $600 per kill.' },
+  brute: { name: 'Brute', slot: 'prim', price: 1650, dmg: 31, rpm: 660, auto: true, mag: 40, res: 120, reload: 3.0, speed: 6.2, inacc: 0.8, moveInacc: 2.2, airInacc: 7, pen: 0.72, range: 0.87, recoil: 0.85, rec: 8, reward: 600, tier: 2, snd: [2400, 0.14, 1.1], acc: '#a8472e', patk: 'smg', draw: 0.4, stagger: 0.25, desc: 'Heavy SMG: slower than the Buzz but hits harder. 40 rounds. $600 per kill.' },
+  ghost: { name: 'Ghost', slot: 'prim', price: 3100, dmg: 30, rpm: 700, auto: true, mag: 30, res: 90, reload: 2.4, speed: 6.4, inacc: 0.26, moveInacc: 4.2, airInacc: 10, pen: 0.66, range: 0.96, recoil: 0.7, rec: 8, reward: 300, tier: 3, snd: [1200, 0.1, 0.7], acc: '#7a5aa8', quiet: true, patk: 'ghost', first: 0.25, draw: 0.35, desc: 'Suppressed rifle: does not give your position away. Light and quick, less damage than the Raptor.' },
+  breaker: { name: 'Breaker', slot: 'prim', price: 2300, dmg: 17, pellets: 8, cone: 4.2, rpm: 300, mag: 8, res: 32, reload: 3.2, shell: 0.38, speed: 6.1, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.6, recoil: 2.6, rec: 4, reward: 900, tier: 3, snd: [1350, 0.28, 1.5], acc: '#d4a02a', patk: 'cannon', stagger: 0.4, draw: 0.45, desc: 'Fast semi-auto shotgun: 8 pellets, quick follow-up shots. $900 per kill.' },
+  bomb: { name: 'BOMB BLAST', hidden: true },   // not a gun: only so a bomb kill has a name (keep it LAST: online play numbers the guns by their place in this list)
 };
-for (const k in WD) if (WD[k].mag) WD[k].pat = pattern(WD[k].mag, WD[k].recoil * 0.5, WD[k].recoil);
+for (const k in WD) if (WD[k].mag) WD[k].pat = pattern(WD[k], k);
+const fireMode = (d) => (d.burst ? 'BURST' : d.shell && d.rpm < 100 ? 'PUMP' : d.scope && d.rpm < 100 ? 'BOLT' : d.auto ? (d.spin ? 'AUTO · SPIN-UP' : 'AUTO') : 'SEMI');
 const GEAR = {
   kevlar: { name: 'Kevlar Vest', price: 650, desc: '100 armor (body)' },
   helm: { name: 'Vest + Helmet', price: 1000, desc: 'Armor + head protection' },
@@ -248,8 +268,8 @@ function recoilAt(def, f) {
 
 // ---------------- actors ----------------
 const SIDE = [
-  { name: 'RAIDERS', role: 'attack', css: '#ff9ccf', main: 0xff8fc4, vest: 0x5b3a22, pants: 0x6b4a2f, visor: 0xffd04a },
-  { name: 'WARDENS', role: 'defend', css: '#4aa3ff', main: 0x2f8cff, vest: 0x1d2b48, pants: 0x2a3550, visor: 0x40e0ff },
+  { name: 'RAIDERS', role: 'attack', css: '#ff9ccf', main: 0xff8fc4, vest: 0xa28d5f, pants: 0x4d4b48, visor: 0xff9ccf },
+  { name: 'WARDENS', role: 'defend', css: '#4aa3ff', main: 0x3f8fff, vest: 0x22252c, pants: 0x34508a, visor: 0x4aa3ff },
 ];
 const sideMats = SIDE.map((s) => ({
   main: new THREE.MeshLambertMaterial({ color: s.main }), vest: new THREE.MeshLambertMaterial({ color: s.vest }),
@@ -264,40 +284,23 @@ function nameTag(a, g) {
   const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, toneMapped: false }));
   tag.scale.set(1.3, 0.33, 1); tag.position.y = 2.2; tag.renderOrder = 999; g.add(tag);
 }
-// Lite soldier: 4 draw calls (2 legs, body, arms + held gun). Same animation fields as the full one; the knees are empty groups and the gun is swapped by changing the arms mesh.
-function makeSoldierLite(a) {
-  const LP = soldierPartsLite(a.side), g = new THREE.Group();
-  const mk = (geo, parent) => { const m = new THREE.Mesh(geo, charMat); parent.add(m); return m; };
-  const hip = (x, geo) => { const h = new THREE.Group(); h.position.set(x, 0.62, 0); g.add(h); mk(geo, h); return [h, new THREE.Group()]; };
-  const [legL, kneeL] = hip(-0.145, LP.legL), [legR, kneeR] = hip(0.145, LP.legR);
-  const up = new THREE.Group(); g.add(up); mk(LP.body, up);
-  const head = new THREE.Group();
-  const arms = new THREE.Group(); arms.position.set(0, 1.3, 0); up.add(arms); const armsMesh = mk(LP.armsSec, arms);
-  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-  flash.scale.setScalar(0.5); flash.visible = false; arms.add(flash);
-  if (a.human && GS.player && a.squad === GS.player.squad && !a.isPlayer) nameTag(a, g); // Lite only labels real players
-  if (a.mesh) scene.remove(a.mesh.g);
-  const none = { visible: true };
-  a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, gunP: none, gunS: none, gunK: none, flash, phase: 0, flashT: 0, lite: LP, armsMesh, armsKey: 'armsSec' };
-  g.visible = a.alive && !a.isPlayer;
-  scene.add(g);
-}
+// What each gun looks like in a soldier's hands (the arms pose and the gun shape come from this class, see tpArms in art.js)
+const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade' };
+// A soldier is a few merged meshes: 2 legs (+2 shins in Pretty/Fast), body, head (Pretty/Fast) and ONE arms+gun mesh whose shape changes with the gun in hand.
+// Lite uses straight legs and a body that already includes the head; the knees are empty groups there.
 function makeSoldier(a) {
-  if (LITE) return makeSoldierLite(a);
-  const SP = soldierParts(a.side), TG = tpGuns(), g = new THREE.Group();
-  const mk = (geo, parent) => { const m = new THREE.Mesh(geo, charMat); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
-  const hip = (x) => { const h = new THREE.Group(); h.position.set(x, 0.62, 0); g.add(h); mk(x < 0 ? SP.thighL : SP.thighR, h); const k = new THREE.Group(); k.position.y = -0.31; h.add(k); mk(SP.shin, k); return [h, k]; };
-  const [legL, kneeL] = hip(-0.145), [legR, kneeR] = hip(0.145);
-  const up = new THREE.Group(); g.add(up); mk(SP.torso, up);
-  const head = new THREE.Group(); head.position.set(0, 1.55, 0); up.add(head); mk(SP.head, head);
-  const lens = new THREE.Mesh(SP.lens, lensMats[a.side]); lens.position.set(...SP.lensPos); lens.rotation.y = Math.PI; head.add(lens);
-  const arms = new THREE.Group(); arms.position.set(0, 1.3, 0); up.add(arms); mk(SP.arms, arms);
-  const gunP = mk(TG.prim, arms), gunS = mk(TG.sec, arms), gunK = mk(TG.knife, arms);
+  const lite = LITE, SP = lite ? soldierPartsLite(a.side) : soldierParts(a.side), g = new THREE.Group();
+  const mk = (geo, parent) => { const m = new THREE.Mesh(geo, charMat); if (!lite) { m.castShadow = true; m.receiveShadow = true; } parent.add(m); return m; };
+  const hip = (x, geo, shin) => { const h = new THREE.Group(); h.position.set(x, 0.62, 0); g.add(h); mk(geo, h); const k = new THREE.Group(); if (shin) { k.position.y = -0.31; h.add(k); mk(shin, k); } return [h, k]; };
+  const [legL, kneeL] = lite ? hip(-0.145, SP.legL) : hip(-0.145, SP.thighL, SP.shin), [legR, kneeR] = lite ? hip(0.145, SP.legR) : hip(0.145, SP.thighR, SP.shin);
+  const up = new THREE.Group(); g.add(up); mk(lite ? SP.body : SP.torso, up);
+  const head = new THREE.Group(); if (!lite) { head.position.set(0, 1.55, 0); up.add(head); mk(SP.head, head); }
+  const arms = new THREE.Group(); arms.position.set(0, 1.3, 0); up.add(arms); const armsMesh = mk(tpArms(a.side, 'rifle', lite), arms);
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   flash.scale.setScalar(0.5); flash.visible = false; arms.add(flash);
-  if (GS.player && a.squad === GS.player.squad && !a.isPlayer) nameTag(a, g);
+  if (GS.player && a.squad === GS.player.squad && !a.isPlayer && (!lite || a.human)) nameTag(a, g);   // Lite only labels real players
   if (a.mesh) scene.remove(a.mesh.g);
-  a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, gunP, gunS, gunK, flash, phase: 0, flashT: 0 };
+  a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, flash, phase: 0, flashT: 0, lite, armsMesh, armsKey: '' };
   g.visible = a.alive && !a.isPlayer;
   scene.add(g);
 }
@@ -328,7 +331,7 @@ function equip(a, s) {
   if (s === 'nade' && a.slot === 'nade') { cycleNade(a); return; }
   if (a.slot === s) return;
   if (s === 'nade' && !a.nades[a.nadeSel]) cycleNade(a);
-  a.lastSlot = a.slot; a.slot = s; a.switchT = s === 'knife' ? 0.25 : 0.4; a.reloadT = 0; a.scoped = 0; a.rescope = 0; a.act = a.act && a.act.type === 'plant' ? null : a.act;
+  a.lastSlot = a.slot; a.slot = s; a.switchT = s === 'knife' ? 0.25 : (a[s] && WD[a[s].id] && WD[a[s].id].draw) || 0.4; a.reloadT = 0; a.burstLeft = 0; a.scoped = 0; a.rescope = 0; a.act = a.act && a.act.type === 'plant' ? null : a.act;
   if (a.isPlayer) { SFX.swap(); vmSet(); }
 }
 function cycleNade(a) {
@@ -365,10 +368,10 @@ function vmSet() {
 
 // ---------------- game state ----------------
 const DIFF = {
-  easy: { react: 0.65, turn: 5, err: 6, settle: 1.6, head: 0.1, spread: 1.5, comp: 0.2, see: 32, nade: 0.2, team: 0.15, lead: 0 },
-  normal: { react: 0.42, turn: 8, err: 3.6, settle: 2.4, head: 0.22, spread: 1.15, comp: 0.5, see: 42, nade: 0.45, team: 0.5, lead: 0.04 },
-  hard: { react: 0.28, turn: 12, err: 2.1, settle: 3.5, head: 0.36, spread: 1.0, comp: 0.7, see: 50, nade: 0.7, team: 0.8, lead: 0.09 },
-  insane: { react: 0.19, turn: 18, err: 1.2, settle: 5, head: 0.52, spread: 0.9, comp: 0.85, see: 58, nade: 0.9, team: 1, lead: 0.14 },
+  easy: { react: 0.65, turn: 5, err: 6, settle: 1.6, head: 0.1, spread: 1.5, comp: 0.2, see: 32, nade: 0.2, team: 0.15, lead: 0, peek: 0, rotDelay: 4.5 },
+  normal: { react: 0.42, turn: 8, err: 3.6, settle: 2.4, head: 0.22, spread: 1.15, comp: 0.5, see: 42, nade: 0.45, team: 0.5, lead: 0.04, peek: 0.35, rotDelay: 2.4 },
+  hard: { react: 0.28, turn: 12, err: 2.1, settle: 3.5, head: 0.36, spread: 1.0, comp: 0.7, see: 50, nade: 0.7, team: 0.8, lead: 0.09, peek: 0.6, rotDelay: 1.3 },
+  insane: { react: 0.19, turn: 18, err: 1.2, settle: 5, head: 0.52, spread: 0.9, comp: 0.85, see: 58, nade: 0.9, team: 1, lead: 0.14, peek: 0.85, rotDelay: 0.6 },
 };
 const GS = {
   state: 'menu', mode: 'comp', actors: [], player: null, round: 0, score: [0, 0], loss: [0, 0], target: 5, halfAt: 4, maxRounds: 8,
@@ -379,24 +382,28 @@ const D = () => DIFF[S.diff] || DIFF.normal;
 const alive = (side) => GS.actors.filter((a) => a.alive && a.side === side);
 const enemies = (a) => GS.actors.filter((e) => e.alive && e.side !== a.side);
 
-// core (the "bomb")
-const coreMesh = new THREE.Group();
+// the bomb: a C4 (four charge bricks round a keypad and a red timer). On a carrier's back, on the floor when dropped, planted at a site.
+// (The game state is still called GS.core so the online messages keep their names.)
+const BOMB = buildBomb(), bombMesh = BOMB.group;
+const bombLight = new THREE.PointLight(0xff3a2a, 0, 8); bombLight.position.y = 0.5; bombMesh.add(bombLight);
+bombMesh.visible = false; scene.add(bombMesh);
+const vmBomb = buildBomb(), vmHand = new THREE.Group();   // the bomb in your hands while you plant or defuse (first person)
 {
-  mbox(coreMesh, 0.36, 0.24, 0.24, new THREE.MeshLambertMaterial({ color: 0x22252e }), 0, 0.12, 0);
-  const glow = new THREE.Mesh(geoBox, new THREE.MeshBasicMaterial({ color: 0xffa030 })); glow.scale.set(0.2, 0.12, 0.26); glow.position.y = 0.16; coreMesh.add(glow);
-  mbox(coreMesh, 0.38, 0.04, 0.26, new THREE.MeshLambertMaterial({ color: 0xffb13d }), 0, 0.03, 0);
-  coreMesh.userData.glow = glow;
-  const l = new THREE.PointLight(0xff8a2a, 6, 6); l.position.y = 0.5; coreMesh.add(l); coreMesh.userData.light = l;
+  const glove = new THREE.MeshLambertMaterial({ color: 0x1d1a17, flatShading: true });
+  const g1 = new THREE.Mesh(geoBox, glove); g1.scale.set(0.05, 0.05, 0.09); vmHand.add(g1);
+  const sl = new THREE.Mesh(geoBox, sleeveMat); sl.scale.set(0.085, 0.085, 0.5); sl.position.set(0, 0.012, 0.3); vmHand.add(sl);
+  vmBomb.group.add(vmHand); vmBomb.group.visible = false; vmCam.add(vmBomb.group);
 }
-scene.add(coreMesh);
-function coreBeep(c, dt) {
+const BOMB_TIME = 40;
+// beeps get faster as the timer runs down (and a little higher)
+function bombBeep(c, dt) {
   c.beepT -= dt;
-  const rate = clamp(c.timer / 40, 0.08, 1);
-  if (c.beepT <= 0) { c.beepT = 0.12 + rate * 0.9; SFX.beep(c.pos); coreMesh.userData.light.intensity = 30; }
-  coreMesh.userData.light.intensity *= Math.pow(0.02, dt * 3);
+  const k = clamp(c.timer / BOMB_TIME, 0, 1);
+  if (c.beepT <= 0) { c.beepI = 0.1 + 0.9 * Math.pow(k, 1.3); c.beepT = c.beepI; SFX.beep(c.pos, 1 - k); bombLight.intensity = 7; }
+  bombLight.intensity *= Math.pow(0.02, dt * 3);
 }
 function resetCore(carrier) {
-  GS.core = { state: carrier ? 'carried' : 'none', carrier, pos: V(), timer: 40, site: null, beepT: 0, smoked: false, mollied: false };
+  GS.core = { state: carrier ? 'carried' : 'none', carrier, pos: V(), timer: BOMB_TIME, site: null, beepT: 0, beepI: 1, rot: 0, smoked: false, mollied: false };
 }
 
 // ---------------- combat ----------------
@@ -441,23 +448,31 @@ function losClear(p, q, smoke = true) {
 }
 function computeSpread(a, def) {
   let s = def.scope ? (a.scoped ? def.scopedInacc : def.inacc) : def.inacc;
+  if (def.scope && a.scoped && def.settle) s += def.inacc * 0.5 * Math.max(0, 1 - (a.scopeAge || 0) / def.settle);   // a scope that was just raised still wobbles
   const sp = Math.hypot(a.vel.x, a.vel.z), mx = def.speed;
   s += def.moveInacc * clamp((sp - mx * 0.34) / (mx * 0.6), 0, 1);
   if (!a.onGround) s += def.airInacc;
   if (a.crouch && a.onGround) s *= 0.72;
   if (a.ads) s *= 0.5;
-  if (a.sprint) s += def.moveInacc * 0.6;
+  if (a.sprint) s += def.moveInacc * (def.runGun ? 0.15 : 0.6);
   s += Math.min(a.rc, 10) * def.recoil * (def.auto ? 0.05 : 0.2);
+  if (def.bloom) s += Math.min(a.rc, 30) * def.bloom;   // the longer you hold it down, the wilder it gets
+  if (def.first && a.rc < 0.5) s *= def.first;           // the first bullet of a spray is extra accurate
+  if ((a.suppT || 0) > GS.time) s *= 1.4;                // somebody is shooting past your head
   return s;
 }
 function noiseEvent(pos, radius, src) {
   for (const b of GS.actors) if (b.brain && b.alive && b.side !== src.side && b.pos.distanceTo(pos) < radius) { b.brain.heardPos = pos.clone(); b.brain.heardT = GS.time; }
 }
-function fireWeapon(a) {
+function fireWeapon(a, cont) {   // cont: this is the 2nd / 3rd bullet of a burst
   const w = curW(a), def = WD[w.id];
-  if (w.mag <= 0) { if (a.isPlayer) SFX.dry(); startReload(a); a.nextFire = GS.time + 0.25; return; }
+  if (w.mag <= 0) { if (a.isPlayer) SFX.dry(); startReload(a); a.nextFire = GS.time + 0.25; a.burstLeft = 0; return; }
+  if (a.reloadT > 0 && def.shell) { a.reloadT = 0; a.reloadMax = 0; }   // pump guns: shooting cancels the shell-by-shell reload
   w.mag--; a.shots++;
-  a.nextFire = GS.time + 60 / def.rpm;
+  let gap = 60 / def.rpm;
+  if (def.spin) { a.spinN = GS.time - a.lastShot < def.spin * 1.8 ? (a.spinN || 0) + 1 : 0; gap = Math.max(gap, def.spin * Math.pow(0.76, a.spinN)); }   // the LMG winds up: slow, then faster and faster
+  if (def.burst) { if (!cont) a.burstLeft = Math.min(def.burst - 1, w.mag); else a.burstLeft--; if (a.burstLeft <= 0) { a.burstLeft = 0; gap += def.burstGap; } }
+  a.nextFire = GS.time + gap;
   const spread = computeSpread(a, def) * (a.brain ? D().spread : 1);
   const [rp, ry] = recoilAt(def, a.rc);
   const comp = a.brain ? D().comp : 0;
@@ -478,7 +493,7 @@ function fireWeapon(a) {
   if (def.quiet) SFX.suppressed(a.pos, a.isPlayer); else SFX.shot(def.snd, a.pos, a.isPlayer);
   noiseEvent(a.pos, def.quiet ? 22 : 45, a);
   if (a.isPlayer) {
-    VMS.kick = Math.min(1, VMS.kick + (def.scope ? 1 : def.pellets ? 0.9 : 0.45));
+    VMS.kick = Math.min(1, VMS.kick + 0.15 + def.recoil * 0.14);
     padRumble(0.2, def.scope || def.pellets ? 0.7 : 0.3, def.scope ? 120 : 60);
     if (vmCur) { vmCur.userData.fl.visible = true; vmCur.userData.fl.material.rotation = Math.random() * 6; VMS.flashT = 0.045; }
     muzzleLight.position.copy(o).addScaledVector(fwd(a.yaw, a.pitch), 1); muzzleLight.intensity = 6;
@@ -486,6 +501,24 @@ function fireWeapon(a) {
     GS.rangeShots++;
   } else if (a.mesh) { a.mesh.flash.visible = true; a.mesh.flashT = 0.05; a.mesh.flash.material.rotation = Math.random() * 6; }
   if (w.mag === 0 && w.res > 0) setTimeout(() => { if (a.alive && curW(a) === w && w.mag === 0) startReload(a); }, 250);
+}
+function shotDamage(def, part, dist) {
+  if (part === 'head') return Math.max(def.dmg * 4, 400);   // headshot = always a kill
+  return def.dmg * Math.pow(def.range, dist / 10) * (part === 'legs' ? 0.75 : 1);
+}
+// a LMG bullet that misses still shakes enemies it passes close to
+function suppressNear(a, o, d, tEnd) {
+  for (const e of GS.actors) {
+    if (!e.alive || e.side === a.side) continue;
+    const dx = e.pos.x - o.x, dy = e.pos.y + 1.1 - o.y, dz = e.pos.z - o.z, t = dx * d.x + dy * d.y + dz * d.z;
+    if (t < 1 || t > tEnd) continue;
+    const px = dx - d.x * t, py = dy - d.y * t, pz = dz - d.z * t;
+    if (px * px + py * py + pz * pz < 2.6 * 2.6) {
+      e.suppT = GS.time + 0.7;
+      if (e.isPlayer) GS.shake = Math.max(GS.shake, 0.1);
+      else if (e.brain) e.brain.react = Math.max(e.brain.react, 0.1);
+    }
+  }
 }
 function traceShot(a, o, d, def, wid, showTracer) {
   const hw = rayWorld(o, d, 220), tW = hw ? hw.t : 220;
@@ -503,12 +536,12 @@ function traceShot(a, o, d, def, wid, showTracer) {
   }
   if (best) {
     const e = best.e, sc = SIDE[e.side];
-    const mult = best.part === 'head' ? 4 : best.part === 'legs' ? 0.75 : 1;
-    const dmg = best.part === 'head' ? Math.max(def.dmg * mult, 400) : def.dmg * Math.pow(def.range, best.t / 10) * mult;   // headshot = always a kill
+    const dmg = shotDamage(def, best.part, best.t);
     burst(end.x, end.y, end.z, best.part === 'head' ? 14 : 7, 4, ['#ffffff', '#' + sc.main.toString(16).padStart(6, '0'), '#ffe27a'], 0.06, 0.35, 10);
     damage(e, dmg, a, best.part, wid, d);
     return true;
   }
+  if (def.suppress) suppressNear(a, o, d, tW);
   if (hw) {
     const n = _v3.set(hw.nx, hw.ny, hw.nz);
     decal(end, n);
@@ -523,11 +556,15 @@ function damage(v, amt, att, part, wid, dir) {
   }
   if (!v.alive || v.protT > 0) return;
   if (att && att !== v && att.side === v.side && GS.mode !== 'range') return;
+  if (att && att !== v && GS.mode === 'comp' && GS.state === 'live' && wid !== 'bomb' && wid !== 'he' && wid !== 'molly') {   // no shooting out of your own spawn room
+    const z = zoneAt(att.pos.x, att.pos.z);
+    if (z === (att.side === 0 ? 'T' : 'D') && zoneAt(v.pos.x, v.pos.z) !== z) { if (att.isPlayer && GS.time - (GS.spawnMsgT || -9) > 4) { GS.spawnMsgT = GS.time; toast('Move out of your spawn to fight'); } return; }
+  }
   let dmg = amt;
-  const armored = v.armor > 0 && part !== 'legs' && (part !== 'head' || v.helmet) && wid !== 'core';
+  const armored = v.armor > 0 && part !== 'legs' && (part !== 'head' || v.helmet) && wid !== 'bomb';
   if (armored) { const pen = (WD[wid] && WD[wid].pen) || 0.5; const real = dmg * pen; v.armor = Math.max(0, v.armor - (dmg - real) * 0.5); dmg = real; }
   dmg = Math.min(dmg, v.hp);
-  v.hp -= dmg; v.tagT = 0.35;
+  v.hp -= dmg; v.tagT = Math.max(v.tagT, (WD[wid] && WD[wid].stagger) || 0.3);
   if (att && att !== v) att.dmg += dmg;
   if (att && att.isPlayer && att !== v) {
     showHit(part === 'head' ? 'hs' : '', v.hp <= 0);
@@ -578,7 +615,7 @@ function kill(v, k, wid, hs) {
     if (drop && !MP.on) addDrop(drop, v.pos);
     if (GS.core.carrier === v) dropCore(v);
   }
-  if (v.brain && k && k !== v && k.side !== v.side && GS.mode === 'comp' && GS.state === 'live') teamCall(v, k.pos, 32, 4, 0.9);
+  if (v.brain && k && k !== v && k.side !== v.side && GS.mode === 'comp' && GS.state === 'live') { teamCall(v, k.pos, 32, 4, 0.9); if (NB) noteEnemy(v.side, k.pos, 'k' + k.id, 1); }
   killFx(v, k, wid, hs);
   if (MP.role === 'host') MPH.killEvent(v, k, wid, hs);
   if (GS.mode === 'range') { GS.score[0]++; setTimeout(() => { if (GS.mode === 'range' && GS.state === 'live') spawnDummy(v); }, 400); }
@@ -597,11 +634,19 @@ function addMoney(a, amt, why) {
 }
 function startReload(a) {
   const w = curW(a); if (!w || !WD[w.id].mag || a.reloadT > 0 || w.res <= 0 || w.mag >= WD[w.id].mag) return;
-  a.reloadT = WD[w.id].reload; a.scoped = 0; a.rescope = 0;
-  if (a.isPlayer) { SFX.reload(0); setTimeout(() => a.reloadT > 0 && SFX.reload(1), WD[w.id].reload * 600); }
+  const def = WD[w.id];
+  a.reloadT = a.reloadMax = def.shell ? def.shell + 0.2 : def.reload; a.scoped = 0; a.rescope = 0; a.burstLeft = 0;
+  if (a.isPlayer) { SFX.reload(0); if (!def.shell) setTimeout(() => a.reloadT > 0 && SFX.reload(1), def.reload * 600); }
 }
 function finishReload(a) {
-  const w = curW(a); const need = WD[w.id].mag - w.mag, take = Math.min(need, w.res);
+  const w = curW(a), def = WD[w.id];
+  if (def.shell) {   // one shell per step; keeps going until full (or you shoot)
+    w.mag++; w.res--;
+    if (a.isPlayer) SFX.reload(1);
+    if (w.mag < def.mag && w.res > 0) { a.reloadT = a.reloadMax = def.shell; if (a.isPlayer) SFX.reload(0); }
+    return;
+  }
+  const need = def.mag - w.mag, take = Math.min(need, w.res);
   w.mag += take; w.res -= take;
 }
 function melee(a, heavy) {
@@ -765,7 +810,7 @@ function dropCurrent(a) {
   a[s] = null; a.slot = bestSlot(a); a.switchT = 0.3; if (a.isPlayer) vmSet();
 }
 function dropCore(a) {
-  const c = GS.core; c.state = 'dropped'; c.carrier = null; c.pos.set(a.pos.x, hPos(a.pos.x, a.pos.z), a.pos.z);
+  const c = GS.core; c.state = 'dropped'; c.carrier = null; c.rot = Math.random() * 6.28; c.pos.set(a.pos.x, hPos(a.pos.x, a.pos.z), a.pos.z);
   if (a.isPlayer && a.alive) { c.pos.addScaledVector(fwd(a.yaw, 0), 1.5); c.pos.y = hPos(c.pos.x, c.pos.z); if (c.pos.y > 2.5) c.pos.set(a.pos.x, a.pos.y, a.pos.z); }
   const bots = alive(0).filter((b) => b.brain);
   GS.fetcher = bots.sort((x, y) => x.pos.distanceTo(c.pos) - y.pos.distanceTo(c.pos))[0] || null;
@@ -777,6 +822,7 @@ function clearWorld() {
   for (const s of GS.smokes) for (const sp of s.sprites) scene.remove(sp);
   for (const f of GS.fires) scene.remove(f.disc); GS.nades = []; GS.smokes = []; GS.fires = []; clearDrops(); parts.length = 0;
   decals.count = 0; dI = 0;
+  for (const b of booms) { if (b.m) { scene.remove(b.m); b.m.geometry.dispose(); b.m.material.dispose(); } if (b.l) b.l.intensity = 0; } booms.length = 0;   // leftover explosion spheres (the render loop normally removes them; a headless simulation never runs it)
 }
 function startMatch() {
   setMap(S.map);
@@ -837,30 +883,31 @@ function startRound() {
   { let pl = Math.random() < 0.5 ? 'a' : 'b'; if (pl === GS.lastPlan && Math.random() < 0.6) pl = pl === 'a' ? 'b' : 'a'; GS.plan = GS.lastPlan = pl; }
   const atk = alive(0);
   resetCore(pick(atk));
-  setupBrains();
+  if (NB) setupBrains2(); else setupBrains();
   GS.buyMode = [teamBuyMode(0), teamBuyMode(1)];
   for (const a of GS.actors) if (a.brain) botBuy(a);
-  assignRoles();
+  if (NB) assignRoles2(); else assignRoles();
   vmRoot.visible = true; vmId = ''; vmSet();
   const P = GS.player;
   sleeveMat.color.setHex(SIDE_SLEEVE[P.side]);
   const lastRound = GS.round === GS.maxRounds, match = GS.score[0] === GS.target - 1 || GS.score[1] === GS.target - 1;
   roundBannerLocal(half, lastRound, match);
-  if (GS.core.carrier === P) setTimeout(() => toast('You carry the CORE — hold E on a site to plant'), 2500);
+  if (GS.core.carrier === P) setTimeout(() => toast('You carry the BOMB — hold E on a site to plant'), 2500);
   if (MP.role === 'host') MPH.roundStart(half);
 }
 function roundBannerLocal(half, lastRound, match) {
   const P = GS.player; sleeveMat.color.setHex(SIDE_SLEEVE[P.side]);
-  banner(half ? 'SWITCHING SIDES' : `ROUND ${GS.round}`, `You are ${SIDE[P.side].name} — ${P.side === 0 ? 'plant the core at A or B' : 'stop the core from being planted'}${match ? ' · MATCH POINT' : lastRound ? ' · LAST ROUND' : ''}`, '#fff', 3000, true);
+  banner(half ? 'SWITCHING SIDES' : `ROUND ${GS.round}`, `You are ${SIDE[P.side].name} — ${P.side === 0 ? 'plant the bomb at A or B' : 'stop the bomb from being planted'}${match ? ' · MATCH POINT' : lastRound ? ' · LAST ROUND' : ''}`, '#fff', 3000, true);
 }
 function roundEndFx(winSide, reason) {
-  const why = { elim: `${SIDE[1 - winSide].name} eliminated`, time: 'Time ran out', boom: 'The core detonated!', defuse: 'The core was defused!' }[reason] || '';
+  const why = { elim: `${SIDE[1 - winSide].name} eliminated`, time: 'Time ran out', boom: 'The bomb exploded!', defuse: 'The bomb was defused!' }[reason] || '';
   const w = GS.actors.find((a) => a.side === winSide);
   banner(`${SIDE[winSide].name} WIN`, why, SIDE[winSide].css, 3000, true);
   SFX.fanfare(!!w && w.squad === mySq());
 }
 function endRound(winSide, reason) {
   if (GS.state !== 'live') return;
+  if (DEBUG && window.__csOnEnd) window.__csOnEnd(winSide, reason);   // ?debug only: lets the bot simulations see how every round ended
   GS.state = 'end'; GS.phaseT = 5.5;
   const sq = GS.actors.find((a) => a.side === winSide).squad, lq = 1 - sq;
   GS.score[sq]++; GS.loss[sq] = 0; GS.loss[lq] = Math.min(GS.loss[lq] + 1, 5);
@@ -890,7 +937,7 @@ function updateRound(dt) {
     const before = Math.ceil(GS.phaseT);
     GS.phaseT -= dt;
     if (Math.ceil(GS.phaseT) !== before && before <= 3 && before > 0) SFX.countdown(false);
-    if (GS.phaseT <= 0) { GS.state = 'live'; SFX.countdown(true); banner('GO!', '', '#ffd04a', 900); if (MP.role === 'host') MPH.event('go'); }
+    if (GS.phaseT <= 0) { GS.state = 'live'; GS.liveAt = GS.time; SFX.countdown(true); banner('GO!', '', '#ffd04a', 900); if (MP.role === 'host') MPH.event('go'); }
   } else if (GS.state === 'live') {
     GS.buyLeft -= dt;
     if (c.state !== 'planted') GS.roundT -= dt;
@@ -906,14 +953,14 @@ function updateRound(dt) {
     }
   }
   if (c.state === 'planted' && (GS.state === 'live' || GS.state === 'end')) {
-    c.timer -= dt; coreBeep(c, dt);
+    c.timer -= dt; bombBeep(c, dt);
     if (c.timer <= 0) {
       c.state = 'boom';
       const p = c.pos.clone().setY(c.pos.y + 0.5);
       explosionFx(p, true); SFX.boom(p, true); GS.shake = 1.2;
-      coreMesh.visible = false;
+      bombMesh.visible = false;
       if (MP.role === 'host') MPH.event('boom');
-      for (const e of GS.actors) if (e.alive) { const d = e.pos.distanceTo(c.pos); const dmg = 500 * Math.exp(-(d * d) / (2 * 7 * 7)); if (dmg > 1) damage(e, dmg, null, 'body', 'core', null); }
+      for (const e of GS.actors) if (e.alive) { const d = e.pos.distanceTo(c.pos); const dmg = 500 * Math.exp(-(d * d) / (2 * 7 * 7)); if (dmg > 1) damage(e, dmg, null, 'body', 'bomb', null); }
       if (GS.state === 'live') endRound(0, 'boom');
     }
   }
@@ -959,7 +1006,7 @@ function dmSpawn(a) {
   a.pos.set(cellX(bestC), 0, cellZ(bestC)); a.vel.set(0, 0, 0); a.yaw = Math.random() * 6.28; a.pitch = 0;
   a.hp = 100; a.armor = 100; a.helmet = true; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
   a.sec = newGun('p9');
-  a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow']));
+  a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow', 'brute', 'ghost', 'breaker']));
   a.nades = { he: 1, flash: 1, smoke: 0, molly: 0 };
   a.slot = 'prim';
   if (a.brain) { a.brain.path = []; a.brain.goal = -1; a.brain.target = null; a.brain.roam = -1; }
@@ -1024,7 +1071,7 @@ function buy(a, id) {
     a[def.slot] = newGun(id);
     if (GS.mode === 'range') a[def.slot].res = 999;
     if ((a.isPlayer || a.remote) && def.slot === 'prim') a.dmPick = id;
-    a.slot = def.slot; a.switchT = 0.4;
+    a.slot = def.slot; a.switchT = def.draw || 0.4;
   }
   if (a.isPlayer) { vmSet(); }
   return true;
@@ -1043,7 +1090,7 @@ function botBuy(a) {
   const pistolRound = GS.round === 1 || GS.round === GS.halfAt + 1;
   if (pistolRound) {
     const r = Math.random();
-    if (r < 0.3) buy(a, 'kevlar'); else if (r < 0.55) buy(a, pick(['viper', 'revolver', 'tec'])); else { buy(a, 'flash'); buy(a, pick(['smoke', 'molly'])); }
+    if (r < 0.3) buy(a, 'kevlar'); else if (r < 0.55) buy(a, pick(['viper', 'revolver', 'tec', 'trio', 'duster'])); else { buy(a, 'flash'); buy(a, pick(['smoke', 'molly'])); }
     return;
   }
   const teamHas = (id) => GS.actors.some((t) => t.side === a.side && t !== a && t.prim && t.prim.id === id);
@@ -1051,17 +1098,17 @@ function botBuy(a) {
     const reserve = mode === 'full' ? 700 : 350;
     let list;
     if (mode === 'full') {
-      list = a.side === 0 ? ['raptor', 'raptor', 'raptor', 'sentinel', 'carbine'] : ['sentinel', 'sentinel', 'sentinel', 'raptor', 'carbine'];
+      list = a.side === 0 ? ['raptor', 'raptor', 'raptor', 'sentinel', 'carbine', 'ghost', 'ghost'] : ['sentinel', 'sentinel', 'sentinel', 'raptor', 'carbine', 'ghost'];
       if (m() >= 5400 && !teamHas('lmg') && Math.random() < 0.18) list = ['lmg'];
       else if (m() >= 5000 && !teamHas('longbow') && Math.random() < 0.3) list = ['longbow'];
       else if (m() >= 3900 && !teamHas('dmr') && Math.random() < 0.2) list = ['dmr'];
-    } else if (mode === 'half') list = ['chopper', 'buzz', 'carbine', 'scatter', 'thumper', 'ranger', 'chopper', 'buzz'];
-    else list = ['buzz', 'chopper', 'thumper', 'scatter', 'ranger', 'buzz', 'chopper'];
+    } else if (mode === 'half') list = ['chopper', 'buzz', 'carbine', 'scatter', 'thumper', 'ranger', 'chopper', 'buzz', 'brute', 'breaker'];
+    else list = ['buzz', 'chopper', 'thumper', 'scatter', 'ranger', 'buzz', 'chopper', 'brute', 'breaker'];
     const ok = list.filter((id) => WD[id].price + reserve <= m());
     const pickId = ok.length ? pick(ok) : list.filter((id) => WD[id].price <= m()).sort((p, q) => WD[q].price - WD[p].price)[0];
     if (pickId) buy(a, pickId);
-    else if (m() >= 650 && a.sec.id === 'p9') buy(a, pick(['revolver', 'viper', 'tec']));
-  } else if (!a.prim && mode === 'eco' && a.sec.id === 'p9' && m() >= 900 && Math.random() < 0.35) buy(a, pick(['tec', 'revolver']));
+    else if (m() >= 650 && a.sec.id === 'p9') buy(a, pick(['revolver', 'viper', 'tec', 'trio', 'duster']));
+  } else if (!a.prim && mode === 'eco' && a.sec.id === 'p9' && m() >= 900 && Math.random() < 0.35) buy(a, pick(['tec', 'revolver', 'trio', 'duster']));
   if (mode === 'full') { if (m() >= 1000 && !a.helmet) buy(a, 'helm'); else if (m() >= 650 && a.armor < 60) buy(a, 'kevlar'); }
   else if (mode === 'half' || mode === 'force') { if (m() >= 650 && a.armor < 60 && Math.random() < 0.8) buy(a, 'kevlar'); }
   if (a.prim && mode !== 'eco') {
@@ -1081,6 +1128,452 @@ function botBuy(a) {
 }
 
 // ---------------- bots ----------------
+// =====================================================================================================
+// SMART BOTS. Add ?oldbots to the address to play against the old brains (used to compare them in the dev simulations).
+// What changed: the bots now KNOW the map (distance fields, cover, who can see what), every round gets a fresh plan
+// (hit a site / rush / split / fake / slow mid control), every bot gets its own lane and its own spot (never the same
+// ones twice in a row), they rotate when they hear or see the enemy, peek and hide behind cover in fights, use
+// grenades with a purpose and retake the bomb together.
+// =====================================================================================================
+let NB = !QS.has('oldbots');   // (a let only so the dev simulations can switch between the old and new brains in one page)
+let NAV = null, NAV_ID = '';
+const cheb = (c1, c2) => Math.max(Math.abs((c1 % W) - (c2 % W)), Math.abs(((c1 / W) | 0) - ((c2 / W) | 0)));
+const isSpawnZ = (c) => ZONE[c] === 'T' || ZONE[c] === 'D';
+const dv = (arr, c) => (arr[c] < 0 ? 999 : arr[c]);
+function bfs(starts) {   // walking distance (in cells) from a set of cells to everywhere
+  const d = new Int16Array(W * H).fill(-1), q = [];
+  for (const s of starts) if (walk(s) && d[s] < 0) { d[s] = 0; q.push(s); }
+  for (let i = 0; i < q.length; i++) {
+    const c = q[i], x = c % W, z = (c / W) | 0;
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dz) continue;
+      const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= W || nz >= H) continue;
+      const n = nz * W + nx; if (d[n] >= 0 || !walk(n)) continue;
+      if (dx && dz && (!walk(z * W + nx) || !walk(nz * W + x))) continue;
+      d[n] = d[c] + 1; q.push(n);
+    }
+  }
+  return d;
+}
+const _e1 = V(), _e2 = V();
+const at = (c, y, o) => o.set(cellX(c), y, cellZ(c));
+function navFor() {
+  if (NAV && NAV_ID === MAP.id && NAV.w === W && NAV.h === H) return NAV;
+  const tNav = performance.now();
+  const N = { w: W, h: H }, n = W * H;
+  N.dT = bfs(SPAWN.T); N.dD = bfs(SPAWN.D);
+  const sc = (k) => { const s = SITES[k].center; return nearestWalk(Math.floor(s[1]) * W + Math.floor(s[0])); };
+  N.site = { a: sc('a'), b: sc('b') };
+  N.d = { a: bfs([N.site.a]), b: bfs([N.site.b]) };
+  N.edge = new Uint8Array(n);
+  for (const c of WALKABLE) {   // how many of the 8 neighbours are walls / props = how much cover is here
+    const x = c % W, z = (c / W) | 0; let k = 0;
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dz) continue; const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= W || nz >= H || !walk(nz * W + nx)) k++; }
+    N.edge[c] = k;
+  }
+  const t0 = SPAWN.T[(SPAWN.T.length / 2) | 0], d0 = SPAWN.D[(SPAWN.D.length / 2) | 0];
+  N.hold = { a: [], b: [] }; N.post = { a: [], b: [] }; N.stage = { a: [], b: [] }; N.lane = { a: [], b: [] }; N.mid = []; N.lurk = []; N.fwd = [];
+  for (const k of ['a', 'b']) {
+    const path = astar(t0, N.site[k]), dk = N.d[k], ctr = at(N.site[k], 1.5, V());
+    N.lane[k] = path.filter((c, i) => i % 3 === 0 && dk[c] > 4).slice(-12);   // where the attackers walk on their way in
+    const lanePts = N.lane[k].map((c) => at(c, 1.5, V()));
+    for (const c of WALKABLE) {
+      const d = dk[c]; if (d < 2 || d > 30 || isSpawnZ(c)) continue;
+      at(c, 1.6, _e1); const sees = losClear(_e1, ctr, false), ed = N.edge[c];
+      if (ed >= 1 && d <= 26) {   // defenders: next to a wall or crate, can see the lane or the middle of the site
+        let seen = 0; for (const p of lanePts) if (Math.hypot(p.x - _e1.x, p.z - _e1.z) <= 30 && losClear(_e1, p, false)) seen++;   // the part of the lane it covers from 30 m or closer
+        if (seen || sees) N.hold[k].push([c, (1 + seen) * (sees ? 2 : 1) * (d < 14 ? 1.5 : 1) * (ed >= 3 ? 1.3 : 1)]);
+      }
+      if (sees && d >= 3 && d <= 15 && ed >= 1) N.post[k].push([c, (ed >= 3 ? 1.6 : 1) * (d < 8 ? 1.3 : 1)]);   // attackers: spots with a view of the site (entry + after the plant)
+      if (!sees && d >= 7 && d <= 15 && ed >= 1 && dv(N.dT, c) <= dv(N.dT, N.site[k]) + 4) N.stage[k].push([c, ed >= 3 ? 2 : 1]);   // where attackers wait: close, but hidden from the site
+    }
+  }
+  for (const c of WALKABLE) {
+    if (isSpawnZ(c) || N.edge[c] < 1) continue;
+    const a = dv(N.dT, c), b = dv(N.dD, c); if (a > 900 || b > 900) continue;
+    const r = a / (a + b), da = dv(N.d.a, c), db = dv(N.d.b, c);
+    if (Math.abs(r - 0.5) <= 0.14 && da > 9 && db > 9) N.mid.push([c, 1]);
+    if (r >= 0.28 && r <= 0.5 && da > 8 && db > 8) N.lurk.push([c, 1]);
+    if (r >= 0.56 && r <= 0.72 && (da > 7 || db > 7)) N.fwd.push([c, 1]);
+  }
+  NAV = N; NAV_ID = MAP.id; N.ms = Math.round(performance.now() - tNav);
+  return N;
+}
+// pick a spot from a pool of [cell, weight]: not near the 'avoid' cells, and (mostly) not where this bot stood in its last rounds
+function pickSpot(pool, avoid = [], sep = 4, recent = null) {
+  if (!pool || !pool.length) return -1;
+  let tot = 0; const w = pool.map(([c, wt]) => {
+    let m = wt; for (const o of avoid) if (o >= 0 && cheb(c, o) < sep) { m = 0; break; }
+    if (m && recent) for (const o of recent) if (cheb(c, o) < 4) m *= 0.1;
+    tot += m; return m;
+  });
+  if (tot <= 0) return pool[(Math.random() * pool.length) | 0][0];
+  let r = Math.random() * tot; for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i][0]; }
+  return pool[pool.length - 1][0];
+}
+function remember(a, c) { const m = (GS.mem ||= new Map()), l = m.get(a.id) || []; l.push(c); if (l.length > 6) l.shift(); m.set(a.id, l); }
+const recentOf = (a) => (GS.mem && GS.mem.get(a.id)) || null;
+// A* that also adds a cost per cell (so every bot can get a different lane)
+const wG = new Float32Array(96 * 96), wFrom = new Int32Array(96 * 96), wClosed = new Uint8Array(96 * 96);
+function astarW(s, g, extra) {
+  if (!walk(g)) g = nearestWalk(g); if (!walk(s)) s = nearestWalk(s);
+  if (s === g) return [g];
+  const n = W * H; wG.fill(1e9, 0, n); wClosed.fill(0, 0, n); wFrom.fill(-1, 0, n);
+  const heap = [], gx = g % W, gz = (g / W) | 0;
+  const hf = (i) => { const dx = Math.abs(i % W - gx), dz = Math.abs(((i / W) | 0) - gz); return Math.max(dx, dz) + 0.414 * Math.min(dx, dz); };
+  const push = (i, f) => { heap.push([f, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top[1]; };
+  wG[s] = 0; push(s, hf(s));
+  while (heap.length) {
+    const c = pop(); if (c === g) break; if (wClosed[c]) continue; wClosed[c] = 1;
+    const x = c % W, z = (c / W) | 0;
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dz) continue;
+      const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= W || nz >= H) continue;
+      const nn = nz * W + nx; if (!walk(nn) || wClosed[nn]) continue;
+      if (dx && dz && (!walk(z * W + nx) || !walk(nz * W + x))) continue;
+      const ng = wG[c] + (dx && dz ? 1.414 : 1) * (1 + (extra ? extra[nn] : 0));
+      if (ng < wG[nn]) { wG[nn] = ng; wFrom[nn] = c; push(nn, ng + hf(nn)); }
+    }
+  }
+  if (wFrom[g] < 0) return [g];
+  const path = []; for (let c = g; c !== s && c >= 0; c = wFrom[c]) path.push(c);
+  return path.reverse();
+}
+// a route for one bot: waypoints every ~5 cells to 'to'. 'cost' makes lanes differ (random blocky noise + cells earlier bots used)
+function routeFor(a, to, cost, spread) {
+  const path = astarW(cellOf(a.pos.x, a.pos.z), to, cost), wp = [];
+  for (let i = 4; i < path.length - 1; i += 5) wp.push(path[i]);
+  wp.push(path[path.length - 1]);
+  if (spread) for (const c of path) { const x = c % W, z = (c / W) | 0; for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, nz = z + dz; if (nx >= 0 && nz >= 0 && nx < W && nz < H) cost[nz * W + nx] += 0.9; } }
+  return wp;
+}
+function newCost(amount = 1.2) {   // random cost per 3x3 block of cells
+  const cost = new Float32Array(W * H), bw = Math.ceil(W / 3), blk = new Float32Array(bw * Math.ceil(H / 3));
+  for (let i = 0; i < blk.length; i++) blk[i] = Math.random() * amount;
+  for (let c = 0; c < W * H; c++) cost[c] = blk[(((c / W) | 0) / 3 | 0) * bw + (((c % W) / 3) | 0)];
+  return cost;
+}
+const siteOf = (c) => { const N = NAV; if (!N) return null; const da = dv(N.d.a, c), db = dv(N.d.b, c); return Math.min(da, db) > 30 ? 'mid' : da <= db ? 'a' : 'b'; };
+// what each side knows about where the enemy is: enemies seen / heard at each site in the last few seconds
+function noteEnemy(side, pos, id, w = 1) {
+  if (!NAV) return;
+  const k = siteOf(cellOf(pos.x, pos.z)); if (!k) return;
+  const I = ((GS.intel ||= [{}, {}])[side]); const r = (I[k] ||= new Map()); r.set(id, [GS.time, w]);
+}
+function intelCount(side, k, win = 7) {
+  const r = GS.intel && GS.intel[side] && GS.intel[side][k]; if (!r) return 0;
+  let n = 0; for (const [id, [t, w]] of r) if (GS.time - t < win) n += w; return n;
+}
+const rtNow = () => (GS.state === 'live' ? GS.time - (GS.liveAt || GS.time) : 0);
+
+// ---------------- the plan for a round ----------------
+const STRAT_W = {
+  easy: { hit: 50, rush: 30, split: 4, fake: 0, slow: 16 }, normal: { hit: 34, rush: 16, split: 18, fake: 10, slow: 22 },
+  hard: { hit: 24, rush: 14, split: 24, fake: 18, slow: 20 }, insane: { hit: 18, rush: 12, split: 28, fake: 26, slow: 16 },
+};
+function chooseStrat(eco) {
+  const w = { ...(STRAT_W[S.diff] || STRAT_W.normal) };
+  if (eco) { w.rush *= 2.2; w.slow *= 0.4; w.fake *= 0.5; }
+  const last = GS.lastStrat && GS.lastStrat[0]; if (last && w[last]) w[last] *= 0.3;
+  let tot = 0; for (const k in w) tot += w[k];
+  let r = Math.random() * tot; for (const k in w) { r -= w[k]; if (r <= 0) return k; }
+  return 'hit';
+}
+function setupBrains2() {
+  const N = navFor(), dd = D();
+  GS.liveAt = 0; GS.intel = [{}, {}]; GS.allIn = false; GS.rtGo = false; GS.defuser = null; GS.rotCount = { a: 0, b: 0 };
+  const atk = GS.actors.filter((a) => a.brain && a.side === 0 && a.alive), def = GS.actors.filter((a) => a.brain && a.side === 1 && a.alive);
+  for (const a of GS.actors) if (a.brain) a.brain = newBrain(a, a.brain.idx);
+  planAttack(atk, N, dd); planDefense(def, N, dd);
+}
+function planAttack(atk, N, dd) {
+  if (!atk.length) { GS.strat = { kind: 'none' }; return; }
+  const eco = atk.reduce((s, x) => s + x.money, 0) / atk.length < 2000 && !atk.some((x) => x.prim);
+  const kind = chooseStrat(eco);
+  GS.lastStrat = [kind, ...(GS.lastStrat || []).slice(0, 2)];
+  let X = Math.random() < 0.5 ? 'a' : 'b'; if (X === GS.lastPlan && Math.random() < 0.6) X = X === 'a' ? 'b' : 'a';
+  const Y = X === 'a' ? 'b' : 'a';
+  const carrier = GS.core.carrier, bots = shuffle(atk.slice()), n = bots.length;
+  const cost = newCost(1.4);
+  const lane = (k, avoid) => { const s = pickSpot(N.stage[k].length ? N.stage[k] : N.post[k], avoid, 7); return s >= 0 ? s : N.site[k]; };
+  const lurkSpot = (avoid) => { const s = pickSpot(N.lurk.length ? N.lurk : N.mid, avoid, 6); return s >= 0 ? s : LURK; };
+  const G = rand(30, 52) * (0.9 + 0.2 * (1 - dd.team));
+  const spec = { kind, X, Y, goAt: G };
+  const give = (b, o) => Object.assign(b, o);
+  let groupX = bots.slice(), groupY = [], lurker = null, fakeGo = 0;
+  if (kind === 'hit' || kind === 'rush' || kind === 'slow') {
+    if (n >= 4 && Math.random() < 0.3 + 0.5 * dd.team && kind !== 'rush' && !(carrier && carrier === bots[0])) lurker = bots[0];
+    if (lurker) groupX = bots.slice(1);
+  } else if (kind === 'split') {
+    const k = n >= 4 ? (Math.random() < 0.5 ? 2 : 3) : Math.max(1, n >> 1); const cg = carrier && bots.includes(carrier) ? carrier : null;
+    const rest = bots.filter((b) => b !== cg); groupX = (cg ? [cg] : []).concat(rest.slice(0, Math.max(0, k - (cg ? 1 : 0)))); groupY = bots.filter((b) => !groupX.includes(b));
+  } else if (kind === 'fake') {
+    const k = n >= 5 ? 2 : 1; const nc = bots.filter((b) => b !== carrier); groupY = nc.slice(0, k); groupX = bots.filter((b) => !groupY.includes(b)); fakeGo = rand(18, 28);
+  }
+  spec.lanes = []; const used = [];
+  const stages = { X: [lane(X, used)] }; used.push(stages.X[0]); if (groupX.length >= 3 || kind === 'rush') { stages.X.push(lane(X, used)); used.push(stages.X[1]); }
+  let go = kind === 'rush' ? rand(6, 11) : kind === 'slow' ? rand(48, 62) : G;
+  if (kind === 'fake') go = fakeGo + rand(9, 15);
+  spec.goAt = go;
+  const order = ['entry', 'support', 'trade', 'post', 'post'];
+  groupX.forEach((b, i) => {
+    const br = b.brain, role = b === carrier ? 'carrier' : order[Math.min(i, order.length - 1)];
+    const st = kind === 'slow' ? lurkSpot(used) : stages.X[i % stages.X.length];
+    used.push(st);
+    give(br, { site: X, role, goAt: go + (role === 'entry' ? 0 : role === 'support' ? 0.8 : role === 'trade' ? 1.6 : role === 'carrier' ? 2.8 : 2.2), stage: st, lurk: false, plantCell: pick(SITES[X].plant) });
+    br.route = routeFor(b, st, cost, kind !== 'rush');
+  });
+  groupY.forEach((b, i) => {
+    const br = b.brain, st = lane(Y, used); used.push(st);
+    const fake = kind === 'fake';
+    give(br, { site: Y, role: fake ? 'fake' : 'support', goAt: fake ? fakeGo : go, stage: st, lurk: false, plantCell: pick(SITES[Y].plant), swapAt: fake ? fakeGo + rand(10, 16) : 0, swapTo: X });
+    br.route = routeFor(b, st, cost, true);
+  });
+  if (lurker) {
+    const br = lurker.brain, st = lurkSpot(used); used.push(st);
+    give(br, { site: X, role: 'lurk', lurk: true, goAt: go + rand(8, 20), stage: st, plantCell: pick(SITES[X].plant), lurkSite: Math.random() < 0.5 ? X : Y });
+    br.route = routeFor(lurker, st, cost, true);
+  }
+  // exact entry / support spots in the site for the people who hit it
+  const spots = [];
+  for (const b of bots) { const br = b.brain; if (!br.site) continue; const pool = N.post[br.site]; const far = br.role === 'entry' ? pool.filter(([c]) => dv(N.d[br.site], c) <= 9) : pool; const sp = pickSpot(far.length ? far : pool, spots, 4, recentOf(b)); br.entry = sp >= 0 ? sp : N.site[br.site]; spots.push(br.entry); br.leader = null; }
+  const entry = bots.find((b) => b.brain.role === 'entry');
+  for (const b of bots) if (b !== entry && b.brain.role !== 'lurk' && entry && b.brain.site === entry.brain.site) b.brain.leader = entry;
+  GS.plan = GS.lastPlan = X; GS.strat = spec; GS.firstGo = Math.min(...bots.map((b) => b.brain.goAt)) - 0.1;
+  for (const b of bots) remember(b, b.brain.stage);
+}
+const LAYOUTS = [[2, 2, 1], [3, 1, 1], [1, 3, 1], [2, 1, 2], [1, 2, 2], [1, 1, 3], [2, 2, 1], [2, 1, 1]];
+function planDefense(def, N, dd) {
+  if (!def.length) return;
+  const bots = shuffle(def.slice()), n = bots.length;
+  let lay = pick(dd.team < 0.3 ? [[2, 2, 1], [2, 2, 1], [3, 1, 1], [1, 3, 1]] : LAYOUTS).slice();
+  while (lay[0] + lay[1] + lay[2] > n) { const i = lay.indexOf(Math.max(...lay)); lay[i]--; }
+  while (lay[0] + lay[1] + lay[2] < n) lay[(Math.random() * 3) | 0]++;
+  const sites = []; lay.forEach((cnt, i) => { for (let k = 0; k < cnt; k++) sites.push(i === 0 ? 'a' : i === 1 ? 'b' : 'm'); });
+  const avoid = [];
+  bots.forEach((b, i) => {
+    const br = b.brain, k = sites[i] || 'a';
+    let spot;
+    if (k === 'm') { spot = pickSpot(N.mid.length ? N.mid : N.hold.a, avoid, 6, recentOf(b)); br.role = 'rotator'; br.site = null; }
+    else { const pool = N.hold[k].length ? N.hold[k] : N.hold[k === 'a' ? 'b' : 'a']; spot = pickSpot(pool, avoid, 5, recentOf(b)); br.role = 'anchor'; br.site = k; }
+    if (spot < 0) spot = pick(WALKABLE);
+    br.hold = spot; avoid.push(spot); remember(b, spot);
+    // some defenders push forward early to get information, then fall back
+    if (N.fwd.length && Math.random() < 0.12 + 0.3 * dd.team * (br.role === 'rotator' ? 1.6 : 0.8)) { br.fwd = pickSpot(N.fwd, avoid, 5); br.fwdUntil = rand(14, 30); if (br.fwd >= 0) { br.role = 'aggro'; avoid.push(br.fwd); } }
+    const wp = N.lane[k === 'm' ? 'a' : k]; br.watch = [];
+    at(spot, 1.6, _e1); for (const lc of shuffle(wp.slice())) { if (losClear(_e1, at(lc, 1.5, _e2), false)) { br.watch.push(lc); if (br.watch.length >= 2) break; } }
+    if (b.prim && WD[b.prim.id].scope && br.site) {   // snipers take the spot with the longest view
+      const far = N.hold[br.site].filter(([c]) => dv(N.d[br.site], c) >= 9); const sp = pickSpot(far.length ? far : N.hold[br.site], avoid, 5, recentOf(b)); if (sp >= 0) { br.hold = sp; br.role = 'sniper'; }
+    }
+    br.peekDir = Math.random() < 0.5 ? 1 : -1;
+  });
+}
+function adoptBot(a) {   // a human left the match: this bot steps in with a simple role
+  const N = navFor(), b = a.brain;
+  if (a.side === 1) { const k = Math.random() < 0.5 ? 'a' : 'b'; b.site = k; b.role = 'anchor'; b.hold = pickSpot(N.hold[k], [], 5) ; if (b.hold < 0) b.hold = pick(WALKABLE); b.watch = []; }
+  else { const X = GS.plan || 'a'; b.site = X; b.role = 'support'; b.goAt = Math.max(rtNow() + 4, GS.strat ? GS.strat.goAt : 30); b.stage = pickSpot(N.stage[X], [], 5); if (b.stage < 0) b.stage = N.site[X]; b.route = routeFor(a, b.stage, newCost(1), true); b.entry = pickSpot(N.post[X], [], 4); b.plantCell = pick(SITES[X].plant); }
+}
+// guns decide a few roles after the buy phase
+function assignRoles2() {
+  const N = navFor();
+  for (const a of GS.actors) {
+    const b = a.brain; if (!b || !a.prim || !b.site) continue;
+    const d = WD[a.prim.id];
+    if (a.side === 0 && d.scope && b.role !== 'lurk' && b.role !== 'carrier') { b.role = 'sniper'; const far = N.post[b.site].filter(([c]) => dv(N.d[b.site], c) >= 9); const sp = pickSpot(far.length ? far : N.post[b.site], [], 4); if (sp >= 0) b.entry = sp; }
+    if (a.side === 1 && d.pellets && b.site) { const near = N.hold[b.site].filter(([c]) => dv(N.d[b.site], c) <= 8); const sp = pickSpot(near.length ? near : N.hold[b.site], [], 4, recentOf(a)); if (sp >= 0) b.hold = sp; }
+  }
+}
+
+// holders do not stand like statues: now and then they shuffle to another bit of cover next to their spot, and calm defenders sometimes change angle on the same site
+function microMove(a, b, base) {
+  if (GS.time < b.microUntil && b.microCell >= 0) return b.microCell;
+  if (base < 0 || b.vis || GS.time - b.lastSeenT < 3 || GS.time < b.microAt || a.act) return base;
+  b.microAt = GS.time + rand(4, 9);
+  const N = navFor(), x = base % W, z = (base / W) | 0, opts = [];
+  for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) { const nx = x + dx, nz = z + dz; if (nx < 1 || nz < 1 || nx >= W - 1 || nz >= H - 1) continue; const c = nz * W + nx; if (c !== base && walk(c) && N.edge[c] >= 1 && !isSpawnZ(c)) opts.push(c); }
+  if (!opts.length || Math.random() < 0.25) return base;
+  b.microCell = pick(opts); b.microUntil = GS.time + rand(2.2, 4.2);
+  return b.microCell;
+}
+function saveGoal(a, b, side) { if (b.saveCell == null) { b.saveCell = pick(side === 0 ? SPAWN.T : SPAWN.D); const st = (GS.stat ||= {}); st.saves = (st.saves || 0) + 1; } return { cell: b.saveCell, hold: true, save: true, exact: true }; }
+function compGoal2(a, b) {
+  const c = GS.core, N = navFor(), rt = rtNow();
+  if (a.side === 0) {
+    if (GS.state === 'live' && c.state !== 'planted' && c.state !== 'dropped' && GS.roundT < 12 && a.prim && alive(0).length <= 2 && c.carrier !== a) return saveGoal(a, b, 0);
+    if (c.state === 'dropped') { if (!GS.fetcher || !GS.fetcher.alive) GS.fetcher = alive(0).filter((x) => x.brain).sort((x, y) => x.pos.distanceTo(c.pos) - y.pos.distanceTo(c.pos))[0] || null; if (GS.fetcher === a) return { cell: cellOf(c.pos.x, c.pos.z), pos: c.pos }; }
+    if (c.state === 'planted' || c.state === 'boom') {   // after the plant: everybody finds an angle on the bomb, spread out
+      if (b.postAt !== c.plantedAt) {
+        b.postAt = c.plantedAt;
+        const taken = GS.actors.filter((o) => o !== a && o.alive && o.brain && o.side === 0 && o.brain.postSpot >= 0).map((o) => o.brain.postSpot);
+        const k = c.site || GS.plan; let sp = pickSpot(N.post[k], taken, 5, recentOf(a)); if (sp < 0) sp = SITES[k].holdsAtk[b.idx % 4]; b.postSpot = sp;
+      }
+      return { cell: b.postSpot, hold: true, exact: true, post: true };
+    }
+    // swap sites (the fake group, or a lurker who changes lanes)
+    if (b.swapAt && rt >= b.swapAt && b.site !== b.swapTo) { b.site = b.swapTo; b.role = 'support'; b.goAt = rt + 5; b.stage = pickSpot(N.stage[b.site], [], 5); if (b.stage < 0) b.stage = N.site[b.site]; b.route = routeFor(a, b.stage, newCost(0.8), false); b.ri = 0; b.entry = pickSpot(N.post[b.site], [], 4); b.plantCell = pick(SITES[b.site].plant); b.swapAt = 0; }
+    if (b.role === 'lurk' && !b.lurkDone && rt >= b.goAt) { b.lurkDone = true; b.site = b.lurkSite || b.site; b.stage = pickSpot(N.stage[b.site], [], 5); if (b.stage < 0) b.stage = N.site[b.site]; b.route = routeFor(a, b.stage, newCost(1.4), true); b.ri = 0; b.entry = pickSpot(N.post[b.site], [], 4); b.goAt = rt + 6; b.role = 'support'; }
+    while (b.ri < b.route.length - 1 && reached(a, b.route[b.ri], 1.8)) b.ri++;
+    const last = b.route.length ? b.route[b.route.length - 1] : b.stage;
+    if (b.ri < b.route.length - 1) return { cell: b.route[b.ri] };
+    if (!GS.allIn && rt < b.goAt) return { cell: microMove(a, b, last >= 0 ? last : N.site[b.site || 'a']), hold: true, stage: true, exact: true };   // wait at the staging spot until the plan says go
+    // execute
+    if (b.role === 'carrier' || c.carrier === a) {
+      const mates = GS.actors.filter((o) => o !== a && o.alive && o.side === 0 && o.brain && o.brain.site === b.site && reached(o, o.brain.entry >= 0 ? o.brain.entry : N.site[b.site], 4.5)).length;
+      if (mates > 0 || rt >= b.goAt + 7 || GS.allIn || alive(0).length <= 2) return { cell: b.plantCell, plant: true };
+      return { cell: b.entry >= 0 ? b.entry : last, hold: true, exact: true };
+    }
+    if (c.carrier === null && c.state === 'carried') { /* nothing */ }
+    if (b.entry >= 0 && !(b.cleared)) { if (reached(a, b.entry, 1.6) && GS.time - b.lastSeenT > 2.5) b.cleared = true; return { cell: b.entry, hold: true, exact: true, entry: true }; }
+    return { cell: b.postSpot >= 0 ? b.postSpot : (b.entry >= 0 ? b.entry : SITES[b.site].holdsAtk[b.idx % 4]), hold: true, exact: true };
+  }
+  // ---- defenders
+  if (c.state === 'planted') return retakeGoal(a, b, c, N);
+  if (b.fwd >= 0 && rt < b.fwdUntil && !b.rotate) return { cell: b.fwd, hold: true, exact: true };
+  if (b.rotate && GS.time >= b.rotAt) return { cell: b.rotSpot, hold: true, exact: true };
+  return { cell: microMove(a, b, b.hold >= 0 ? b.hold : SITES.a.holdsDef[0]), hold: true, exact: true };
+}
+function retakeGoal(a, b, c, N) {
+  const near = Math.hypot(a.pos.x - c.pos.x, a.pos.z - c.pos.z), bombCell = cellOf(c.pos.x, c.pos.z), k = c.site;
+  if (a.prim && !a.act && near > 5 && c.timer < (a.kit ? 5.5 : 10.5) + near / 6) return saveGoal(a, b, 1);
+  if (b.rtAt !== c.plantedAt) {   // each defender gets a different place to gather round the bomb
+    b.rtAt = c.plantedAt;
+    const taken = GS.actors.filter((o) => o !== a && o.alive && o.brain && o.side === 1 && o.brain.rtStage >= 0).map((o) => o.brain.rtStage);
+    const pool = N.stage[k].length ? N.stage[k] : N.hold[k]; b.rtStage = pickSpot(pool, taken, 5); if (b.rtStage < 0) b.rtStage = bombCell;
+    const cov = N.post[k]; b.rtCover = pickSpot(cov, taken, 3); if (b.rtCover < 0) b.rtCover = bombCell;
+  }
+  const mates = GS.actors.filter((o) => o.alive && o.side === 1 && o.brain);
+  if (!GS.rtGo) {
+    const staged = mates.filter((o) => o.brain.rtStage >= 0 && Math.hypot(o.pos.x - cellX(o.brain.rtStage), o.pos.z - cellZ(o.brain.rtStage)) < 5).length;
+    if (staged >= Math.min(2, mates.length) || c.timer < (a.kit ? 10 : 17) + 9 || mates.length === 1) GS.rtGo = true;
+  }
+  if (!GS.rtGo) return { cell: b.rtStage, hold: true, exact: true, stage: true };
+  if (!GS.defuser || !GS.defuser.alive) GS.defuser = mates.filter((o) => o.kit).concat(mates).sort((x, y) => x.pos.distanceTo(c.pos) - y.pos.distanceTo(c.pos))[0] || null;
+  if (GS.defuser === a) return { cell: bombCell, pos: c.pos, defuse: true };
+  return { cell: b.rtCover, hold: true, exact: true };
+}
+// something to hide behind, sideways of the line to the enemy? (-1 / 1 = which way to step, 0 = nothing)
+function coverSideOf(a, T, px, pz) {
+  const tp = chestPos(T, _v1), ok = [];
+  for (const s of [-1, 1]) {
+    const x = a.pos.x + px * s * 1.15, z = a.pos.z + pz * s * 1.15;
+    if (blocked(x, z, a.pos.y)) continue;
+    if (!losClear(_v2.set(x, a.pos.y + 1.45, z), tp)) ok.push(s);
+  }
+  return ok.length ? pick(ok) : 0;
+}
+// how a bot moves while it has an enemy in sight: peek out, shoot, step back behind cover; or strafe and stop to shoot
+function fightMove(a, b, T, dist, def, out) {
+  const dd = D(), now = GS.time;
+  const dx = T.pos.x - a.pos.x, dz = T.pos.z - a.pos.z, L = Math.hypot(dx, dz) || 1, px = -dz / L, pz = dx / L;
+  if (now > b.coverT) { b.coverT = now + 0.4; b.coverSide = coverSideOf(a, T, px, pz); }
+  if (!(now < b.fightUntil)) {   // choose what to do next
+    const prev = b.fightMode; let mode, dur;
+    const wantPeek = b.coverSide !== 0 && dist > 5 && (b.peeker === undefined ? (b.peeker = Math.random() < dd.peek) : b.peeker);
+    if (a.hp < 45 && b.coverSide !== 0 && prev !== 'hide') { mode = 'hide'; dur = rand(0.7, 1.3); }
+    else if (wantPeek) { if (prev === 'expose') { mode = 'hide'; dur = rand(0.35, 0.8); } else { mode = 'expose'; dur = rand(0.55, 1.4); } }
+    else if (dist < 5) { mode = 'strafe'; dur = rand(0.5, 1.0); }
+    else if (dist > 16 || Math.random() < 0.4) { mode = 'expose'; dur = rand(0.5, 1.2); }
+    else { mode = 'strafe'; dur = rand(0.6, 1.2); }
+    b.fightMode = mode; b.fightUntil = now + dur; b.strafeDir = Math.random() < 0.5 ? 1 : -1; b.sT = 0;
+    const st = (GS.stat ||= {}); st['fight_' + mode] = (st['fight_' + mode] || 0) + 1;
+    if (mode === 'expose') a.crouch = (dist > 13 || b.coverSide !== 0) && Math.random() < 0.55 && !!a.prim; else a.crouch = false;
+  }
+  if (b.fightMode === 'hide') {
+    if (b.coverSide !== 0) { out.wx = px * b.coverSide; out.wz = pz * b.coverSide; } else { out.wx = -dx / L; out.wz = -dz / L; }
+    out.spd *= 0.95; b.waitUntil = now + rand(0.25, 0.8); a.crouch = false;
+  } else if (b.fightMode === 'strafe') {
+    b.sT -= out.dt; if (b.sT <= -0.2) b.sT = rand(0.25, 0.4);   // move ... then stop for a moment (the shots go out while you stand still)
+    if (b.sT > 0) {
+      if (blocked(a.pos.x + px * b.strafeDir * 0.8, a.pos.z + pz * b.strafeDir * 0.8, a.pos.y)) b.strafeDir *= -1;
+      out.wx = px * b.strafeDir; out.wz = pz * b.strafeDir; out.spd *= 0.85;
+    }
+  }
+}
+
+// per-tick thinking of the smart bots: sounds, intel, rotations, switching sites
+function smartThink(a, b) {
+  const N = navFor(), dd = D(), c = GS.core, rt = rtNow();
+  // a new sound (footsteps / shots nearby)?
+  if (b.heardPos && b.heardT > b.heardSeen) {
+    b.heardSeen = b.heardT;
+    if (!b.vis) {
+      const d = a.pos.distanceTo(b.heardPos);
+      noteEnemy(a.side, b.heardPos, 'h' + ((b.heardPos.x / 4) | 0) + ':' + ((b.heardPos.z / 4) | 0), 0.5);
+      if (a.side === 1 && c.state !== 'planted') {
+        if ((b.role === 'aggro' || b.role === 'rotator') && d < 30 && Math.random() < 0.45 + 0.3 * dd.team && GS.time > b.invCool) { b.invCell = cellOf(b.heardPos.x, b.heardPos.z); b.invT = GS.time + rand(4, 7); b.invCool = GS.time + 9; }
+        else if (d < 20) { b.freezeUntil = GS.time + rand(0.7, 1.7); if (b.role !== 'aggro' && Math.random() < 0.4) a.crouch = !!a.prim; }   // listen, crouch, wait at the angle
+      } else if (a.side === 0 && GS.state === 'live' && d < 22 && GS.strat && GS.strat.kind !== 'rush' && !GS.allIn && b.role !== 'carrier') b.freezeUntil = GS.time + rand(0.5, 1.2);   // stop, take cover, pre-aim
+    }
+  }
+  if (GS.state !== 'live') return;
+  if (a.side === 1 && c.state !== 'planted') {
+    // finished rotating?
+    if (b.rotate && GS.time >= b.rotAt) { b.hold = b.rotSpot; b.site = b.rotate; b.rotate = null; b.fwd = -1; remember(a, b.hold); b.watch = []; at(b.hold, 1.6, _e1); for (const lc of shuffle(N.lane[b.site].slice())) { if (losClear(_e1, at(lc, 1.5, _e2), false)) { b.watch.push(lc); if (b.watch.length >= 2) break; } } }
+    // calm for a while: some defenders swap to another angle on the same site
+    if (!b.rotate && b.site && GS.time > b.homeT && !b.vis && GS.time - b.lastSeenT > 6 && intelCount(1, b.site, 10) < 0.5 && b.role !== 'sniper' && !(b.role === 'aggro' && rt < b.fwdUntil)) {
+      b.homeT = GS.time + rand(16, 32);
+      if (Math.random() < 0.3 + 0.4 * dd.team) {
+        const taken = GS.actors.filter((o) => o !== a && o.alive && o.brain && o.side === 1).map((o) => o.brain.hold);
+        const sp = pickSpot(N.hold[b.site], taken, 5, [b.hold]);
+        if (sp >= 0) { b.hold = sp; remember(a, sp); b.watch = []; at(sp, 1.6, _e1); for (const lc of shuffle(N.lane[b.site].slice())) { if (losClear(_e1, at(lc, 1.5, _e2), false)) { b.watch.push(lc); if (b.watch.length >= 2) break; } } b.microUntil = 0; }
+      }
+    }
+    // the enemy shows up at the OTHER site: rotate there (slower on easy levels, only a couple of people leave)
+    if (!b.rotate && GS.time > b.rotCool && !(b.role === 'aggro' && rt < b.fwdUntil)) {
+      for (const k of ['a', 'b']) {
+        if (b.site === k) continue;
+        const n = intelCount(1, k), home = b.site ? intelCount(1, b.site) : 0;
+        if (n >= (b.role === 'rotator' ? 1.4 : 2.0) && home < 1 && GS.rotCount[k] < 2) {
+          const taken = GS.actors.filter((o) => o !== a && o.alive && o.brain && o.side === 1).map((o) => o.brain.hold);
+          b.rotate = k; b.rotSpot = pickSpot(N.hold[k], taken, 5, recentOf(a)); if (b.rotSpot < 0) { b.rotate = null; continue; }
+          b.rotAt = GS.time + dd.rotDelay * rand(0.5, 1.4); b.rotCool = GS.time + 12; GS.rotCount[k]++;
+          const st = (GS.stat ||= {}); st.rotations = (st.rotations || 0) + 1; break;
+        }
+      }
+    }
+  }
+  // attackers read the defence: a stacked site gets abandoned for the other one (once per round, only on hit / slow plans)
+  if (a.side === 0 && !GS.switched && GS.strat && (GS.strat.kind === 'hit' || GS.strat.kind === 'slow') && rt > 10 && rt < (b.goAt || 0) - 3 && b.site && b.role !== 'lurk' && b.role !== 'carrier') {
+    const X = b.site, Y = X === 'a' ? 'b' : 'a';
+    if (intelCount(0, X) >= 3 && intelCount(0, Y) < 1 && Math.random() < 0.06 + 0.1 * dd.team) {
+      GS.switched = true; const cost = newCost(1);
+      for (const o of GS.actors) if (o.alive && o.brain && o.side === 0 && o.brain.site === X && o.brain.role !== 'lurk') {
+        const ob = o.brain; ob.site = Y; ob.stage = pickSpot(N.stage[Y], [], 6); if (ob.stage < 0) ob.stage = N.site[Y];
+        ob.route = routeFor(o, ob.stage, cost, true); ob.ri = 0; ob.entry = pickSpot(N.post[Y], [], 4); ob.plantCell = pick(SITES[Y].plant); ob.goAt = Math.max(ob.goAt, rt + 8 + (ob.goAt - GS.strat.goAt));
+      }
+      GS.plan = Y; GS.firstGo = Math.min(...GS.actors.filter((o) => o.alive && o.brain && o.side === 0 && o.brain.site).map((o) => o.brain.goAt)) - 0.1;
+      const st = (GS.stat ||= {}); st.switches = (st.switches || 0) + 1;
+    }
+  }
+}
+// grenades with a purpose: smoke the long angle and flash the entrance before a hit, smoke off the entrance when you are being hit, flash and smoke on a retake
+function smartUtil(a, b, dd) {
+  if (GS.state !== 'live' || a.act || b.vis || a.blindT > 0.3 || GS.time < b.utilT) return;
+  const N = navFor(), rt = rtNow(), c = GS.core;
+  const throwAt = (cell, type) => { const tp = V().set(cellX(cell), 0.4, cellZ(cell)); if (tp.distanceTo(a.pos) > 27 || tp.distanceTo(a.pos) < 5) return false; lob(a, tp, type); b.utilT = GS.time + rand(0.9, 1.6); return true; };
+  if (a.side === 0 && b.site && c.state !== 'planted' && ['support', 'entry', 'fake', 'trade'].includes(b.role) && Math.random() < 0.25 + 0.7 * dd.nade) {
+    const sg = rt - b.goAt;   // seconds relative to the moment this bot goes in
+    if (sg > -3 && sg < 2.5) {
+      if (a.nades.smoke && !b.smk && sg < -0.8 && (b.role === 'support' || b.role === 'fake')) { const sp = pickSpot(N.hold[b.site], [], 3); if (sp >= 0 && throwAt(sp, 'smoke')) b.smk = 1; return; }
+      if (a.nades.molly && !b.mol && sg < 0 && b.role === 'support') { const sp = pickSpot(N.hold[b.site], [], 3); if (sp >= 0 && throwAt(sp, 'molly')) b.mol = 1; return; }
+      if (a.nades.flash && (b.fl || 0) < 2 && sg > -1.2 && b.entry >= 0) { if (throwAt(b.entry, 'flash')) b.fl = (b.fl || 0) + 1; return; }
+      if (a.nades.he && !b.hePop && sg > -1 && b.role !== 'entry' && b.entry >= 0 && Math.random() < 0.5) { if (throwAt(N.site[b.site], 'he')) b.hePop = 1; return; }
+    }
+  }
+  if (a.side === 1 && GS.strat) {
+    if (c.state !== 'planted' && b.site && intelCount(1, b.site) >= 2) {   // they are hitting my site: smoke the entrance, molly the lane
+      if (a.nades.smoke && !b.smk) { const sp = pickSpot(N.stage[b.site], [], 3); if (sp >= 0 && throwAt(sp, 'smoke')) b.smk = 1; return; }
+      if (a.nades.molly && !b.mol && N.lane[b.site].length) { if (throwAt(pick(N.lane[b.site]), 'molly')) b.mol = 1; return; }
+    }
+    if (c.state === 'planted' && GS.rtGo) {   // retake: smoke and flash the bomb before going in
+      const bc = cellOf(c.pos.x, c.pos.z);
+      if (a.nades.smoke && !c.smoked && a.pos.distanceTo(c.pos) < 24) { if (throwAt(bc, 'smoke')) c.smoked = true; return; }
+      if (a.nades.flash && !b.rtFl && GS.defuser && GS.defuser !== a) { if (throwAt(bc, 'flash')) b.rtFl = 1; return; }
+    }
+  }
+}
+
 function holdLook(cell, enemySide) {
   const key = cell * 2 + enemySide;
   if (holdLookCache.has(key)) return holdLookCache.get(key);
@@ -1116,7 +1609,7 @@ function teamCall(src, pos, radius, dur, strength) {
     const b = o.brain, d = o.pos.distanceTo(pos);
     if (d > radius) continue;
     b.heardPos = pos.clone(); b.heardT = GS.time;
-    if (!b.vis && !o.act && GS.time > b.invCool - 6 && Math.random() < strength * D().team) { b.invCell = cellOf(pos.x, pos.z); b.invT = GS.time + dur; b.invCool = GS.time + dur + 4; st.responses = (st.responses || 0) + 1; }
+    if (!b.vis && !o.act && GS.time > b.invCool - 6 && Math.random() < strength * D().team) { b.invCell = cellOf(pos.x, pos.z); b.invT = GS.time + dur; b.invCool = GS.time + dur + 4; st.responses = (st.responses || 0) + 1; if (NB && strength >= 0.9) b.tradeT = GS.time + dur; }
   }
 }
 // roles that depend on the gun a bot bought: snipers hold long angles, shotguns stay close
@@ -1152,7 +1645,10 @@ function setupBrains() {
 }
 function newBrain(a, idx) {
   return { idx, path: [], pi: 0, goal: -1, think: Math.random() * 0.1, target: null, vis: false, react: 0, errY: 0, errP: 0, aimHead: false, lastSeen: null, lastSeenT: -99, heardPos: null, heardT: -99, hurtT: -99, hurtBy: null, burst: 0, pauseT: 0, strafe: 1, startDelay: rand(0, 1.2), ri: 0, route: [], stuckT: 0, lastPos: a.pos.clone(), rotate: null, roam: -1, roamT: 0, nadeDone: false, unstuck: 0, lookPos: null, claimBase: -1, claimCell: -1, lurkSpot: -1, off: [rand(-0.55, 0.55), rand(-0.55, 0.55)],
-    reposT: GS.time + rand(2, 6), homeT: GS.time + rand(9, 22), invT: 0, invCell: -1, invCool: GS.time + 6, jumpT: GS.time + rand(1, 4), retreatT: 0, retreatCool: 0, callCool: 0, saveCell: null };
+    reposT: GS.time + rand(2, 6), homeT: GS.time + rand(9, 22), invT: 0, invCell: -1, invCool: GS.time + 6, jumpT: GS.time + rand(1, 4), retreatT: 0, retreatCool: 0, callCool: 0, saveCell: null,
+    // smart bots
+    role: '', site: null, hold: -1, fwd: -1, fwdUntil: 0, rotSpot: -1, rotAt: 0, rotCool: GS.time + 6, stage: -1, entry: -1, postSpot: -1, postAt: -1, rtStage: -1, rtCover: -1, rtAt: -1, goAt: 9999, swapAt: 0, leader: null, watch: [], plantCell: -1,
+    heardSeen: 0, microAt: GS.time + rand(3, 8), microUntil: 0, microCell: -1, freezeUntil: 0, waitUntil: 0, tradeT: 0, coverT: 0, coverSide: 0, fightUntil: 0, fightMode: null, strafeDir: 1, sT: 0, utilT: 0, cleared: false };
 }
 function canSee(a, e, fov = 1.25) {
   if (a.blindT > 0.3) return false;
@@ -1217,7 +1713,7 @@ function botThink(a, b) {
     if (best !== b.target || !b.vis) {
       if (best !== b.target || GS.time - b.lastSeenT > 1.2) {
         const holding = Math.hypot(a.vel.x, a.vel.z) < 1 && Math.abs(angDiff(a.yaw, Math.atan2(-(best.pos.x - a.pos.x), -(best.pos.z - a.pos.z)))) < 0.4;
-        b.react = dd.react * rand(0.8, 1.3) * (a.blindT > 0 ? 2 : 1) * (GS.time - b.hurtT < 0.5 ? 0.7 : 1) * (holding ? 0.55 : 1) * (Math.hypot(best.vel.x, best.vel.z) > 4 ? 0.85 : 1);
+        b.react = dd.react * rand(0.8, 1.3) * (a.blindT > 0 ? 2 : 1) * (GS.time - b.hurtT < 0.5 ? 0.7 : 1) * (GS.time < b.tradeT ? 0.55 : 1) * (holding ? 0.55 : 1) * (Math.hypot(best.vel.x, best.vel.z) > 4 ? 0.85 : 1);
         const s = Math.random() < 0.5 ? -1 : 1;
         b.errY = s * dd.err * DEG * rand(0.6, 1.3); b.errP = (Math.random() - 0.3) * dd.err * DEG * 0.7;
         b.aimHead = Math.random() < dd.head; b.burst = 0;
@@ -1226,12 +1722,13 @@ function botThink(a, b) {
     }
     b.target = best; b.vis = true; b.lastSeen = best.pos.clone(); b.lastSeenT = GS.time;
     if (a.hp < 45 && GS.time > b.retreatCool && Math.random() < 0.3) { b.retreatT = GS.time + rand(0.8, 1.8); b.retreatCool = GS.time + 6; }
-    best.spotT = GS.time;
+    best.spotT = GS.time; if (NB) noteEnemy(a.side, best.pos, best.id);
     if (GS.time > b.callCool) { b.callCool = GS.time + 3; teamCall(a, best.pos, 40, 3, 0.25); }
   } else { b.vis = false; if (GS.time - b.lastSeenT > 3) { b.target = null; a.crouch = false; } }
 
   // goals (comp)
-  if (GS.mode === 'comp') {
+  if (GS.mode === 'comp' && NB) smartThink(a, b);
+  if (GS.mode === 'comp' && !NB) {
     const c = GS.core;
     if (a.side === 1 && c.state !== 'planted' && !b.rotate) {
       for (const k of ['a', 'b']) {
@@ -1241,15 +1738,15 @@ function botThink(a, b) {
       }
     }
   }
-  let goal = GS.mode === 'dm' ? dmGoal(a, b) : compGoal(a, b);
+  let goal = GS.mode === 'dm' ? dmGoal(a, b) : NB ? compGoal2(a, b) : compGoal(a, b);
   // ---- act like a real player, not a statue ----
   if (GS.state === 'live' && GS.mode !== 'range' && !a.act) {
     const calm = !b.vis && GS.time - b.lastSeenT > 4;
     // heard something? go and check it out
-    if (!b.vis && b.heardPos && (a.side === 1 || b.lurk) && GS.time - b.heardT < 1.2 && GS.time > b.invCool && Math.random() < 0.3) { b.invCell = cellOf(b.heardPos.x, b.heardPos.z); b.invT = GS.time + rand(4, 7); b.invCool = GS.time + 9; }
+    if (!NB && !b.vis && b.heardPos && (a.side === 1 || b.lurk) && GS.time - b.heardT < 1.2 && GS.time > b.invCool && Math.random() < 0.3) { b.invCell = cellOf(b.heardPos.x, b.heardPos.z); b.invT = GS.time + rand(4, 7); b.invCool = GS.time + 9; }
     if (GS.time < b.invT && !b.vis && b.invCell >= 0 && !goal.plant && !goal.defuse && !goal.pos) goal = { cell: jitterCell(b.invCell, 1) };
     // every so often move to a different spot (defenders re-position, lurkers change lanes)
-    if (GS.mode === 'comp' && calm && GS.time > b.homeT) {
+    if (!NB && GS.mode === 'comp' && calm && GS.time > b.homeT) {
       b.homeT = GS.time + rand(10, 24);
       if (a.side === 1 && GS.core.state !== 'planted') {
         const stage = [ROUTES.a, ROUTES.b].flatMap((rs) => rs.map((r) => r[r.length - 1]));
@@ -1261,19 +1758,27 @@ function botThink(a, b) {
         b.lurkSpot = pick([LURK, ...MID_HOLDS, ...SITES.a.holdsAtk, ...SITES.b.holdsAtk]); b.claimBase = -1; b.claimCell = -1; goal = compGoal(a, b);
       }
     }
-    // standing at a hold: shuffle around, peek, crouch
+    // standing at a hold: shuffle around, crouch a little
+    if (NB && goal.exact && goal.hold && calm && GS.time > b.reposT && reached(a, goal.cell, 1.6)) { b.reposT = GS.time + rand(3, 8); a.crouch = Math.random() < 0.3 && !!a.prim; b.off = [rand(-0.45, 0.45), rand(-0.45, 0.45)]; }
     if ((goal.hold || goal.stage) && calm && GS.time > b.reposT && b.claimCell >= 0 && reached(a, b.claimCell, 1.6)) {
       b.reposT = GS.time + rand(2.5, 7); b.claimBase = -1; b.claimCell = -1; a.crouch = Math.random() < 0.2 && !!a.prim; b.off = [rand(-0.6, 0.6), rand(-0.6, 0.6)];
     }
   }
-  if (goal.hold || goal.stage) goal.cell = spreadCell(a, b, goal.cell); else b.claimBase = -1;
+  if ((goal.hold || goal.stage) && !goal.exact) goal.cell = spreadCell(a, b, goal.cell); else b.claimBase = -1;
   b.cur = goal;
   if (goal.cell !== b.goal) { b.goal = goal.cell; b.path = astar(cellOf(a.pos.x, a.pos.z), goal.cell); b.pi = 0; }
   if (b.pi + 1 < b.path.length && clearLine(a.pos.x, a.pos.z, cellX(b.path[b.pi + 1]), cellZ(b.path[b.pi + 1]))) b.pi++;
   // stuck
   const moved = Math.hypot(a.pos.x - b.lastPos.x, a.pos.z - b.lastPos.z);
   b.lastPos.copy(a.pos);
-  if (b.wantMove && moved < 0.04) { b.stuckT += 0.1; if (b.stuckT > 0.8) { b.stuckT = 0; b.goal = -1; b.unstuck = 0.5; b.unYaw = Math.random() * 6.28; } } else b.stuckT = 0;
+  if (b.wantMove && moved < 0.04) {
+    b.stuckT += 0.1;
+    if (b.stuckT > 0.8) {
+      b.stuckT = 0; b.goal = -1; b.unstuck = 0.5; b.unYaw = Math.random() * 6.28;
+      b.stuckN = GS.time - (b.stuckLast || -99) < 10 ? (b.stuckN || 0) + 1 : 1; b.stuckLast = GS.time;
+      if (b.stuckN >= 3) { const c0 = nearestWalk(cellOf(a.pos.x, a.pos.z)); a.pos.x = cellX(c0); a.pos.z = cellZ(c0); b.stuckN = 0; const st = (GS.stat ||= {}); st.unwedged = (st.unwedged || 0) + 1; }   // wedged in a corner again and again: put it back in the middle of the cell
+    }
+  } else b.stuckT = 0;
   // plant / defuse
   const c = GS.core;
   if (GS.mode === 'comp' && GS.state === 'live' && !a.act) {
@@ -1284,12 +1789,13 @@ function botThink(a, b) {
     if (c.state === 'planted' && a.side === 0 && a.nades.molly && !c.mollied && !b.vis && dc > 5 && dc < 22 && Math.random() < 0.04 + 0.05 * dd.team) { c.mollied = true; lob(a, c.pos.clone().add(V().set(rand(-1, 1), 0, rand(-1, 1))), 'molly'); }
   }
   // grenades: execute utility + HE at last known
+  if (NB) smartUtil(a, b, dd);
   if (GS.state === 'live' && !b.vis && !a.act && Math.random() < dd.nade * 0.08) {
     const ld = b.target && b.lastSeen ? b.lastSeen.distanceTo(a.pos) : 0, fresh = b.target && GS.time - b.lastSeenT < 3;
     if (fresh && a.nades.he && ld > 7) lob(a, b.lastSeen, 'he');
     else if (fresh && a.nades.molly && ld > 8 && ld < 28) lob(a, b.lastSeen, 'molly');
     else if (fresh && a.nades.flash && ld > 7 && ld < 30 && (a.side === 1 || GS.execute)) lob(a, b.lastSeen, 'flash');
-    else if (GS.mode === 'comp' && a.side === 0 && GS.execute && !b.nadeDone && b.ri >= b.route.length - 1) {
+    else if (!NB && GS.mode === 'comp' && a.side === 0 && GS.execute && !b.nadeDone && b.ri >= b.route.length - 1) {
       b.nadeDone = true;
       const ctr = SITES[GS.plan].center, tp = V().set(ctr[0] * CS, 0.5, ctr[1] * CS);
       if (a.nades.smoke) lob(a, tp.clone().add(V().set(rand(-4, 4), 0, -6)), 'smoke');
@@ -1343,8 +1849,12 @@ function botUpdate(a, dt) {
   } else if (GS.time - b.heardT < 1.6 && b.heardPos) {
     wantY = Math.atan2(-(b.heardPos.x - a.pos.x), -(b.heardPos.z - a.pos.z));
   } else if (b.cur && b.cur.hold && b.path.length && b.pi >= b.path.length - 1 && reached(a, b.cur.cell, 1.2)) {
-    const lp = GS.mode === 'comp' && GS.core.state === 'planted' && a.side === 0 ? holdLook(b.cur.cell, 1) : holdLook(b.cur.cell, 1 - a.side);
+    let lp;
+    if (NB && a.side === 1 && b.watch.length && b.cur.cell === b.hold) { const wc = b.watch[Math.floor(GS.time / 3.4 + b.idx) % b.watch.length]; lp = _v1.set(cellX(wc), 1.4, cellZ(wc)); }   // scan the lanes they will come down
+    else lp = GS.mode === 'comp' && GS.core.state === 'planted' && a.side === 0 ? holdLook(b.cur.cell, 1) : holdLook(b.cur.cell, 1 - a.side);
     wantY = Math.atan2(-(lp.x - a.pos.x), -(lp.z - a.pos.z)) + Math.sin(GS.time * 0.5 + b.idx) * 0.25;
+  } else if (NB && b.path.length && b.pi < b.path.length - 1 && Math.hypot(a.vel.x, a.vel.z) > 1) {   // look round the corner BEFORE walking round it
+    const la = b.path[Math.min(b.pi + 4, b.path.length - 1)]; wantY = Math.atan2(-(cellX(la) - a.pos.x), -(cellZ(la) - a.pos.z));
   } else if (Math.hypot(a.vel.x, a.vel.z) > 1) wantY = Math.atan2(-a.vel.x, -a.vel.z);
   const turn = dd.turn * dt * (a.blindT > 0 ? 0.3 : 1);
   const dy = angDiff(a.yaw, wantY);
@@ -1361,8 +1871,10 @@ function botUpdate(a, dt) {
       const dist = T.pos.distanceTo(a.pos);
       if (GS.time < b.retreatT && !def.melee) { const d = _v1.subVectors(a.pos, T.pos).setY(0).normalize(); wx = d.x; wz = d.z; b.wantMove = true; }
       else if (def.melee || (def.pellets && dist > 6)) { const d = _v1.subVectors(T.pos, a.pos).setY(0).normalize(); wx = d.x; wz = d.z; b.wantMove = true; }
+      else if (NB) { const o = { wx: 0, wz: 0, spd, dt }; fightMove(a, b, T, dist, def, o); wx = o.wx; wz = o.wz; spd = o.spd; b.wantMove = !!(wx || wz); }
       else if (b.pauseT > 0 && dist > 5) { b.strafe = Math.sin(GS.time * 2 + b.idx) > 0 ? 1 : -1; wx = Math.cos(a.yaw) * b.strafe; wz = -Math.sin(a.yaw) * b.strafe; spd *= 0.75; }
-    } else if (b.path.length && b.pi < b.path.length) {
+    } else if (NB && (GS.time < b.freezeUntil || GS.time < b.waitUntil)) { /* listening / waiting for the next peek: stand still */ }
+    else if (b.path.length && b.pi < b.path.length) {
       const last = b.pi === b.path.length - 1;
       const tx = last && b.cur && b.cur.pos ? b.cur.pos.x : cellX(b.path[b.pi]) + b.off[0], tz = last && b.cur && b.cur.pos ? b.cur.pos.z : cellZ(b.path[b.pi]) + b.off[1];
       const dx = tx - a.pos.x, dz = tz - a.pos.z, dl = Math.hypot(dx, dz);
@@ -1371,6 +1883,11 @@ function botUpdate(a, dt) {
       if (b.cur && b.cur.stage && dl < 3) { wx = 0; wz = 0; b.wantMove = false; }
       if (T && GS.time - b.lastSeenT < 2) spd *= 0.5; // walk carefully after contact
       else if (GS.time - b.lastSeenT > 4 && b.path.length - b.pi > 6 && !(b.cur && b.cur.stage)) { spd *= 1.3; a.sprint = true; }
+      if (NB) {
+        const sd = b.site && NAV ? dv(NAV.d[b.site], cellOf(a.pos.x, a.pos.z)) : 99;
+        if (a.side === 0 && sd < 13 && GS.strat && GS.strat.kind !== 'rush' && !GS.allIn && GS.time - b.lastSeenT > 1) { spd *= 0.55; a.sprint = false; }   // near the site: walk (a walk makes no noise)
+        if (b.leader && b.leader.alive && rtNow() >= b.goAt - 1) { const dl = a.pos.distanceTo(b.leader.pos); if (dl < 4.5) spd *= 0.8; else if (dl > 13) { spd *= 1.25; a.sprint = true; } }   // go in together
+      }
     }
   }
   for (const f of GS.fires) { const fx = a.pos.x - f.x, fz = a.pos.z - f.z, fd = Math.hypot(fx, fz); if (fd < f.r + 0.9) { const kk = fd || 1; wx = fx / kk; wz = fz / kk; b.wantMove = true; a.sprint = true; spd = def.speed * 1.3; } }
@@ -1386,7 +1903,7 @@ function botUpdate(a, dt) {
   physics(a, dt, wx, wz, spd * (a.crouch ? 0.34 : 1) * (a.tagT > 0 ? 0.55 : 1), hop);
   footsteps(a, dt);
   // fire
-  if (T && b.vis && T.alive && b.react <= 0 && !frozen && !a.act && a.switchT <= 0 && a.reloadT <= 0 && a.blindT <= 0.3 && GS.time >= a.nextFire && GS.state !== 'freeze') {
+  if (T && b.vis && T.alive && b.react <= 0 && !frozen && !a.act && a.switchT <= 0 && (a.reloadT <= 0 || (def.shell && w.mag > 0)) && a.blindT <= 0.3 && GS.time >= a.nextFire && GS.state !== 'freeze') {
     const aimErr = Math.abs(angDiff(a.yaw, tgtYaw)) + Math.abs(a.pitch - b.tgtP);
     const dist = T.pos.distanceTo(a.pos);
     const slowEnough = Math.hypot(a.vel.x, a.vel.z) < def.speed * 0.4 || def.melee || def.pellets || dist < 6;
@@ -1698,7 +2215,7 @@ function updatePlayer(dt) {
   let hint = '';
   if (GS.mode === 'comp' && (GS.state === 'live')) {
     if (P.side === 0 && c.carrier === P && (site === 'a' || site === 'b') && P.onGround) {
-      hint = 'Hold E to plant the core';
+      hint = 'Hold E to plant the bomb';
       if (keys.KeyE && !P.act) P.act = { type: 'plant', t: 0, need: 3.2 };
     }
     if (P.side === 1 && c.state === 'planted' && P.pos.distanceTo(c.pos) < 1.8) {
@@ -1718,7 +2235,7 @@ function updatePlayer(dt) {
   }
   useHere = !!hint || !!P.act;
   if (!hint && document.pointerLockElement !== canvas && !DEBUG && !padMode && GS.time % 8 < 4) hint = 'Mouse not captured: click the game (best in Chrome) · or push the cursor to the screen edge to keep turning';
-  setHint(padMode ? hint.replace(/\bE\b/, 'X') : hint);
+  setHint(P.act ? '' : padMode ? hint.replace(/\bE\b/, 'X') : hint);
   // movement
   let fx = 0, fz = 0;
   if (!frozen && !P.act) {
@@ -1731,14 +2248,14 @@ function updatePlayer(dt) {
   physics(P, dt, fx, fz, maxSpd, keys.Space && !frozen && !P.act);
   if (!P.walk) footsteps(P, dt);
   // firing
-  const can = !frozen && P.switchT <= 0 && !P.act && GS.state !== 'over' && GS.time - (P.sprintT || -9) > 0.12;
+  const can = !frozen && P.switchT <= 0 && !P.act && GS.state !== 'over' && GS.time - (P.sprintT || -9) > (def.runGun ? 0.03 : 0.12);
   if (can && def.nade) {
     if (pressed.has('M0') && GS.time >= P.nextFire) throwNade(P, w.id, fwd(P.yaw, P.pitch + 0.08), 19);
     else if (pressed.has('M2') && GS.time >= P.nextFire) throwNade(P, w.id, fwd(P.yaw, P.pitch + 0.15), 9);
   } else if (can && def.melee) {
     if (mouse[0] && GS.time >= P.nextFire) melee(P, false);
     else if (mouse[2] && GS.time >= P.nextFire) melee(P, true);
-  } else if (can && P.reloadT <= 0) {
+  } else if (can && (P.reloadT <= 0 || (def.shell && w.mag > 0))) {
     if (mouse[0] && GS.time >= P.nextFire && (def.auto || pressed.has('M0'))) fireWeapon(P);
     if (pressed.has('M2') && def.scope) { P.scoped = (P.scoped + 1) % ((def.zoomLv || 2) + 1); P.rescope = 0; SFX.ui(); }
   }
@@ -1748,7 +2265,13 @@ function updatePlayer(dt) {
 function updateActorTimers(a, dt) {
   a.blindT = Math.max(0, a.blindT - dt); a.protT = Math.max(0, a.protT - dt); a.tagT = Math.max(0, a.tagT - dt);
   a.crouchAmt += ((a.crouch ? 1 : 0) - a.crouchAmt) * Math.min(1, dt * 12);
+  a.scopeAge = a.scoped ? (a.scopeAge || 0) + dt : 0;
   if (a.switchT > 0) a.switchT -= dt;
+  if (a.burstLeft > 0) {   // the rest of a burst fires by itself
+    const bw = curW(a), bd = bw && WD[bw.id];
+    if (!bd || !bd.burst || a.reloadT > 0 || a.switchT > 0 || bw.mag <= 0 || a.blindT > 1.5) a.burstLeft = 0;
+    else if (GS.time >= a.nextFire && (MP.role !== 'client' || a.isPlayer)) fireWeapon(a, true);
+  }
   if (a.reloadT > 0) { a.reloadT -= dt; if (a.reloadT <= 0) { a.reloadT = 0; finishReload(a); } }
   const def = curDef(a);
   if (def.pat && GS.time - a.lastShot > 60 / def.rpm + 0.06) a.rc = Math.max(0, a.rc - def.rec * dt * (1 + a.rc * 0.08));
@@ -1760,39 +2283,82 @@ function updateActorTimers(a, dt) {
     else if (a.act.type === 'defuse' && (c.state !== 'planted' || a.pos.distanceTo(c.pos) > 2)) a.act = null;
     if (a.act && a.act.t >= a.act.need && MP.role !== 'client') {
       if (a.act.type === 'plant') {
-        c.state = 'planted'; c.carrier = null; c.pos.set(a.pos.x, a.pos.y, a.pos.z); c.site = zoneAt(a.pos.x, a.pos.z); c.timer = 40; c.beepT = 0;
-        addMoney(a, 300, 'plant'); SFX.plant(); if (MP.role === 'host') MPH.event('plant'); banner('CORE PLANTED', `Site ${c.site.toUpperCase()} · 40 seconds`, '#ff9a3d', 2200);
+        c.state = 'planted'; c.carrier = null; c.pos.set(a.pos.x, a.pos.y, a.pos.z); c.site = zoneAt(a.pos.x, a.pos.z); c.timer = BOMB_TIME; c.beepT = 0; c.rot = a.yaw; c.plantedAt = GS.time;
+        { const fx = -Math.sin(a.yaw) * 0.75, fz = -Math.cos(a.yaw) * 0.75; if (!blocked(a.pos.x + fx, a.pos.z + fz, a.pos.y)) { c.pos.x += fx; c.pos.z += fz; } }   // it lies on the floor just in front of the planter
+        addMoney(a, 300, 'plant'); SFX.plant(); SFX.armed(c.pos); if (MP.role === 'host') MPH.event('plant'); banner('BOMB PLANTED', `Site ${c.site.toUpperCase()} · ${BOMB_TIME} seconds`, '#ff9a3d', 2200);
         for (const b of GS.actors) if (b.brain) b.brain.goal = -1;
-        feedText(`${a.name} planted the core at ${c.site.toUpperCase()}`);
+        feedText(`${a.name} planted the bomb at ${c.site.toUpperCase()}`);
       } else {
-        c.state = 'defused'; SFX.defused(); addMoney(a, 300, 'defuse'); if (MP.role === 'host') MPH.event('defused');
-        feedText(`${a.name} defused the core!`);
+        c.state = 'defused'; SFX.defused(); c.rot = c.rot || 0; addMoney(a, 300, 'defuse'); if (MP.role === 'host') MPH.event('defused');
+        feedText(`${a.name} defused the bomb!`);
         if (GS.state === 'live') endRound(1, 'defuse');
       }
       a.act = null;
     }
   }
 }
+// where the bomb is and what its display shows (on the floor, on a carrier's back, in the planter's hands) + when the attackers go
+const KEYS = '7355608';   // the code the planter taps in
+function bombClock(c) { return '0:' + String(Math.max(0, Math.ceil(c.timer))).padStart(2, '0'); }
 function updateCore(dt) {
-  const c = GS.core; if (!c || GS.mode !== 'comp') { coreMesh.visible = false; return; }
-  const P = GS.player;
+  const c = GS.core, P = GS.player;
+  if (!c || GS.mode !== 'comp' || !P) { bombMesh.visible = false; vmBomb.group.visible = false; return; }
   if (c.state === 'dropped' && MP.role !== 'client') {
     for (const a of GS.actors) if (a.alive && a.side === 0 && Math.hypot(a.pos.x - c.pos.x, a.pos.z - c.pos.z) < 1.1 && Math.abs(a.pos.y - c.pos.y) < 1.2) {
-      c.state = 'carried'; c.carrier = a; GS.fetcher = null; if (a.isPlayer) toast('You picked up the CORE'); break;
+      c.state = 'carried'; c.carrier = a; GS.fetcher = null; SFX.swap(); if (a.isPlayer) toast('You picked up the BOMB'); break;
     }
   }
+  // who is tapping the keypad / cutting wires right now? (your own act is known exactly; other players' only by the flag in the snapshot)
+  let planter = null, defuser = null;
+  for (const a of GS.actors) {
+    if (!a.alive) continue;
+    const k = a.act ? a.act.type : a.actVis;
+    if (k === 'plant' && c.carrier === a) planter = a; else if (k === 'defuse' && c.state === 'planted') defuser = a;
+  }
+  const B = BOMB, M = bombMesh, tt = GS.time;
+  let show = true, led = false, ledCol = 0xff2a2a, txt = '--:--', col = '#ff2a1a', light = 0;
   if (c.state === 'carried' && c.carrier) {
     const a = c.carrier;
-    coreMesh.visible = !a.isPlayer && a.alive;
-    coreMesh.position.set(a.pos.x + Math.sin(a.yaw) * 0.25, a.pos.y + 1.05 - 0.36 * a.crouchAmt, a.pos.z + Math.cos(a.yaw) * 0.25); coreMesh.rotation.y = a.yaw;
-    coreMesh.userData.light.intensity = 2;
-  } else if (c.state === 'dropped' || c.state === 'planted') {
-    coreMesh.visible = true; coreMesh.position.copy(c.pos); coreMesh.rotation.y = 0;
-    if (c.state === 'dropped') coreMesh.userData.light.intensity = 3 + Math.sin(GS.time * 6) * 2;
-  } else coreMesh.visible = false;
-  coreMesh.userData.glow.material.color.setHex(c.state === 'planted' && c.beepT > 0.05 + clamp(c.timer / 40, 0.08, 1) * 0.8 ? 0xff2a2a : 0xffa030);
+    if (planter) {   // on the floor in front of the planter, the code going in
+      M.position.set(a.pos.x - Math.sin(a.yaw) * 0.75, a.pos.y, a.pos.z - Math.cos(a.yaw) * 0.75); M.rotation.set(0, a.yaw, 0, 'YXZ'); M.scale.setScalar(1.15);
+      const n = a.act ? Math.floor(Math.min(0.999, a.act.t / a.act.need) * (KEYS.length + 1)) : 3;
+      txt = KEYS.slice(0, n) || '-'; col = '#ffb02a'; led = Math.floor(tt * 8) % 2 === 0; ledCol = 0xffb02a;
+      show = !a.isPlayer;   // the planter sees it in their hands instead
+    } else {         // strapped to the back (the red light blinks slowly)
+      M.position.set(a.pos.x + Math.sin(a.yaw) * 0.46, a.pos.y + 1.02 - 0.36 * a.crouchAmt, a.pos.z + Math.cos(a.yaw) * 0.46); M.rotation.set(Math.PI / 2, a.yaw, 0, 'YXZ'); M.scale.setScalar(0.72);
+      led = Math.floor(tt * 1.5) % 2 === 0; ledCol = 0xff7a2a;
+      show = !a.isPlayer && a.alive;
+    }
+  } else if (c.state === 'dropped') {
+    M.position.set(c.pos.x, c.pos.y, c.pos.z); M.rotation.set(0, c.rot || 0, 0); M.scale.setScalar(1.15);
+    led = Math.floor(tt * 2) % 2 === 0; ledCol = 0xff7a2a; light = 2 + Math.sin(tt * 6) * 1.5;
+  } else if (c.state === 'planted' || c.state === 'defused') {
+    M.position.set(c.pos.x, c.pos.y, c.pos.z); M.rotation.set(0, c.rot || 0, 0); M.scale.setScalar(1.3);
+    if (c.state === 'defused') { txt = 'SAFE'; col = '#4cff7a'; led = true; ledCol = 0x4cff7a; }
+    else { txt = bombClock(c); col = defuser ? '#ffd04a' : '#ff2a1a'; led = c.beepT > (c.beepI || 1) - 0.1; ledCol = defuser ? 0xffd04a : 0xff2a2a; }
+    show = !(defuser && defuser.isPlayer);
+  } else show = false;
+  M.visible = show;
+  if (show) { B.setDisplay(txt, col); B.setLed(led, ledCol); if (c.state === 'dropped') bombLight.intensity = light; }
+  // in your hands (first person) while you plant or defuse
+  const mine = P.alive && P.act ? P.act : null, V3 = vmBomb.group;
+  V3.visible = !!mine && (c.state === 'carried' || c.state === 'planted');
+  if (V3.visible) {
+    const planting = mine.type === 'plant', t = mine.t, pr = Math.min(0.999, t / mine.need);
+    V3.position.set(0.02, -0.27 + Math.sin(tt * 4) * 0.004, -0.72); V3.rotation.set(0.95, 0, 0); V3.scale.setScalar(0.55);
+    vmBomb.setDisplay(planting ? (KEYS.slice(0, Math.floor(pr * (KEYS.length + 1))) || '-') : bombClock(c), planting ? '#ffb02a' : '#ffd04a');
+    vmBomb.setLed(Math.floor(tt * 8) % 2 === 0, planting ? 0xffb02a : 0xffd04a);
+    // the hand taps the keys (plant) or snips the wires (defuse)
+    const k = Math.floor(t * 6), press = Math.max(0, Math.sin(t * 6 * Math.PI)), key = k % 12;
+    if (planting) vmHand.position.set(((key % 3) - 1) * 0.035, 0.235 - press * 0.03, 0.025 + Math.floor(key / 3) * 0.032 + 0.06);
+    else vmHand.position.set(Math.sin(t * 2.2) > 0 ? 0.145 : -0.145, 0.22 - press * 0.02, (Math.floor(t * 1.5) % 3 - 1) * 0.09 + 0.05);
+    vmHand.rotation.set(-0.2, 0, 0);
+  }
   // execute decision for attackers
-  if (GS.state === 'live' && !GS.execute && MP.role !== 'client') {
+  if (NB && GS.state === 'live' && MP.role !== 'client') {
+    if (!GS.allIn && (GS.roundT < 38 || (c.carrier && c.carrier.human && c.carrier.alive && 'ab'.includes(zoneAt(c.carrier.pos.x, c.carrier.pos.z))))) GS.allIn = true;
+    if (!GS.execute && (GS.allIn || rtNow() >= (GS.firstGo || 40))) { GS.execute = true; for (const a of GS.actors) if (a.alive && a.side === 0 && a.brain) a.brain.goal = -1; }
+  } else if (GS.state === 'live' && !GS.execute && MP.role !== 'client') {
     const atk = GS.actors.filter((a) => a.alive && a.side === 0 && a.brain && !a.brain.lurk);
     const waiting = atk.filter((a) => a.brain.cur && a.brain.cur.stage && reached(a, a.brain.cur.cell, 3.2)).length;
     const elapsed = GS.time - GS.roundStart - GS.phaseT;
@@ -1814,7 +2380,7 @@ function toast(t) { const k = $('killmsg'); k.innerHTML = `<div class="k" style=
 function feed(k, v, wid, hs) {
   const f = $('feed'), d = document.createElement('div');
   const nm = (a) => `<span style="color:${SIDE[a.side].css}">${a.isPlayer ? 'You' : a.name}</span>`;
-  const wn = wid === 'core' ? 'CORE BLAST' : WD[wid] ? WD[wid].name : '';
+  const wn = WD[wid] ? WD[wid].name : '';
   d.innerHTML = (k && k !== v ? nm(k) : '') + `<span class="w">${wn}</span>` + (hs ? '<span class="hs">◎</span>' : '') + nm(v);
   if ((k && k.isPlayer) || v.isPlayer) d.className = 'me';
   f.prepend(d); while (f.children.length > 6) f.lastChild.remove();
@@ -1864,12 +2430,12 @@ function updateHUD() {
   // money / buy hint
   setText('money', GS.mode === 'comp' ? `$${P.money}` : '');
   setText('buyHint', P.alive && inBuyZone(P) ? 'Press B to buy' : '');
-  setText('coreIcon', c && c.carrier === P ? '◆ YOU HAVE THE CORE' : '');
+  setText('coreIcon', c && c.carrier === P ? '◆ YOU HAVE THE BOMB' : '');
   // vitals
   setText('hp', Math.ceil(viewA.hp)); setText('ar', Math.ceil(viewA.armor) + (viewA.helmet ? '+H' : ''));
   $('hpBox').classList.toggle('low', viewA.hp <= 25);
   const w = curW(viewA), def = WD[w.id];
-  setText('wname', def.name.toUpperCase());
+  setText('wname', def.name.toUpperCase() + (def.mag ? ' · ' + fireMode(def) : ''));
   if (def.mag) { setText('mag', w.mag); setText('res', `/ ${w.res > 900 ? '∞' : w.res}`); $('ammo').classList.toggle('low', w.mag <= Math.ceil(def.mag * 0.25)); }
   else if (def.nade) { setText('mag', viewA.nades[w.id]); setText('res', ''); $('ammo').classList.remove('low'); }
   else { setText('mag', '—'); setText('res', ''); $('ammo').classList.remove('low'); }
@@ -1879,7 +2445,7 @@ function updateHUD() {
   // action bar
   const act = viewA.act;
   $('prog').classList.toggle('hidden', !act);
-  if (act) { setText('progLbl', act.type === 'plant' ? 'PLANTING CORE…' : 'DEFUSING CORE…'); $('progFill').style.width = (act.t / act.need * 100) + '%'; }
+  if (act) { setText('progLbl', act.type === 'plant' ? 'PLANTING BOMB…' : 'DEFUSING BOMB…'); $('progFill').style.width = (act.t / act.need * 100) + '%'; }
   // spectate
   if (!P.alive && GS.mode === 'comp') setText('spec', specA ? `Spectating ${specA.name} · ${Math.ceil(specA.hp)} HP · click to switch` : 'Waiting for next round…');
   else if (!P.alive && GS.mode === 'dm') setText('spec', `Respawning in ${Math.max(0, P.respawnT).toFixed(1)}…`);
@@ -1926,7 +2492,11 @@ function drawRadar(viewA) {
   const c = GS.core;
   if (c && GS.mode === 'comp' && (P.side === 0 || c.state === 'planted')) {
     const cp = c.state === 'carried' && c.carrier ? c.carrier.pos : c.pos;
-    if (c.state !== 'none' && c.state !== 'boom' && c.state !== 'defused') { rc.fillStyle = c.state === 'planted' ? '#ff3b3b' : '#ff9ccf'; rc.fillRect(cp.x - 1.4, cp.z - 1.4, 2.8, 2.8); }
+    if (c.state !== 'none' && c.state !== 'boom' && c.state !== 'defused') {
+      const blink = c.state === 'carried' || Math.floor(GS.time * 3) % 2 === 0, r = c.state === 'planted' ? 3 : 2.3;
+      if (blink) { rc.fillStyle = c.state === 'planted' ? '#ff3b3b' : '#ff9ccf'; rc.fillRect(cp.x - r, cp.z - r * 0.65, r * 2, r * 1.3); rc.fillStyle = '#220'; rc.fillRect(cp.x - r * 0.5, cp.z - r * 0.25, r, r * 0.5); }
+      if (c.state === 'planted') { rc.strokeStyle = 'rgba(255,59,59,' + (0.7 - ((GS.time * 1.5) % 1) * 0.7) + ')'; rc.lineWidth = 0.8; rc.beginPath(); rc.arc(cp.x, cp.z, 3 + ((GS.time * 1.5) % 1) * 9, 0, 7); rc.stroke(); }
+    }
   }
   rc.restore();
   rc.fillStyle = '#fff'; rc.beginPath(); rc.moveTo(100, 92); rc.lineTo(106, 106); rc.lineTo(100, 103); rc.lineTo(94, 106); rc.closePath(); rc.fill();
@@ -1950,7 +2520,7 @@ function updateBoard() {
 }
 
 // buy menu
-const BUY = [['PISTOLS', ['p9', 'tec', 'viper', 'revolver']], ['SMG / SHOTGUN', ['buzz', 'chopper', 'thumper', 'scatter']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
+const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
 function renderBuy() {
   const P = GS.player;
   $('buyMoney').textContent = GS.mode === 'comp' ? `$${P.money}` : 'FREE';
@@ -1958,8 +2528,10 @@ function renderBuy() {
   $('buyGrid').innerHTML = BUY.map(([cat, ids]) => `<div class="cat"><h3>${cat}</h3>${ids.map((id) => {
     const d = WD[id] || GEAR[id];
     const own = (WD[id] && !d.nade && P[d.slot] && P[d.slot].id === id) || (id === 'kit' && P.kit) || (id === 'helm' && P.helmet) || (id === 'kevlar' && P.armor >= 100);
-    const bars = WD[id] && d.dmg ? `<div class="bars"><span>Damage</span><i style="width:${Math.min(100, d.dmg * (d.pellets || 1) / 1.6)}%"></i><span>Fire rate</span><i style="width:${Math.min(100, d.rpm / 9)}%"></i><span>Mobility</span><i style="width:${Math.max(6, Math.min(100, (d.speed - 4.6) / 2.4 * 100))}%"></i></div>` : '';
-    return `<button class="item ${own ? 'own' : ''}" data-id="${id}" ${canBuy(P, id) ? '' : 'disabled'}><span class="p">${GS.mode === 'comp' ? '$' + priceOf(P, id) : 'FREE'}</span><div class="n">${d.name}</div><div class="d">${d.desc || ''}</div>${bars}</button>`;
+    const bar = (l, v) => `<span>${l}</span><i style="width:${Math.max(6, Math.min(100, v))}%"></i>`;
+    const bars = WD[id] && d.dmg ? `<div class="bars">${bar('Damage', d.dmg * (d.pellets || 1) / 1.6)}${bar('Fire rate', d.rpm / 9)}${bar('Control', 100 - d.recoil * 14)}${bar('Range', (d.range - 0.5) / 0.5 * 100)}${bar('Mobility', (d.speed - 4.6) / 2.4 * 100)}</div>` : '';
+    const mode = WD[id] && d.mag ? `<b class="mode">${fireMode(d)}</b> ` : '';
+    return `<button class="item ${own ? 'own' : ''}" data-id="${id}" ${canBuy(P, id) ? '' : 'disabled'}><span class="p">${GS.mode === 'comp' ? '$' + priceOf(P, id) : 'FREE'}</span><div class="n">${d.name}</div><div class="d">${mode}${d.desc || ''}</div>${bars}</button>`;
   }).join('')}</div>`).join('');
 }
 $('buyGrid').addEventListener('click', (e) => {
@@ -1978,6 +2550,7 @@ function toggleBuy() {
 
 // ---------------- camera + viewmodel animation ----------------
 const _camT = V();
+const DBGCAM = { on: false, pos: V(), look: V(), fov: 50 };
 const ironSights = (a) => S.aimStyle === 'iron' && !!GM[curW(a).id] && !!GM[curW(a).id].ads;   // this gun can slide to iron sights (and the player picked that aim style)
 function updateCamera(dt) {
   const P = GS.player;
@@ -2004,10 +2577,11 @@ function updateCamera(dt) {
     camera.fov += (S.fov - camera.fov) * Math.min(1, dt * 8);
   }
   if (GS.shake > 0) { camera.position.x += rand(-1, 1) * GS.shake * 0.15; camera.position.y += rand(-1, 1) * GS.shake * 0.15; GS.shake = Math.max(0, GS.shake - dt * 1.5); }
+  if (DEBUG && DBGCAM.on) { camera.position.copy(DBGCAM.pos); camera.lookAt(DBGCAM.look); camera.fov = DBGCAM.fov; }   // ?debug only: a free camera for screenshots
   camera.updateProjectionMatrix();
   setListener(camera.position.x, camera.position.y, camera.position.z, view ? view.yaw : P.yaw);
   // viewmodel
-  vmRoot.visible = P.alive && !(P.scoped && curDef(P).scope);
+  vmRoot.visible = P.alive && !(P.scoped && curDef(P).scope) && !P.act;
   if (!vmCur) return;
   const sp = Math.hypot(P.vel.x, P.vel.z), def = curDef(P);
   VMS.bob += sp * dt * 1.6;
@@ -2018,7 +2592,7 @@ function updateCamera(dt) {
   if (VMS.flashT > 0) { VMS.flashT -= dt; if (VMS.flashT <= 0) vmCur.userData.fl.visible = false; }
   muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt * 120);
   const sw = clamp(P.switchT / 0.4, 0, 1);
-  const rl = P.reloadT > 0 ? Math.sin(clamp(1 - P.reloadT / def.reload, 0, 1) * Math.PI) : 0;
+  const rl = P.reloadT > 0 ? Math.sin(clamp(1 - P.reloadT / (P.reloadMax || def.reload), 0, 1) * Math.PI) : 0;
   let insp = 0; if (VMS.inspect > 0 && P.reloadT <= 0) { VMS.inspect -= dt; insp = 1 - VMS.inspect / 1.6; if (sp > 1 || mouse[0]) VMS.inspect = 0; }
   const knife = def.melee, nade = def.nade, gm = GM[curW(P).id];
   // base pose [x, y, z, yaw, roll, pitch]: pistols angled in toward the crosshair like Krunker, rifles low so you only see barrel + sights
@@ -2048,22 +2622,21 @@ function animateActors(dt) {
     const mv = Math.min(1, sp / 5), sw = Math.sin(m.phase) * 0.55 * mv;
     const th = 0.95 * a.crouchAmt, drop = 0.6 * (1 - Math.cos(th));
     const w = curW(a), sl = WD[w.id].slot;
+    const cls = TPC[w.id] || 'rifle', bob = Math.abs(Math.sin(m.phase)) * 0.035 * mv, lean = a.sprint ? -0.09 * mv : 0;
     if (m.lite) { // Lite: straight legs (no knees), crouching just lowers the body
-      m.legL.position.y = m.legR.position.y = 0.62 - drop; m.up.position.y = -drop;
+      m.legL.position.y = m.legR.position.y = 0.62 - drop; m.up.position.y = -drop + bob;
       m.legL.scale.y = m.legR.scale.y = (0.62 - drop) / 0.62; // squash the legs so the feet stay on the floor
       m.legL.rotation.x = sw; m.legR.rotation.x = -sw;
       m.arms.rotation.x = a.pitch * 0.8;
-      const ak = WD[w.id].melee ? 'armsKnife' : sl === 'prim' ? 'armsPrim' : 'armsSec';
-      if (m.armsKey !== ak) { m.armsKey = ak; m.armsMesh.geometry = m.lite[ak]; }
     } else {
-      m.legL.position.y = m.legR.position.y = 0.62 - drop; m.up.position.y = -drop;
+      m.legL.position.y = m.legR.position.y = 0.62 - drop; m.up.position.y = -drop + bob;
       m.legL.rotation.x = th + sw; m.legR.rotation.x = th - sw;
       m.kneeL.rotation.x = -2 * th - Math.max(0, Math.sin(m.phase + 1.3)) * 0.9 * mv;
       m.kneeR.rotation.x = -2 * th - Math.max(0, Math.sin(m.phase + 1.3 + Math.PI)) * 0.9 * mv;
       m.arms.rotation.x = a.pitch * 0.8; m.head.rotation.x = a.pitch * 0.5;
-      m.gunP.visible = sl === 'prim'; m.gunS.visible = sl === 'sec' || !!WD[w.id].nade; m.gunK.visible = !!WD[w.id].melee;
     }
-    m.flash.position.set(sl === 'prim' ? 0.12 : 0.1, sl === 'prim' ? 0.075 : 0.02, sl === 'prim' ? -0.88 : -0.62);
+    m.up.rotation.x += (lean - m.up.rotation.x) * Math.min(1, dt * 8);
+    if (m.armsKey !== cls) { m.armsKey = cls; m.armsMesh.geometry = tpArms(a.side, cls, m.lite); m.flash.position.set(...TP_MUZ[cls]); }
     if (m.flashT > 0) { m.flashT -= dt; if (m.flashT <= 0) m.flash.visible = false; }
     if (a.protT > 0) m.up.visible = Math.floor(GS.time * 12) % 2 === 0; else m.up.visible = true;
   }
@@ -2076,7 +2649,7 @@ function clientStep(dt) {
   if (GS.state === 'freeze') { const b = Math.ceil(GS.phaseT); GS.phaseT -= dt; if (Math.ceil(GS.phaseT) !== b && b <= 3 && b > 0) SFX.countdown(false); }
   else if (GS.state === 'live') { GS.buyLeft -= dt; if (GS.core.state !== 'planted') GS.roundT -= dt; }
   else if (GS.state === 'end') GS.phaseT -= dt;
-  const c = GS.core; if (c.state === 'planted' && GS.state !== 'over') { c.timer -= dt; coreBeep(c, dt); }
+  const c = GS.core; if (c.state === 'planted' && GS.state !== 'over') { c.timer -= dt; bombBeep(c, dt); }
   if (GS.state === 'over') return;
   for (const a of GS.actors) if (a.alive) updateActorTimers(a, dt);
   updatePlayer(dt);
@@ -2151,7 +2724,7 @@ function frame(now) {
   }
   if (WORLD.sky) WORLD.sky.position.copy(camera.position);
   renderer.clear(); renderer.render(scene, camera);
-  if (vmRoot.visible && GS.player.alive) { renderer.clearDepth(); renderer.render(vmScene, vmCam); }
+  if ((vmRoot.visible || vmBomb.group.visible) && GS.player.alive) { renderer.clearDepth(); renderer.render(vmScene, vmCam); }
 }
 requestAnimationFrame(frame);
 
@@ -2214,13 +2787,14 @@ function netDetonate(id, type, p, owner) {
   detonate({ type, x: +p[0] || 0, y: +p[1] || 0, z: +p[2] || 0, owner: owner || GS.player }, true);
 }
 function netEvent(d) {
-  if (d.e === 'boom') { const c = GS.core, p = c.pos.clone().setY(c.pos.y + 0.5); explosionFx(p, true); SFX.boom(p, true); GS.shake = 1.2; coreMesh.visible = false; }
+  if (d.e === 'boom') { const c = GS.core, p = c.pos.clone().setY(c.pos.y + 0.5); explosionFx(p, true); SFX.boom(p, true); GS.shake = 1.2; bombMesh.visible = false; }
   else if (d.e === 'go') SFX.countdown(true);
   else if (d.e === 'plant') SFX.plant();
   else if (d.e === 'defused') SFX.defused();
 }
 function botTakeover(a) {
   a.brain = newBrain(a, a.idx % 5); const b = a.brain;
+  if (NB && GS.mode === 'comp') { adoptBot(a); return; }
   if (GS.mode === 'comp') {
     b.home = pick(a.side === 1 ? [...SITES.a.holdsDef, ...SITES.b.holdsDef, ...MID_HOLDS] : SITES[GS.plan].holdsAtk); b.homeSite = null;
     b.route = ROUTES[GS.plan][0].slice(); b.plantCell = pick(SITES[GS.plan].plant);
@@ -2270,7 +2844,7 @@ function resetToMenu() {
   if (S.gfx !== GFX_AT_LOAD) { const u = new URL(location.href); u.searchParams.delete('lite'); u.searchParams.delete('pretty'); location.assign(u.toString()); return; }   // graphics were changed in a match: reload now that it is over
   GS.state = 'menu'; GS.paused = false;
   for (const a of GS.actors) if (a.mesh) scene.remove(a.mesh.g);
-  GS.actors = []; clearWorld(); coreMesh.visible = false;
+  GS.actors = []; clearWorld(); bombMesh.visible = false; vmBomb.group.visible = false;
   ['hud', 'pause', 'end', 'buy', 'board', 'clickLock'].forEach((id) => $(id).classList.add('hidden'));
   $('scope').classList.add('hidden'); $('flash').style.opacity = 0; $('smokeV').style.opacity = 0;
   $('menu').classList.remove('hidden'); syncSeg(); document.body.classList.remove('playing'); $('again').classList.remove('hidden'); $('toLobby').classList.add('hidden');
@@ -2278,11 +2852,10 @@ function resetToMenu() {
 }
 $('quit').onclick = toMenu; $('toMenu').onclick = toMenu;
 syncSeg();
-coreMesh.visible = false;
 $('loading').remove();
 
-if (DEBUG) window.__cs = { MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
+if (DEBUG) window.__cs = { setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
 
 MPH = createOnline({ GS, MP, S, WD, $, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
-  makeSoldier, botTakeover, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
+  makeSoldier, botTakeover, shotDamage, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
   spawnNade, netDetonate, remoteShotFx, killFx, hurtLocal, roundEndFx, roundBannerLocal, netEvent, endMatch, moneyPop, reviveLocal, vmRefresh, renderBuy, clearWorld, sleeveTint });

@@ -19,7 +19,8 @@ const CORE_DEFAULTS = {
   requestsPerMinute: 1500,   // per IP address. Behind a plain tunnel every visitor looks like the same address, so this is then one limit for everybody
   adminToken: '',            // the secret for /admin/* (the admin tool). Empty or shorter than 20 characters = the admin part is switched off
   log: false,
-  blockedNames: ['admin', 'moderator', 'hkugz', 'staff', 'support', 'official', 'system', 'root', 'owner']
+  blockedNames: ['admin', 'moderator', 'hkugz', 'staff', 'support', 'official', 'system', 'root', 'owner'],
+  ownerNames: []             // exact names (any capitals) that may be taken even though they contain a blocked word, e.g. ["hkugz"] for whoever runs the site. Only the first person to sign up with it gets it
 };
 
 class ApiError extends Error { constructor(status, msg, extra) { super(msg); this.status = status; this.extra = extra || {}; } }
@@ -94,7 +95,7 @@ function createCore(userCfg, raw) {
   function checkName(v) {
     if (typeof v !== 'string' || !NAME_RE.test(v)) throw bad('Pick a name with 3 to 16 letters, numbers or underscores, starting with a letter.');
     const low = v.toLowerCase();
-    if (cfg.blockedNames.some(w => low.includes(w))) throw bad('That name is not allowed. Try another one.');
+    if (!cfg.ownerNames.some(n => String(n).toLowerCase() === low) && cfg.blockedNames.some(w => low.includes(w))) throw bad('That name is not allowed. Try another one.');
     if (/\d{6,}/.test(v)) throw bad('Please do not put a phone number in your name.');
     return v;
   }
@@ -289,7 +290,9 @@ function createCore(userCfg, raw) {
       u.pw = await hashNew(pw); dropSessions(u); fails.delete(u.key); save(); return { password: pw };
     },
     'POST /admin/clear-reports': () => { reports = []; save(); return { ok: true }; },
-    'POST /admin/signups': ({ body }) => { meta.signupsOpen = !!body.open; save(); return { signupsOpen: signupsOpen() }; }
+    'POST /admin/signups': ({ body }) => { meta.signupsOpen = !!body.open; save(); return { signupsOpen: signupsOpen() }; },
+    // everything that is saved (accounts with their scrambled passwords, friends, blocks, reports), minus the log-in sessions, so it can be moved to another server (admin.js export / import)
+    'GET /admin/export': () => { const s = snapshot(); for (const u of s.users) u.sessions = []; return s; }
   };
 
   // ------------------------------------------------------------------ one request in, one answer out

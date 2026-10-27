@@ -7,12 +7,12 @@
 <script src="../../assets/playtimer.js"></script>
 <script src="../../assets/friends-config.js"></script>
 <script src="../../assets/hkfriends.js?v=5" defer></script>
-<meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Seven maps (two XL), 15 guns, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
+<meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the bomb. Play vs smart bots or online with friends. Eleven maps (some extra large), 20 guns that all handle differently, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#11131a">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Core Strike - free browser game">
-<meta property="og:description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Seven maps (two XL), 15 guns, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
+<meta property="og:description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the bomb. Play vs smart bots or online with friends. Eleven maps (some extra large), 20 guns that all handle differently, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/core-strike/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/core-strike.jpg">
 <meta name="twitter:card" content="summary_large_image">
 
@@ -119,8 +119,8 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 .btn.go:hover{filter:brightness(1.08)}
 
 /* menu */
-#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:flex-start;padding-left:min(7vw,90px);background:linear-gradient(90deg,rgba(8,10,16,.9) 0,rgba(8,10,16,.55) 45%,transparent 75%)}
-#menuBox{width:min(470px,92vw)}
+#menu{position:fixed;inset:0;display:flex;align-items:flex-start;overflow-y:auto;justify-content:flex-start;padding-left:min(7vw,90px);background:linear-gradient(90deg,rgba(8,10,16,.9) 0,rgba(8,10,16,.55) 45%,transparent 75%)}
+#menuBox{width:min(470px,92vw);margin:auto 0;padding:12px 0}   /* centred when it fits, scrolls when the map list makes it taller than the screen */
 .logo{font-size:64px;font-weight:700;line-height:.95;letter-spacing:.04em;text-shadow:0 4px 0 #8a3c06,0 10px 30px rgba(0,0,0,.6)}
 .logo span{color:var(--o)}
 .tag{font-size:15px;opacity:.8;margin:10px 0 22px;letter-spacing:.06em}
@@ -156,6 +156,7 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 .item .n{font-weight:700;font-size:15px}
 .item .p{float:right;color:#7dff9a;font-weight:700}
 .item .d{font-size:11px;opacity:.7;margin-top:2px}
+.item .mode{color:#ff9ccf;font-size:10px;letter-spacing:.08em;opacity:1}
 .item .bars{display:grid;grid-template-columns:44px 1fr;gap:2px 6px;font-size:10px;opacity:.8;margin-top:5px;align-items:center}
 .item .bars i{display:block;height:4px;border-radius:2px;background:#ff9ccf}
 .item.own{border-color:#7dff9a}
@@ -231,7 +232,7 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 <div id="menu">
   <div id="menuBox">
     <div class="logo">CORE<br><span>STRIKE</span></div>
-    <div class="tag">5v5 tactical toy-soldier shooter · plant the core or stop it</div>
+    <div class="tag">5v5 tactical toy-soldier shooter · plant the bomb or stop it</div>
     <div class="opt"><label>MAP</label><div class="seg" data-k="map" id="mapSeg"></div></div>
     <div class="opt"><label>MODE</label><div class="seg" data-k="mode">
       <button data-v="comp">Competitive<small>plant / defuse rounds</small></button>
@@ -357,6 +358,6 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 
 <div id="clickLock" class="hidden">Click to play</div>
 
-<script type="module" src="game.js?v=62"></script>
+<script type="module" src="game.js?v=101"></script>
 </body>
 </html>

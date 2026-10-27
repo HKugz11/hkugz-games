@@ -26,9 +26,10 @@ const RED = '#d6342a', BLUE = '#2a6fd6', DARK = '#333333';
 // ---- builder for the bigger maps: draw one half, mirror it to the other (A and B are mirror images) ----
 // axis 'x': left half is mirrored to the right; axis 'z': top half is mirrored to the bottom
 function mk(w, h, axis = 'x') {
-  const carve = [], props = [], mx = (x) => w - 1 - x, mz = (z) => h - 1 - z, Z = axis === 'z';
-  const pt = ([x, z]) => Z ? [x, mz(z)] : [mx(x), z];
-  const rect = (x0, z0, x1, z1) => Z ? [x0, mz(z1), x1, mz(z0)] : [mx(x1), z0, mx(x0), z1];
+  // axis 'r': the map is the same turned half way round (attackers bottom-left, defenders top-right, A top-left, B bottom-right)
+  const carve = [], props = [], mx = (x) => w - 1 - x, mz = (z) => h - 1 - z, Z = axis === 'z', R = axis === 'r';
+  const pt = ([x, z]) => R ? [mx(x), mz(z)] : Z ? [x, mz(z)] : [mx(x), z];
+  const rect = (x0, z0, x1, z1) => R ? [mx(x1), mz(z1), mx(x0), mz(z0)] : Z ? [x0, mz(z1), x1, mz(z0)] : [mx(x1), z0, mx(x0), z1];
   const b = {
     w, h, carve, props, pt,
     room: (x0, z0, x1, z1, ch = '.') => carve.push([x0, z0, x1, z1, ch]),
@@ -37,7 +38,8 @@ function mk(w, h, axis = 'x') {
     atM: (x, z, ch, chR = ch) => props.push([x, z, ch], [...pt([x, z]), chR]),
     run: (x0, z0, x1, z1, ch) => { for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) props.push([x, z, ch]); },
     runM: (x0, z0, x1, z1, ch) => { b.run(x0, z0, x1, z1, ch); b.run(...rect(x0, z0, x1, z1), ch); },
-    mirrorSite: (s, name) => ({ name, center: Z ? [s.center[0], h - s.center[1]] : [w - s.center[0], s.center[1]], plant: s.plant.map(pt), holdsAtk: s.holdsAtk.map(pt), holdsDef: s.holdsDef.map(pt) }),
+    // the other site: with a half turn, the cells attackers use at one site are the cells defenders use at the other one
+    mirrorSite: (s, name) => ({ name, center: R ? [w - s.center[0], h - s.center[1]] : Z ? [s.center[0], h - s.center[1]] : [w - s.center[0], s.center[1]], plant: s.plant.map(pt), holdsAtk: (R ? s.holdsDef : s.holdsAtk).map(pt), holdsDef: (R ? s.holdsAtk : s.holdsDef).map(pt) }),
     mirrorRoutes: (r) => r.map((route) => route.map(pt)),
   };
   return b;
@@ -288,7 +290,166 @@ const DEFS = {
       signs: [[9, 10, 0, 1, 'B', RED], [42, 10, 0, 1, 'A', RED], [3, 30, 1, 0, 'B', RED], [48, 30, -1, 0, 'A', RED], [21, 24, 1, 0, 'MID', DARK], [30, 24, -1, 0, 'MID', DARK]],
     };
   })(),
+
+  // ------------------------------------------------------------------ jungle ruins (XL, the map turned half way round is the same map)
+  ruins: (() => {
+    const b = mk(76, 64, 'r'), { roomM, room, run, runM, at, atM } = b;
+    roomM(3, 50, 14, 60, 'T', 'D');                                        // attackers bottom-left, defenders top-right
+    roomM(3, 3, 22, 22, 'a', 'b');                                         // A top-left, B bottom-right
+    roomM(3, 23, 12, 49);                                                  // the long side lanes
+    roomM(15, 52, 37, 58); roomM(15, 5, 37, 11);                           // the long top and bottom corridors
+    room(24, 22, 51, 41);                                                  // the temple plaza in the middle
+    roomM(26, 12, 31, 21); roomM(18, 23, 23, 28); roomM(13, 30, 23, 34);  // ways into the plaza from the corridors, the bowls and the lanes
+    // temple (self-matching): a raised floor with stairs on all four sides
+    run(34, 28, 41, 35, 'P');
+    atM(33, 31, '3'); atM(32, 31, '2'); atM(31, 31, '1'); atM(33, 32, '3'); atM(32, 32, '2'); atM(31, 32, '1');
+    atM(36, 27, '3'); atM(36, 26, '2'); atM(36, 25, '1'); atM(37, 27, '3'); atM(37, 26, '2'); atM(37, 25, '1');
+    for (const [x, z] of [[27, 24], [29, 38], [30, 27], [28, 33]]) atM(x, z, '#');   // pillars
+    atM(27, 30, 'C'); atM(28, 30, 'C'); atM(26, 36, 'c'); atM(32, 24, 'o'); atM(25, 39, 's'); atM(32, 39, 'c'); atM(25, 25, 's');
+    // site A (B is the same turned round): a ledge with stairs, containers, pillars
+    runM(3, 3, 6, 6, 'P'); atM(7, 4, '3'); atM(8, 4, '2'); atM(9, 4, '1'); atM(7, 5, '3'); atM(8, 5, '2'); atM(9, 5, '1');
+    runM(10, 10, 12, 10, 'C'); runM(15, 14, 15, 16, 'C'); atM(6, 16, '#'); atM(9, 19, '#'); atM(16, 19, '#'); atM(19, 9, '#'); atM(12, 6, '#');
+    atM(5, 11, 'c'); atM(6, 11, 'c'); atM(13, 18, 'o'); atM(20, 14, 's'); atM(10, 15, 's'); atM(4, 20, 'o'); atM(18, 4, 'c');
+    // side lanes and corridors
+    runM(6, 28, 7, 29, 'C'); runM(10, 36, 10, 38, 'C'); atM(5, 43, 'c'); atM(9, 45, 'o'); atM(4, 33, 's'); atM(7, 41, 'c');
+    runM(24, 7, 25, 8, 'C'); runM(33, 9, 34, 9, 'C'); atM(19, 10, 's'); atM(28, 6, 'o'); atM(21, 7, 'c'); atM(36, 7, 'c');
+    atM(28, 14, 'C'); atM(29, 18, 'o'); atM(15, 31, 'c'); atM(20, 33, 's'); atM(8, 52, 'o'); atM(10, 57, 'c'); atM(5, 53, 'C');
+    const siteA = { name: 'A', center: [12.5, 12.5], plant: [[10, 14], [16, 9], [8, 18]], holdsAtk: [[7, 20], [13, 20], [19, 20], [5, 14]], holdsDef: [[20, 7], [18, 12], [14, 5]] };
+    return {
+      w: 76, h: 64, name: 'Ruins', blurb: 'XL jungle temple · a raised temple in the middle, long lanes', roundBonus: 25,
+      theme: { walls: [[0.62, 0.74, 0.55], [0.7, 0.78, 0.6], [0.56, 0.66, 0.5], [0.78, 0.82, 0.68]], floor: 'floorPave', skyTop: 0x4fb0e6, skyHor: 0xe3f6e0, fog: 0xd4ebd6, ground: 0x4a8a46, palms: true, roofs: [0x3f7d3a, 0x8a7a4a] },
+      carve: b.carve, props: b.props,
+      sites: { a: siteA, b: b.mirrorSite(siteA, 'B') },
+      routes: { a: [[[8, 56], [8, 40], [8, 26]], [[30, 55], [46, 47], [43, 38], [28, 31], [24, 26], [20, 23]]], b: [[[20, 55], [40, 55], [58, 53]], [[30, 55], [46, 47], [44, 40], [54, 38]]] },
+      mid: [[28, 24], [47, 39]], lurk: [30, 32], rangeStart: [18, 110, 0],
+      signs: [[12, 2, 0, 1, 'A', RED], [63, 61, 0, -1, 'B', RED], [2, 35, 1, 0, 'A', RED], [73, 28, -1, 0, 'B', RED], [23, 38, 1, 0, 'MID', DARK], [52, 25, -1, 0, 'MID', DARK]],
+    };
+  })(),
+
+  // ------------------------------------------------------------------ downtown (XL: one long avenue with a plaza at each end)
+  downtown: (() => {
+    const b = mk(88, 60), { roomM, room, run, runM, at, atM } = b;
+    roomM(36, 2, 43, 7, 'D'); roomM(36, 52, 43, 57, 'T');                 // defenders (top), attackers (bottom)
+    roomM(38, 8, 43, 26); roomM(38, 34, 43, 51);                           // the two boulevards from the spawns to the avenue
+    room(2, 27, 85, 33);                                                   // the avenue, edge to edge
+    roomM(2, 16, 15, 44, 'b', 'a');                                        // plaza B (left) and plaza A (right), the avenue runs through them
+    roomM(8, 3, 35, 7); roomM(8, 8, 13, 15);                               // defenders' back alley, then down into the plaza
+    roomM(8, 52, 35, 56); roomM(8, 45, 13, 51);                            // attackers' back alley, then up into the plaza
+    roomM(18, 17, 27, 23); roomM(21, 24, 23, 26);                          // a shop on the avenue (north side) and its door
+    roomM(18, 37, 27, 43); roomM(21, 34, 23, 36);                          // a shop on the south side
+    roomM(30, 17, 35, 23); roomM(32, 24, 33, 26);                          // a small office with a door
+    roomM(30, 37, 35, 43); roomM(32, 34, 33, 36);
+    run(43, 29, 44, 31, 'P');                                              // fountain at the crossing
+    // the avenue: cars and kiosks, staggered so it is never one long clear lane
+    runM(8, 28, 9, 28, 'C'); runM(14, 31, 15, 31, 'C'); runM(24, 28, 25, 28, 'C'); runM(28, 32, 29, 32, 'C'); runM(33, 30, 34, 30, 'C');
+    atM(19, 30, 'c'); atM(31, 28, 's'); atM(11, 32, 'o'); atM(22, 32, 's'); atM(36, 32, 'c'); atM(40, 28, 'o'); atM(40, 32, 'c');
+    // plazas (B shown, A is the mirror image)
+    runM(2, 16, 5, 19, 'P'); atM(6, 17, '3'); atM(7, 17, '2'); atM(8, 17, '1'); atM(6, 18, '3'); atM(7, 18, '2'); atM(8, 18, '1');
+    runM(9, 22, 10, 22, 'C'); runM(5, 36, 5, 38, 'C'); runM(12, 40, 13, 40, 'C'); atM(4, 24, '#'); atM(14, 24, '#'); atM(8, 42, '#'); atM(14, 36, '#');
+    atM(3, 27, 'o'); atM(12, 26, 's'); atM(3, 34, 'c'); atM(10, 33, 'c'); atM(7, 25, 'c'); atM(11, 20, 'o'); atM(14, 44, 'o'); atM(4, 42, 's');
+    // boulevards, shops, alleys
+    atM(40, 12, '#'); atM(41, 20, 'C'); atM(40, 21, 'C'); atM(46, 14, 'o'); atM(39, 16, 's'); atM(40, 36, 'C'); atM(41, 37, 'C'); atM(39, 44, 'c'); atM(40, 48, 's'); atM(41, 40, '#');
+    atM(20, 20, 'c'); atM(22, 21, 'o'); atM(20, 40, 'c'); atM(25, 41, 'c'); atM(32, 20, 'c'); atM(33, 40, 'c');
+    atM(20, 5, 'C'); atM(28, 4, 'c'); atM(24, 6, 's'); atM(11, 12, 'c'); atM(22, 55, 'C'); atM(28, 55, 'c'); atM(24, 53, 's'); atM(11, 48, 'c');
+    const siteB = { name: 'B', center: [8.5, 30.5], plant: [[7, 24], [11, 36], [5, 31]], holdsAtk: [[9, 41], [13, 38], [13, 26], [4, 36]], holdsDef: [[10, 18], [13, 22], [5, 22]] };
+    const routesB = [[[20, 54], [10, 54], [10, 47]], [[38, 48], [40, 38], [30, 31], [16, 30]]];
+    return {
+      w: 88, h: 60, name: 'Downtown', blurb: 'XL city · one long avenue, shops and two plazas', roundBonus: 25,
+      theme: { walls: [[0.78, 0.7, 0.62], [0.62, 0.64, 0.7], [0.8, 0.78, 0.74], [0.7, 0.58, 0.5], [0.55, 0.6, 0.66]], floor: 'floorConcrete', crates: [[0.95, 0.4, 0.34], [0.34, 0.58, 0.95], [0.97, 0.86, 0.34], [0.86, 0.86, 0.9], [0.4, 0.78, 0.55]],
+        skyTop: 0x5aa0e0, skyHor: 0xe8f0f8, fog: 0xdde6ef, ground: 0x6a6e74, palms: false, roofs: [0xc0553a, 0x3d6fa8] },
+      carve: b.carve, props: b.props,
+      sites: { b: siteB, a: b.mirrorSite(siteB, 'A') },
+      routes: { b: routesB, a: b.mirrorRoutes(routesB) },
+      mid: [[40, 11], [47, 11]], lurk: [40, 40], rangeStart: [87, 108, 0],
+      signs: [[3, 15, 0, 1, 'B', RED], [84, 15, 0, 1, 'A', RED], [1, 30, 1, 0, 'B', RED], [86, 30, -1, 0, 'A', RED], [37, 15, 1, 0, 'MID', DARK], [50, 15, -1, 0, 'MID', DARK]],
+    };
+  })(),
+
+  // ------------------------------------------------------------------ research lab (L: a reactor in the middle, two data halls)
+  lab: (() => {
+    const b = mk(60, 50), { roomM, room, run, runM, at, atM } = b;
+    roomM(24, 1, 29, 5, 'D'); roomM(24, 44, 29, 48, 'T');                 // defenders (top), attackers (bottom)
+    room(22, 18, 37, 31);                                                  // the reactor hall
+    room(28, 6, 31, 17); room(28, 32, 31, 43);                             // the two corridors into the reactor
+    roomM(3, 12, 16, 37, 'b', 'a');                                        // data hall B (left) and data hall A (right)
+    roomM(17, 22, 21, 27);                                                 // hall <-> reactor
+    roomM(8, 3, 23, 7); roomM(8, 8, 12, 11);                               // defenders' way round to the hall (top)
+    roomM(8, 42, 23, 46); roomM(8, 38, 12, 41);                            // attackers' way round to the hall (bottom)
+    roomM(17, 13, 21, 16);                                                 // side door into the hall from the top corridor
+    // reactor core: a raised platform with stairs, pillars around it
+    run(28, 23, 31, 26, 'P');
+    atM(27, 24, '3'); atM(26, 24, '2'); atM(25, 24, '1'); atM(27, 25, '3'); atM(26, 25, '2'); atM(25, 25, '1');
+    for (const [x, z] of [[24, 20], [24, 29], [27, 20], [27, 29]]) atM(x, z, '#');
+    atM(23, 22, 'c'); atM(23, 27, 'c'); atM(29, 19, 'C'); atM(29, 30, 'C');
+    // data hall B (A mirrors it): catwalk ledge along the wall, server racks (crates), pillars
+    runM(3, 12, 6, 14, 'P'); atM(7, 13, '3'); atM(8, 13, '2'); atM(9, 13, '1');
+    runM(3, 35, 6, 37, 'P'); atM(7, 36, '3'); atM(8, 36, '2'); atM(9, 36, '1');
+    runM(8, 18, 8, 21, 'C'); runM(8, 28, 8, 31, 'C'); runM(12, 24, 13, 25, 'C'); atM(5, 24, '#'); atM(5, 26, '#'); atM(14, 17, '#'); atM(14, 32, '#');
+    atM(11, 15, 'c'); atM(11, 34, 'c'); atM(4, 20, 'o'); atM(4, 30, 'o'); atM(15, 22, 's'); atM(15, 28, 's'); atM(10, 38, 's'); atM(10, 12, 's');
+    // corridors
+    atM(15, 5, 'c'); atM(19, 4, 'C'); atM(13, 6, 's'); atM(15, 44, 'c'); atM(19, 45, 'C'); atM(13, 43, 's'); atM(30, 10, 'c'); atM(29, 14, 's'); atM(30, 36, 'c'); atM(28, 40, 's');
+    const siteB = { name: 'B', center: [9.5, 25.5], plant: [[11, 22], [7, 27], [13, 29]], holdsAtk: [[10, 34], [14, 26], [5, 33], [14, 20]], holdsDef: [[10, 15], [13, 18], [4, 17]] };
+    const routesB = [[[16, 44], [10, 44], [10, 39]], [[30, 40], [29, 34], [24, 28], [19, 25]]];
+    return {
+      w: 60, h: 50, name: 'Lab', blurb: 'research lab · reactor in the middle, two data halls', roundBonus: 10,
+      theme: { walls: [[0.86, 0.92, 0.96], [0.72, 0.84, 0.9], [0.6, 0.74, 0.84], [0.9, 0.94, 0.96]], floor: 'floorTile', crates: [[0.55, 0.88, 0.95], [0.4, 0.7, 0.9], [0.92, 0.92, 0.96], [0.95, 0.75, 0.35]],
+        skyTop: 0x2b4a7a, skyHor: 0x7fa2c4, fog: 0x5f84a8, ground: 0x2c3e55, palms: false, roofs: [0x4a7aa8, 0x2f5f8a] },
+      carve: b.carve, props: b.props,
+      sites: { b: siteB, a: b.mirrorSite(siteB, 'A') },
+      routes: { b: routesB, a: b.mirrorRoutes(routesB) },
+      mid: [[29, 8], [30, 8]], lurk: [29, 34], rangeStart: [59, 92, 0],
+      signs: [[3, 11, 0, 1, 'B', RED], [56, 11, 0, 1, 'A', RED], [2, 25, 1, 0, 'B', RED], [57, 25, -1, 0, 'A', RED], [27, 13, 1, 0, 'MID', DARK], [32, 13, -1, 0, 'MID', DARK]],
+    };
+  })(),
+
+  // ------------------------------------------------------------------ manor (M: rooms and doors, the map turned half way round is the same map)
+  manor: (() => {
+    const b = mk(52, 46, 'r'), { roomM, room, run, runM, at, atM } = b;
+    roomM(2, 36, 12, 43, 'T', 'D');                                        // attackers in the front garden (bottom-left), defenders in the back garden (top-right)
+    roomM(2, 3, 14, 17, 'a', 'b');                                         // A: the library (top-left), B: the kitchen (bottom-right)
+    roomM(4, 18, 9, 35);                                                   // west passage between the garden and the library
+    roomM(13, 36, 25, 40);                                                 // the way from the garden to the front hall
+    room(16, 14, 35, 31);                                                  // the great hall in the middle
+    roomM(10, 19, 15, 21); roomM(10, 24, 15, 28);                          // two doors between the west passage and the great hall
+    roomM(15, 5, 25, 9); roomM(16, 10, 20, 13);                            // study corridor from the library to the hall
+    roomM(18, 32, 21, 35);                                                 // the great hall's south door
+    // library A (the kitchen B is the same turned round): bookcases (crates), pillars, a raised reading nook
+    runM(2, 3, 5, 5, 'P'); atM(6, 4, '3'); atM(7, 4, '2'); atM(8, 4, '1');
+    runM(7, 9, 9, 9, 'C'); runM(11, 13, 11, 15, 'C'); atM(4, 12, '#'); atM(13, 8, '#'); atM(13, 16, 's'); atM(3, 15, 'o'); atM(9, 6, 'c'); atM(12, 11, 'c');
+    // great hall: pillars and a long table
+    run(23, 21, 28, 23, 'c'); atM(18, 16, '#'); atM(18, 29, '#'); atM(21, 19, 'C'); atM(21, 26, 'C'); atM(17, 22, 's'); atM(19, 24, 'o');
+    // passages and gardens
+    atM(6, 22, 'c'); atM(7, 30, 'C'); atM(5, 26, 's'); atM(8, 33, 'o'); atM(6, 38, 'C'); atM(10, 41, 'c'); atM(4, 40, 's'); atM(18, 38, 'c'); atM(22, 37, 's'); atM(18, 7, 'c');
+    const siteA = { name: 'A', center: [8.5, 10.5], plant: [[8, 11], [11, 7], [5, 14]], holdsAtk: [[6, 16], [11, 16], [13, 11], [4, 9]], holdsDef: [[13, 5], [13, 14], [8, 7]] };
+    return {
+      w: 52, h: 46, name: 'Manor', blurb: 'big house · rooms and doors, a library and a kitchen', roundBonus: 5,
+      theme: { walls: [[0.9, 0.82, 0.72], [0.78, 0.66, 0.56], [0.84, 0.76, 0.66], [0.68, 0.58, 0.5]], floor: 'floor', skyTop: 0x6a9ee0, skyHor: 0xf2e6d4, fog: 0xe8dcc8, ground: 0x5f8a4a, palms: false, roofs: [0x8a4a3a, 0x5a4a6a] },
+      carve: b.carve, props: b.props,
+      sites: { a: siteA, b: b.mirrorSite(siteA, 'B') },
+      routes: { a: [[[6, 39], [6, 28], [6, 20]], [[20, 38], [19, 33], [19, 27], [12, 26], [8, 24], [6, 20]]], b: [[[22, 38], [32, 38], [40, 38]], [[20, 38], [19, 33], [26, 28], [34, 24], [38, 28]]] },
+      mid: [[30, 18], [21, 27]], lurk: [26, 25], rangeStart: [14, 78, 0],
+      signs: [[8, 2, 0, 1, 'A', RED], [43, 43, 0, -1, 'B', RED], [3, 28, 1, 0, 'A', RED], [48, 17, -1, 0, 'B', RED], [15, 22, 1, 0, 'MID', DARK], [36, 23, -1, 0, 'MID', DARK]],
+    };
+  })(),
 };
+
+// Spawn cover: tall crates just outside the spawn rooms so nobody can shoot out of a spawn into the map (more than about 24 m past its edge) or into the other spawn.
+// Worked out with a line-of-sight check from every spawn cell (the solver and the check are in the project notes); re-run it after changing a map's layout.
+const SPAWN_COVER = {
+  sandstone: [[23,11],[22,12],[22,28],[29,4],[14,4],[21,12],[14,5],[13,9],[29,5],[15,3],[23,31],[23,6],[28,4]],
+  warehouse: [[21,9],[22,9],[23,8],[20,8],[19,7],[24,10],[10,35],[30,35],[17,32],[26,32],[29,36],[11,34],[15,29],[28,34],[11,36],[27,33],[23,6],[24,6],[30,34]],
+  courtyard: [[14,17],[29,17],[29,23],[15,23],[13,16],[34,18],[30,20],[9,18],[34,17],[10,22],[9,19],[33,22],[9,17],[9,20],[9,21],[34,19],[34,21]],
+  harbor: [[25,52],[46,52],[49,53],[22,53],[35,7],[24,4],[47,4],[26,56],[45,56],[23,3],[48,3],[38,7],[47,54],[24,54],[33,7],[46,55],[25,55],[37,11],[25,53],[46,53],[32,49],[39,49],[33,10],[47,2],[24,2],[34,47],[37,47],[31,45],[40,45],[37,7],[25,5],[46,5],[45,51],[26,51],[35,10],[39,10],[32,8],[30,51],[41,51],[33,49],[38,49],[34,7],[31,8],[40,8],[36,7],[31,51],[40,51],[36,51],[35,51],[39,7]],
+  canyon: [[39,14],[41,13],[39,50],[41,50],[38,13],[53,5],[26,5],[40,13],[38,50],[30,57],[49,57],[54,4],[25,4],[37,12],[42,12],[40,51],[52,6],[27,6],[34,56],[45,56],[53,3],[26,3],[37,50],[42,50],[34,10],[45,10],[35,56],[44,56],[35,8],[44,8],[49,56],[30,56]],
+  frostbase: [[39,24],[39,22],[43,26],[39,23],[10,23],[10,26],[10,21],[43,20],[44,27],[10,24],[11,20],[11,27],[42,25],[10,25],[41,20],[10,22],[45,28],[45,20],[12,19],[12,28],[45,17],[45,30],[40,21],[40,27],[45,24],[10,17],[10,30],[43,18],[14,18],[14,29],[43,21],[45,31],[45,16],[40,26],[43,29],[10,18],[15,28],[45,18]],
+  oldtown: [[25,31],[35,39],[16,39],[25,11],[26,31],[27,11],[35,40],[16,40],[24,31],[27,31],[17,38],[34,38],[24,11],[26,10],[22,12],[29,12],[22,37],[29,37],[34,41],[17,41],[23,37],[28,37],[31,38],[20,38],[22,6],[29,6]],
+  ruins: [[54,9],[54,7],[18,54],[18,56],[8,43],[67,20],[55,8],[6,43],[69,20],[19,53],[17,55],[19,57],[54,10],[54,6],[9,43],[66,20],[7,44],[68,19],[4,47],[71,16],[11,43],[64,20],[18,58],[10,44],[65,19],[17,52],[5,44],[70,19],[55,5],[56,11],[12,44],[63,19],[3,48],[72,15],[5,49],[70,14],[60,10],[15,53]],
+  downtown: [[58,54],[29,54],[55,5],[32,5],[43,14],[45,45],[29,53],[57,53],[42,45],[44,14],[56,4],[31,4],[43,45],[40,47],[47,47],[45,14],[56,6],[31,6],[42,14],[57,55],[30,55],[44,45],[39,13],[48,13],[55,3],[32,3],[39,46],[48,46],[41,46],[46,46],[55,7],[32,7],[30,52],[56,52],[38,14],[49,14],[56,56],[31,56],[38,51],[49,51],[41,9],[46,9],[45,10],[42,10],[40,9],[47,9],[43,8],[44,8],[39,51],[48,51],[38,8],[49,8]],
+  lab: [[20,44],[39,44],[39,5],[20,5],[40,46],[19,46],[40,3],[19,3],[29,38],[29,11],[30,38],[30,11],[23,44],[36,44],[36,5],[23,5],[28,38],[28,10],[31,43],[31,6],[37,45],[22,45],[37,4],[22,4],[30,43],[30,6]],
+  manor: [[32,7],[18,39],[32,6],[17,38],[18,37],[45,16],[32,8],[5,32],[8,29],[43,16],[46,16],[6,31],[17,40],[33,5],[4,33],[19,36],[32,9],[42,15],[9,31],[47,14],[8,35],[46,10],[7,32],[43,13]],
+};
+
+export const COVER = { on: true };   // the map checker switches the spawn cover off to measure the bare layout
 
 export const MAP_LIST = Object.keys(DEFS).map((id) => ({ id, name: DEFS[id].name, blurb: DEFS[id].blurb, big: (DEFS[id].w || 44) * (DEFS[id].h || 40) > 2000 }));
 
@@ -308,6 +469,7 @@ export function loadMap(id) {
   for (const [x0, z0, x1, z1, ch] of d.carve) carve(x0, z0, x1, z1, ch);
   for (let i = 0; i < W * H; i++) ZONE[i] = G[i];
   for (const [x, z, ch] of d.props) G[z * W + x] = ch;
+  if (COVER.on) for (const [x, z] of SPAWN_COVER[id] || []) if (G[z * W + x] === '.') G[z * W + x] = 'C';
   for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
     const ch = G[z * W + x];
     HG[z * W + x] = ch === '#' ? 5.2 + ((x * 7 + z * 13) % 5) * 0.42 : (PH[ch] || 0);

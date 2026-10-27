@@ -118,7 +118,10 @@ export const SFX = {
   },
   ring(sec) { if (!ok()) return; const b = bus(null, 0.08); tone(b, AC.currentTime, 3100, 3000, sec, 'sine', 0.5, 0.05); },
   smoke(pos) { if (!ok()) return; const b = bus(pos, 0.9, 10); if (!b) return; noise(b, AC.currentTime, 2.2, 1200, 'bandpass', 0.4, 0.5, 0.15); },
-  beep(pos) { if (!ok()) return; const b = bus(pos, 0.6, 20); if (!b) return; tone(b, AC.currentTime, 1450, 1450, 0.09, 'square', 0.35); },
+  beep(pos, urgency = 0) { if (!ok()) return; const b = bus(pos, 0.6 + 0.3 * urgency, 20 + 14 * urgency); if (!b) return; const f = 1450 + 650 * urgency; tone(b, AC.currentTime, f, f, 0.09, 'square', 0.35); },
+  keypad(pos, i = 0) { if (!ok()) return; const b = bus(pos, 0.3, 9); if (!b) return; const f = 1500 + (i % 4) * 160; tone(b, AC.currentTime, f, f, 0.035, 'square', 0.3); },   // one key press on the bomb
+  armed(pos) { if (!ok()) return; const b = bus(pos, 0.8, 36); if (!b) return; const t = AC.currentTime; tone(b, t, 330, 330, 0.16, 'square', 0.3); tone(b, t + 0.2, 330, 330, 0.16, 'square', 0.3); tone(b, t + 0.4, 220, 160, 0.5, 'sawtooth', 0.25); noise(b, t + 0.4, 0.3, 700, 'lowpass', 0.7, 0.4); },   // the bomb is armed
+  snip(pos) { if (!ok()) return; const b = bus(pos, 0.4, 9); if (!b) return; const t = AC.currentTime; noise(b, t, 0.05, 6000, 'highpass', 1, 0.8); tone(b, t, 2400, 1800, 0.04, 'triangle', 0.25); },   // cutting a wire while defusing
   plant() { if (!ok()) return; const b = bus(null, 0.6); const t = AC.currentTime; [880, 1175, 1568].forEach((f, i) => tone(b, t + i * 0.12, f, f, 0.18, 'square', 0.22)); },
   defused() { if (!ok()) return; const b = bus(null, 0.6); const t = AC.currentTime; [1568, 1175, 880, 660].forEach((f, i) => tone(b, t + i * 0.1, f, f, 0.16, 'triangle', 0.35)); },
   tick(pos) { if (!ok()) return; const b = bus(pos, 0.25, 6); if (!b) return; noise(b, AC.currentTime, 0.03, 3000, 'bandpass', 6, 0.7); },

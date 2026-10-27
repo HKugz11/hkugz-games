@@ -41,6 +41,41 @@ test('sign up, log in, log out, bad input', async () => {
   } finally { await s.close(); }
 });
 
+test('blocked words: only an exact owner name gets through', async () => {
+  const s = await boot({ ownerNames: ['HKugz'] });
+  try {
+    const bad = (username) => s.post('/api/signup', { agree: true, username, password: 'purple-giraffe-77' });
+    assert.equal((await bad('hkugz_real')).status, 400, 'a name that only contains the blocked word stays blocked');
+    assert.equal((await bad('hkugz2')).status, 400);
+    assert.equal((await bad('adminbob')).status, 400, 'other blocked words are unchanged');
+    const owner = await bad('HKugz'); assert.equal(owner.status, 200, JSON.stringify(owner.json)); assert.equal(owner.json.me.name, 'HKugz');
+    assert.equal((await bad('hkugz')).status, 409, 'first come, first served');
+  } finally { await s.close(); }
+});
+
+test('export from one server, import into another: same accounts, passwords and friends', async () => {
+  const s = await boot(), { execFileSync } = require('child_process');
+  let s2;
+  try {
+    const a = await s.user('Alice'), b = await s.user('Bob'); await s.befriend(a, b);
+    assert.equal((await s.raw('GET', '/admin/export')).status, 403, 'no export without the secret');
+    const ex = await s.raw('GET', '/admin/export', undefined, null, { 'x-admin-token': s.app.adminToken });
+    assert.equal(ex.status, 200); assert.equal(ex.json.users.length, 2); assert.ok(ex.json.users.every(u => u.sessions.length === 0), 'log-ins are not exported');
+    const home = tmp(), file = path.join(home, 'export.json'); fs.writeFileSync(file, JSON.stringify(ex.json));
+    fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify({ dataDir: './data' }));
+    const run = (...args) => execFileSync(process.execPath, [path.join(__dirname, 'admin.js'), ...args], { env: Object.assign({}, process.env, { HKF_CONFIG: path.join(home, 'config.json') }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    assert.match(run('import', file), /Imported 2 accounts/);
+    assert.throws(() => run('import', file), /already accounts/, 'does not overwrite by accident');
+    assert.match(run('import', file, '--force'), /Imported 2 accounts/);
+    fs.writeFileSync(path.join(home, 'junk.json'), '{"nope":1}'); assert.throws(() => run('import', path.join(home, 'junk.json'), '--force'), /does not look like a friends export/);
+    s2 = await boot({ dataDir: path.join(home, 'data') });
+    const l = await s2.post('/api/login', { username: 'alice', password: 'purple-giraffe-77' }); assert.equal(l.status, 200, JSON.stringify(l.json));
+    assert.deepEqual((await s2.poll({ token: l.json.token })).friends.map(f => f.name), ['Bob'], 'the friendship moved too');
+    assert.equal((await s2.post('/api/login', { username: 'alice', password: 'wrong-password-1' })).status, 401);
+    const e2 = await s2.raw('GET', '/admin/export', undefined, null, { 'x-admin-token': s2.app.adminToken }); assert.equal(e2.json.users.length, 2);
+  } finally { await s.close(); if (s2) await s2.close(); }
+});
+
 test('passwords are hashed, not stored', async () => {
   const s = await boot();
   try {

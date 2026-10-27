@@ -45,7 +45,7 @@ npm install
    ```
    Commit and push as usual. The hub then shows a **Friends** button, and the three online games get a small friends button.
 
-To change the secrets later, run the same `secret put` command again. To change other settings, edit `wrangler.toml` (`[vars]`) and run `npx wrangler deploy`.
+To change the secrets later, run the same `secret put` command again. To change other settings, edit `wrangler.toml` (`[vars]`) and run `npx wrangler deploy`. (`OWNER_NAMES = "hkugz"` there lets the site owner take the name `hkugz`, which is otherwise blocked so nobody can pretend to be the site.)
 
 ## Looking after it
 
@@ -83,4 +83,4 @@ npm test                                 (in a second window: 13 end-to-end chec
 - Cloudflare gives every request the visitor's real address, so the per-address limits (log-in tries, sign-ups, friend requests) work properly, which a plain tunnel can not do.
 - Cloudflare provides the HTTPS certificate, so there is nothing to set up or renew.
 - It only does the friends API. The games site stays on GitHub Pages (`siteDir` is a Node-server feature).
-- The saved accounts are not moved automatically if you later switch to the Ubuntu server. Both versions use the same rules and the same data shape, so a move can be done by hand if it matters.
+- The saved accounts move to the Ubuntu server with two commands (`node admin.js export`, then `node admin.js import`): see **Moving from Cloudflare to the Ubuntu server** in [`../server/README.md`](../server/README.md). Both versions use the same rules and the same data shape, so nothing is lost: passwords, friends, blocks and friend codes all come along.

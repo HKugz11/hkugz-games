@@ -13,7 +13,8 @@ function configFrom(env) {
     signupCode: env.SIGNUP_CODE || '', adminToken: env.ADMIN_TOKEN || '',
     signupsOpen: env.SIGNUPS_OPEN !== 'false', maxUsers: num(env.MAX_USERS, CORE_DEFAULTS.maxUsers),
     ipSignupsPerHour: num(env.IP_SIGNUPS_PER_HOUR, CORE_DEFAULTS.ipSignupsPerHour), allSignupsPerHour: num(env.ALL_SIGNUPS_PER_HOUR, CORE_DEFAULTS.allSignupsPerHour),
-    requestsPerMinute: num(env.REQUESTS_PER_MINUTE, CORE_DEFAULTS.requestsPerMinute), log: env.LOG === 'true'
+    requestsPerMinute: num(env.REQUESTS_PER_MINUTE, CORE_DEFAULTS.requestsPerMinute), log: env.LOG === 'true',
+    ownerNames: list(env.OWNER_NAMES)
   };
 }
 

@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=61';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=101';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -300,92 +300,122 @@ export function disposeWorld(group) {
   });
 }
 
-// ------------------------------------------------------------------ characters (Krunker-like: chunky body, smaller cube head, flat colours)
-// based on the Krunker default player: plain skin cube head with a hair top, chunky dark jacket, block arms, skin hands
+// ------------------------------------------------------------------ characters (chunky toy soldiers, kept simple)
+// Wide shoulders that taper to the waist, a big head with a plain helmet. Natural uniform colours tell the teams apart:
+//   RAIDERS = dark clothes + tan vest + skull cap (like the terrorists)      WARDENS = navy + black vest + black helmet (like the counter-terrorists)
+// plus a tiny team-colour stripe on the cap / helmet. No skin anywhere, no blood.
 const SPAL = [
-  { // RAIDERS: sand yellow
-    shirt: 0xb9a063, pants: 0xa38c55, pantsD: 0x8c7745, vest: 0x8a7745, vestL: 0x9d8a56, pouch: 0x6a5a34, helm: 0xd6b968, helmD: 0xb89a4c,
-    boot: 0x4a3a28, glove: 0x2b2620, mask: 0xc9b27a, maskU: 0x6a5a38, lens: 0xe3a52c, skin: 0xc8916a, trim: 0x2a2a2a },
-  { // WARDENS: green
-    shirt: 0x5b7a3e, pants: 0x4d6633, pantsD: 0x3e5328, vest: 0x3d5229, vestL: 0x4c6636, pouch: 0x2c3b1c, helm: 0x62833f, helmD: 0x48642e,
-    boot: 0x2b2822, glove: 0x1f2218, mask: 0x2a2e26, maskU: 0x1a1d17, lens: 0x62d0ff, skin: 0xc8916a, trim: 0x20221e },
+  // RAIDERS (like the terrorists): charcoal clothes, coyote-tan vest, black balaclava and a dark skull cap
+  { shirt: 0x4d4b48, pants: 0x3a3936, vest: 0xa28d5f, pouch: 0x6f6040, helm: 0x2e2e31, helmD: 0x202022, cap: true, team: 0xff9ccf, boot: 0x2a241d, glove: 0x19191a, mask: 0x1b1b1d, maskU: 0x121213, trim: 0x1a1a1b, eye: 0xf2ecd8 },
+  // WARDENS (like the counter-terrorists): navy uniform, black vest, black helmet and balaclava
+  { shirt: 0x34508a, pants: 0x233358, vest: 0x22252c, pouch: 0x15171b, helm: 0x232f50, helmD: 0x161d38, cap: false, team: 0x6fa8ff, boot: 0x0e0f11, glove: 0x0c0d0f, mask: 0x111319, maskU: 0x0b0d12, trim: 0x0d0e12, eye: 0xe8edf5 },
 ];
-export const SIDE_SLEEVE = [0xb39a5c, 0x587638];
+export const SIDE_SLEEVE = [0x4d4b48, 0x34508a];
 export const charMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
 export const lensMats = [];
 const solCache = {};
-export function soldierParts(side) {
-  if (solCache[side]) return solCache[side];
-  makeTextures();
-  if (!lensMats.length) for (let s = 0; s < 2; s++) lensMats.push(new THREE.MeshLambertMaterial({ map: TEX.face[s], transparent: true, alphaTest: 0.5 }));
-  const p = SPAL[side];
-  // legs 0-0.62, body 0.62-1.36, head cube 1.36-1.74 (no neck), helmet on top
-  const thigh = (sx) => mergeParts([
-    pt.box(0.27, 0.33, 0.28, 0, -0.155, 0, p.pants),
-    pt.box(0.045, 0.15, 0.2, sx * 0.155, -0.15, 0.0, p.pantsD), pt.box(0.047, 0.035, 0.2, sx * 0.155, -0.09, 0.0, p.vest),
-  ]);
+export function soldierParts(side, lite = false) {
+  const key = side + (lite ? 'L' : 'F');
+  if (solCache[key]) return solCache[key];
+  const p = SPAL[side], F = !lite;
+  // legs 0-0.62, hips 0.62, chest up to 1.33, head cube 1.37-1.73 (centre 1.55), helmet on top
+  const thigh = () => mergeParts([pt.box(0.25, 0.34, 0.27, 0, -0.16, 0, p.pants)]);
   const shin = mergeParts([
-    pt.box(0.26, 0.24, 0.27, 0, -0.12, 0, p.pants),
-    pt.box(0.22, 0.13, 0.07, 0, -0.03, -0.16, p.trim),
-    pt.box(0.275, 0.06, 0.285, 0, -0.215, 0, p.pantsD),
-    pt.box(0.28, 0.11, 0.34, 0, -0.265, -0.035, p.boot), pt.box(0.285, 0.03, 0.35, 0, -0.305, -0.035, 0x151515),
+    pt.box(0.23, 0.2, 0.25, 0, -0.1, 0, p.pants),
+    pt.box(0.2, 0.13, 0.07, 0, 0.0, -0.14, p.trim),                        // knee pad
+    pt.box(0.25, 0.1, 0.33, 0, -0.255, -0.04, p.boot), pt.box(0.27, 0.035, 0.36, 0, -0.295, -0.04, 0x151515),   // boot + sole
   ]);
   const torso = mergeParts([
-    pt.box(0.6, 0.74, 0.34, 0, 0.99, 0, p.shirt),
-    // belt, buckle, hip pouch + holster
-    pt.box(0.64, 0.07, 0.38, 0, 0.69, 0, p.trim), pt.box(0.08, 0.05, 0.02, 0, 0.69, -0.2, 0x8c8c8c),
-    pt.box(0.1, 0.13, 0.1, -0.34, 0.64, 0.02, p.pouch), pt.box(0.07, 0.22, 0.15, 0.34, 0.6, -0.02, p.trim),
-    // kevlar vest: ONE solid body block (front + back + sides) with a collar, no separate plates
-    pt.box(0.66, 0.5, 0.4, 0, 1.12, 0, p.vest),
-    pt.box(0.68, 0.06, 0.42, 0, 0.88, 0, p.vestL),
-    pt.box(0.62, 0.06, 0.38, 0, 1.38, 0, p.vestL),
-    pt.box(0.03, 0.46, 0.02, 0, 1.12, -0.205, p.trim),
-    // shoulder straps
-    pt.box(0.13, 0.05, 0.42, 0.2, 1.4, 0, p.vest), pt.box(0.13, 0.05, 0.42, -0.2, 1.4, 0, p.vest),
-    // chest pouches sit directly on the vest
-    pt.box(0.13, 0.15, 0.07, -0.16, 1.0, -0.235, p.pouch), pt.box(0.13, 0.15, 0.07, 0, 1.0, -0.235, p.pouch), pt.box(0.13, 0.15, 0.07, 0.16, 1.0, -0.235, p.pouch),
-    // back pack
-    pt.box(0.38, 0.32, 0.14, 0, 1.0, 0.27, p.pouch), pt.box(0.32, 0.06, 0.15, 0, 1.18, 0.27, p.trim),
+    pt.box(0.5, 0.12, 0.3, 0, 0.67, 0, p.pants),                          // hips
+    pt.box(0.54, 0.06, 0.34, 0, 0.745, 0, p.trim),                        // belt
+    pt.box(0.52, 0.5, 0.3, 0, 1.03, 0, p.shirt),                          // uniform
+    pt.box(0.62, 0.46, 0.4, 0, 1.06, 0, p.vest),                          // kevlar vest: one solid block
+    pt.box(0.22, 0.08, 0.22, 0, 1.36, 0, p.mask),                         // neck
+    pt.box(0.4, 0.36, 0.16, 0, 1.02, 0.28, p.pouch),                      // backpack
+    ...(F ? [pt.box(0.14, 0.15, 0.07, -0.17, 0.97, -0.235, p.pouch), pt.box(0.14, 0.15, 0.07, 0, 0.97, -0.235, p.pouch), pt.box(0.14, 0.15, 0.07, 0.17, 0.97, -0.235, p.pouch)] : []),   // 3 pouches
   ]);
   const head = mergeParts([
-    pt.box(0.38, 0.38, 0.38, 0, 0, 0, p.maskU),
-    pt.box(0.395, 0.17, 0.395, 0, -0.105, 0, p.mask),
-    // helmet
-    pt.box(0.46, 0.2, 0.46, 0, 0.17, 0, p.helm), pt.box(0.4, 0.06, 0.4, 0, 0.3, 0, p.helm), pt.box(0.32, 0.03, 0.32, 0, 0.345, 0, p.helmD),
-    pt.box(0.47, 0.035, 0.47, 0, 0.075, 0, p.helmD), pt.box(0.44, 0.04, 0.09, 0, 0.1, -0.26, p.helmD),
-    pt.box(0.06, 0.22, 0.28, 0.235, 0.0, 0.02, p.helmD), pt.box(0.06, 0.22, 0.28, -0.235, 0.0, 0.02, p.helmD),
-    pt.box(0.02, 0.035, 0.24, 0.27, 0.06, 0.0, p.trim), pt.box(0.02, 0.035, 0.24, -0.27, 0.06, 0.0, p.trim),
-    pt.box(0.12, 0.09, 0.06, 0, 0.17, 0.26, p.trim),
-    pt.box(0.1, 0.07, 0.05, 0, 0.21, -0.255, p.trim),
+    pt.box(0.36, 0.34, 0.36, 0, 0, 0, p.maskU),                           // face mask
+    pt.box(0.375, 0.1, 0.375, 0, -0.12, 0, p.mask),                       // lower mask
+    ...(p.cap
+      ? [pt.box(0.41, 0.14, 0.41, 0, 0.145, 0, p.helm), pt.box(0.36, 0.06, 0.36, 0, 0.245, 0, p.helmD)]                                   // skull cap
+      : [pt.box(0.44, 0.17, 0.44, 0, 0.16, 0, p.helm), pt.box(0.38, 0.07, 0.4, 0, 0.27, 0, p.helm), pt.box(0.4, 0.05, 0.07, 0, 0.115, -0.24, p.helmD)]),   // helmet + brim
+    ...(F ? [
+      pt.box(0.07, 0.05, 0.02, -0.085, 0.04, -0.185, p.eye), pt.box(0.07, 0.05, 0.02, 0.085, 0.04, -0.185, p.eye),   // eyes
+      pt.box(0.035, 0.045, 0.025, -0.085, 0.04, -0.19, 0x15151a), pt.box(0.035, 0.045, 0.025, 0.085, 0.04, -0.19, 0x15151a),
+      pt.box(0.1, 0.035, 0.02, 0, p.cap ? 0.15 : 0.2, p.cap ? -0.21 : -0.225, p.team),   // tiny team stripe on the front
+    ] : []),
   ]);
-  const arm = (sg, S, E, Hd) => [
-    pt.seg(S, E, 0.18, 0.18, p.shirt), pt.box(0.18, 0.18, 0.18, E.x, E.y, E.z, p.shirt), pt.seg(E, Hd, 0.16, 0.16, p.shirt),
-    pt.box(0.2, 0.09, 0.26, S.x, S.y + 0.045, S.z, p.vest),
-    pt.box(0.045, 0.12, 0.12, E.x + sg * 0.1, E.y, E.z, p.trim),
-    pt.box(0.135, 0.135, 0.14, Hd.x, Hd.y, Hd.z, p.glove),
-  ];
-  const sR = V(0.4, 0, 0), eR = V(0.38, -0.22, -0.04), hR = V(0.14, -0.04, -0.3);
-  const sL = V(-0.4, 0, 0), eL = V(-0.27, -0.2, -0.24), hL = V(0.08, 0.0, -0.58);
-  const arms = mergeParts([...arm(1, sR, eR, hR), ...arm(-1, sL, eL, hL)]);
-  return (solCache[side] = { thighL: thigh(-1), thighR: thigh(1), shin, torso, head, arms, lens: new THREE.PlaneGeometry(0.001, 0.001), lensPos: [0, 0, -0.2] });
-}
-export const TP_GUNS = {};
-export function tpGuns() {
-  if (TP_GUNS.prim) return TP_GUNS;
-  // rifle shouldered: stock at the right shoulder, sights near the face (arms-group space)
-  const x = 0.12, y = 0.06;
-  TP_GUNS.prim = mergeParts([
-    pt.box(0.05, 0.1, 0.22, x, y - 0.015, -0.06, 0x6b4a32), pt.box(0.055, 0.08, 0.3, x, y, -0.32, 0x2c2e33), pt.box(0.05, 0.03, 0.28, x, y + 0.05, -0.32, 0x4a4d53),
-    pt.box(0.058, 0.065, 0.2, x, y, -0.57, 0x6b4a32), pt.cz(0.014, 0.2, x, y + 0.015, -0.76, 0x1e2024, 8), pt.box(0.02, 0.045, 0.02, x, y + 0.05, -0.7, 0x1e2024),
-    pt.box(0.04, 0.13, 0.065, x, y - 0.1, -0.36, 0x24262a, 0.25), pt.box(0.04, 0.09, 0.05, x, y - 0.07, -0.22, 0x6b4a32, -0.35),
-  ]);
-  TP_GUNS.sec = mergeParts([pt.box(0.035, 0.045, 0.19, 0.1, 0.02, -0.5, 0x2c2e33), pt.box(0.032, 0.1, 0.05, 0.1, -0.04, -0.43, 0x1e2024, -0.28)]);
-  TP_GUNS.knife = mergeParts([pt.box(0.03, 0.04, 0.1, 0.13, -0.03, -0.3, 0x2a2a2a), pt.box(0.012, 0.05, 0.1, 0.13, -0.03, -0.4, 0xd9e0e8, -0.3), pt.box(0.012, 0.04, 0.08, 0.13, -0.07, -0.47, 0xd9e0e8, -0.9), pt.box(0.012, 0.03, 0.06, 0.13, -0.12, -0.5, 0xd9e0e8, -1.4)]);
-  return TP_GUNS;
+  return (solCache[key] = { thighL: thigh(), thighR: thigh(), shin, torso, head });
 }
 
-// Lite soldiers: the same look, but glued into 4 meshes (2 legs, body, arms + the held gun) instead of ~9.
-// Geometry that is already vertex-coloured (soldierParts / tpGuns) is moved and joined without touching its colours.
+// ---- what the soldier holds: arms + gun are ONE merged mesh per gun class (arms pose changes with the class) ----
+// Classes: rifle, smg, shotgun, sniper, lmg (two hands) · pistol, revolver, mpistol (two hands out front) · knife · nade
+const GUNC = { metal: 0x2d2f35, metalL: 0x4a4d55, poly: 0x1b1c20, wood: 0x7a5233, woodD: 0x5a3b25, olive: 0x56603f, steel: 0xdde3ea };
+const TP_GUNS = {
+  rifle: (x, y) => [pt.box(0.07, 0.13, 0.24, x, y - 0.025, 0.04, GUNC.wood), pt.box(0.085, 0.14, 0.26, x, y, -0.2, GUNC.metal), pt.box(0.05, 0.035, 0.2, x, y + 0.088, -0.2, GUNC.metalL),
+    pt.box(0.08, 0.11, 0.24, x, y - 0.005, -0.46, GUNC.woodD), pt.cz(0.022, 0.28, x, y + 0.01, -0.72, GUNC.metalL, 8), pt.cz(0.032, 0.07, x, y + 0.01, -0.9, GUNC.poly, 8),
+    pt.box(0.03, 0.07, 0.03, x, y + 0.07, -0.8, GUNC.poly), pt.box(0.035, 0.05, 0.035, x, y + 0.115, -0.12, GUNC.poly),
+    pt.box(0.06, 0.2, 0.075, x, y - 0.17, -0.24, GUNC.poly, -0.2), pt.box(0.055, 0.13, 0.07, x, y - 0.14, -0.1, GUNC.poly, 0.35)],
+  smg: (x, y) => [pt.box(0.05, 0.05, 0.2, x, y + 0.01, 0.1, GUNC.metalL), pt.box(0.085, 0.14, 0.34, x, y, -0.12, GUNC.metal), pt.box(0.05, 0.03, 0.2, x, y + 0.085, -0.12, GUNC.metalL),
+    pt.cz(0.028, 0.2, x, y + 0.01, -0.39, GUNC.poly, 8), pt.box(0.055, 0.26, 0.07, x, y - 0.2, -0.16, GUNC.poly), pt.box(0.055, 0.12, 0.07, x, y - 0.13, -0.02, GUNC.poly, 0.3),
+    pt.box(0.05, 0.1, 0.06, x, y - 0.1, -0.33, GUNC.poly)],
+  shotgun: (x, y) => [pt.box(0.075, 0.14, 0.3, x, y - 0.02, 0.06, GUNC.wood), pt.box(0.085, 0.13, 0.28, x, y, -0.2, GUNC.metal), pt.cz(0.028, 0.5, x, y + 0.025, -0.6, GUNC.metalL, 8),
+    pt.cz(0.03, 0.42, x, y - 0.035, -0.56, GUNC.metal, 8), pt.box(0.09, 0.09, 0.2, x, y - 0.045, -0.52, GUNC.woodD), pt.box(0.03, 0.05, 0.03, x, y + 0.075, -0.84, GUNC.poly),
+    pt.box(0.055, 0.12, 0.065, x, y - 0.13, -0.1, GUNC.poly, 0.3)],
+  sniper: (x, y) => [pt.box(0.07, 0.15, 0.34, x, y - 0.02, 0.09, GUNC.olive), pt.box(0.075, 0.12, 0.34, x, y, -0.2, GUNC.metal), pt.cz(0.02, 0.6, x, y + 0.005, -0.74, GUNC.metalL, 8),
+    pt.cz(0.03, 0.07, x, y + 0.005, -1.06, GUNC.poly, 8), pt.cz(0.04, 0.32, x, y + 0.125, -0.22, GUNC.poly), pt.cz(0.052, 0.06, x, y + 0.125, -0.4, GUNC.poly), pt.cz(0.047, 0.06, x, y + 0.125, -0.04, GUNC.poly),
+    pt.box(0.03, 0.04, 0.2, x, y + 0.075, -0.22, GUNC.metalL), pt.box(0.05, 0.03, 0.03, x + 0.055, y + 0.04, -0.1, GUNC.steel),
+    pt.box(0.055, 0.12, 0.07, x, y - 0.12, -0.22, GUNC.poly), pt.box(0.055, 0.13, 0.07, x, y - 0.14, -0.08, GUNC.poly, 0.3),
+    pt.box(0.02, 0.2, 0.02, x - 0.045, y - 0.1, -0.66, GUNC.metalL, 0.35), pt.box(0.02, 0.2, 0.02, x + 0.045, y - 0.1, -0.66, GUNC.metalL, 0.35)],
+  lmg: (x, y) => [pt.box(0.08, 0.15, 0.26, x, y - 0.02, 0.07, GUNC.poly), pt.box(0.1, 0.15, 0.38, x, y, -0.2, GUNC.metal), pt.box(0.08, 0.04, 0.3, x, y + 0.095, -0.2, GUNC.metalL),
+    pt.box(0.03, 0.07, 0.1, x, y + 0.15, -0.3, GUNC.poly), pt.box(0.12, 0.15, 0.17, x, y - 0.16, -0.24, GUNC.olive), pt.box(0.09, 0.11, 0.26, x, y, -0.52, GUNC.poly),
+    pt.cz(0.028, 0.3, x, y + 0.01, -0.8, GUNC.metalL, 8), pt.cz(0.04, 0.08, x, y + 0.01, -0.98, GUNC.poly, 8),
+    pt.box(0.025, 0.22, 0.025, x - 0.06, y - 0.12, -0.72, GUNC.metalL, 0.45), pt.box(0.025, 0.22, 0.025, x + 0.06, y - 0.12, -0.72, GUNC.metalL, 0.45),
+    pt.box(0.06, 0.12, 0.07, x, y - 0.14, -0.06, GUNC.poly, 0.3)],
+  pistol: (x, y) => [pt.box(0.05, 0.065, 0.24, x, y + 0.04, -0.58, GUNC.metalL), pt.box(0.045, 0.045, 0.2, x, y, -0.56, GUNC.poly), pt.box(0.05, 0.12, 0.07, x, y - 0.07, -0.47, GUNC.poly, 0.25),
+    pt.box(0.02, 0.025, 0.02, x, y + 0.085, -0.68, GUNC.steel), pt.box(0.025, 0.02, 0.02, x, y + 0.085, -0.48, GUNC.steel)],
+  revolver: (x, y) => [pt.box(0.05, 0.07, 0.22, x, y + 0.035, -0.6, GUNC.metalL), pt.cz(0.042, 0.09, x, y + 0.02, -0.52, GUNC.metal, 8), pt.cz(0.022, 0.2, x, y + 0.04, -0.78, GUNC.metalL, 8),
+    pt.box(0.05, 0.13, 0.07, x, y - 0.07, -0.45, GUNC.woodD, 0.3), pt.box(0.02, 0.03, 0.02, x, y + 0.08, -0.88, GUNC.steel)],
+  mpistol: (x, y) => [pt.box(0.065, 0.09, 0.26, x, y + 0.03, -0.58, GUNC.metal), pt.cz(0.026, 0.1, x, y + 0.04, -0.76, GUNC.poly, 8), pt.box(0.05, 0.12, 0.07, x, y - 0.07, -0.47, GUNC.poly, 0.25),
+    pt.box(0.05, 0.22, 0.06, x, y - 0.14, -0.58, GUNC.poly), pt.box(0.04, 0.03, 0.2, x, y + 0.085, -0.58, GUNC.metalL)],
+  sawed: (x, y) => [pt.box(0.07, 0.1, 0.12, x, y, -0.14, GUNC.metal), pt.cz(0.022, 0.3, x - 0.026, y + 0.02, -0.4, GUNC.metalL, 8), pt.cz(0.022, 0.3, x + 0.026, y + 0.02, -0.4, GUNC.metalL, 8),
+    pt.box(0.07, 0.035, 0.14, x, y - 0.03, -0.34, GUNC.woodD), pt.box(0.05, 0.11, 0.08, x, y - 0.09, -0.07, GUNC.wood, 0.4)],
+  suppressed: (x, y) => [...TP_GUNS.rifle(x, y), pt.cz(0.04, 0.3, x, y + 0.01, -1.05, 0x1b1c20, 8)],
+  knife: (x, y) => [pt.box(0.045, 0.05, 0.11, x, y, -0.02, 0x2a2a2a), pt.box(0.015, 0.06, 0.12, x, y + 0.0, -0.12, GUNC.steel, -0.2), pt.box(0.015, 0.05, 0.1, x, y - 0.04, -0.2, GUNC.steel, -0.8), pt.box(0.015, 0.04, 0.07, x, y - 0.1, -0.25, GUNC.steel, -1.3)],
+  nade: (x, y) => [pt.box(0.1, 0.12, 0.1, x, y, -0.02, 0x4f7a3a), pt.box(0.05, 0.04, 0.05, x, y + 0.08, -0.02, GUNC.metalL), pt.box(0.015, 0.1, 0.03, x + 0.05, y + 0.03, 0.0, GUNC.steel)],
+};
+// [gun x, gun y, right hand [x, y, z], left hand [x, y, z] or null]
+const TP_HOLD = {
+  rifle: [0.2, -0.12, [0.2, -0.27, -0.1], [0.17, -0.21, -0.46]], smg: [0.2, -0.12, [0.2, -0.26, -0.02], [0.2, -0.22, -0.33]], shotgun: [0.2, -0.12, [0.2, -0.26, -0.1], [0.2, -0.21, -0.52]],
+  sniper: [0.2, -0.12, [0.2, -0.26, -0.08], [0.2, -0.2, -0.5]], lmg: [0.2, -0.12, [0.2, -0.26, -0.06], [0.2, -0.2, -0.52]],
+  pistol: [0.12, -0.04, [0.12, -0.1, -0.47], [0.09, -0.1, -0.5]], revolver: [0.12, -0.04, [0.12, -0.1, -0.45], [0.09, -0.1, -0.48]], mpistol: [0.12, -0.04, [0.12, -0.1, -0.47], [0.09, -0.11, -0.58]],
+  sawed: [0.12, -0.04, [0.12, -0.1, -0.4], [0.09, -0.1, -0.44]], suppressed: [0.2, -0.12, [0.2, -0.27, -0.1], [0.17, -0.21, -0.46]],
+  knife: [0.24, -0.16, [0.24, -0.16, -0.36], null], nade: [0.2, -0.06, [0.2, -0.06, -0.34], [0.03, -0.1, -0.3]],
+};
+// where the muzzle flash appears (arms space)
+export const TP_MUZ = { rifle: [0.2, -0.11, -0.95], smg: [0.2, -0.11, -0.52], shotgun: [0.2, -0.1, -0.88], sniper: [0.2, -0.115, -1.1], lmg: [0.2, -0.11, -1.02], pistol: [0.12, 0.0, -0.72], revolver: [0.12, 0.0, -0.9], mpistol: [0.12, 0.0, -0.78], knife: [0.24, -0.16, -0.5], nade: [0.2, -0.06, -0.34], sawed: [0.12, 0.0, -0.62], suppressed: [0.2, -0.11, -1.2] };
+const armsCache = {};
+export function tpArms(side, cls, lite = false) {
+  const key = side + cls + (lite ? 'L' : 'F');
+  if (armsCache[key]) return armsCache[key];
+  const p = SPAL[side], F = !lite, hold = TP_HOLD[cls], parts = [];
+  const limb = (S, E, Hd, sg) => {
+    const m = new THREE.Vector3().addVectors(S, E).multiplyScalar(0.5).lerp(S, 0.25);
+    parts.push(pt.seg(S, E, 0.17, 0.17, p.shirt), pt.box(0.16, 0.16, 0.16, E.x, E.y, E.z, p.shirt), pt.seg(E, Hd, 0.15, 0.15, p.shirt),
+      pt.box(0.14, 0.14, 0.15, Hd.x, Hd.y, Hd.z, p.glove));   // glove
+  };
+  const elbow = (S, H, sg) => V((S.x + H.x) / 2 + sg * 0.1, (S.y + H.y) / 2 - 0.15, (S.z + H.z) / 2 + 0.06);
+  const SR = V(0.4, 0, 0), SL = V(-0.4, 0, 0), HR = V(...hold[2]);
+  limb(SR, elbow(SR, HR, 1), HR, 1);
+  if (hold[3]) { const HL = V(...hold[3]); limb(SL, elbow(SL, HL, -1), HL, -1); }
+  else limb(SL, V(-0.43, -0.3, 0.02), V(-0.36, -0.5, -0.1), -1);   // free arm hangs down
+  parts.push(...TP_GUNS[cls](hold[0], hold[1]));
+  return (armsCache[key] = mergeParts(parts));
+}
+
+// Lite soldiers: the same look with fewer boxes, glued into 3 meshes (2 legs, body) + the arms/gun mesh.
+// Geometry that is already vertex-coloured is moved and joined without touching its colours.
 function joinGeo(list) {
   const pos = [], nor = [], uv = [], col = [], v = new THREE.Vector3(), nm = new THREE.Matrix3();
   for (const [g0, m] of list) {
@@ -405,12 +435,49 @@ function joinGeo(list) {
 const liteCache = {};
 export function soldierPartsLite(side) {
   if (liteCache[side]) return liteCache[side];
-  const sp = soldierParts(side), tg = tpGuns(), I = new THREE.Matrix4(), T = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z);
+  const sp = soldierParts(side, true), I = new THREE.Matrix4(), T = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z);
   return (liteCache[side] = {
     legL: joinGeo([[sp.thighL, I], [sp.shin, T(0, -0.31, 0)]]), legR: joinGeo([[sp.thighR, I], [sp.shin, T(0, -0.31, 0)]]),
     body: joinGeo([[sp.torso, I], [sp.head, T(0, 1.55, 0)]]),
-    armsPrim: joinGeo([[sp.arms, I], [tg.prim, I]]), armsSec: joinGeo([[sp.arms, I], [tg.sec, I]]), armsKnife: joinGeo([[sp.arms, I], [tg.knife, I]]),
   });
+}
+
+// ------------------------------------------------------------------ the bomb (CS-style C4)
+// Four charge bricks round a control box with a keypad and a red countdown display. Origin = middle of the bottom, +y = top (keypad side), long side along x.
+// 3 draw calls: the body (vertex colours), the display (a canvas that changes) and a small light on the control box.
+export function buildBomb() {
+  const body = mergeParts([
+    pt.box(0.62, 0.07, 0.36, 0, 0.035, 0, 0x3e4a30),                                         // olive base plate
+    ...[-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => [pt.box(0.2, 0.1, 0.14, sx * 0.2, 0.12, sz * 0.085, 0xd8caa0), pt.box(0.2, 0.012, 0.14, sx * 0.2, 0.176, sz * 0.085, 0xbba978)])),   // 4 charge bricks
+    pt.box(0.03, 0.125, 0.41, -0.2, 0.125, 0, 0x16171a), pt.box(0.03, 0.125, 0.41, 0.2, 0.125, 0, 0x16171a),   // black straps
+    pt.box(0.2, 0.12, 0.34, 0, 0.13, 0, 0x2c3037),                                           // control box
+    pt.box(0.17, 0.012, 0.075, 0, 0.196, -0.095, 0x0e0f12),                                  // display frame
+    pt.box(0.13, 0.01, 0.13, 0, 0.195, 0.07, 0x1a1c20),                                      // keypad plate
+    ...[0, 1, 2, 3].flatMap((r) => [0, 1, 2].map((c) => pt.box(0.026, 0.014, 0.022, (c - 1) * 0.035, 0.2, 0.025 + r * 0.032, r === 3 ? (c === 0 ? 0xd9473a : c === 2 ? 0x4ccf6a : 0x9aa0a8) : 0x9aa0a8))),   // 12 keys
+    pt.box(0.1, 0.012, 0.012, -0.145, 0.19, -0.09, 0xd9473a), pt.box(0.1, 0.012, 0.012, -0.145, 0.19, 0.0, 0xe6c23a), pt.box(0.1, 0.012, 0.012, -0.145, 0.19, 0.09, 0x3a7ad9),   // wires
+    pt.box(0.1, 0.012, 0.012, 0.145, 0.19, -0.09, 0x3a7ad9), pt.box(0.1, 0.012, 0.012, 0.145, 0.19, 0.0, 0x4ccf6a), pt.box(0.1, 0.012, 0.012, 0.145, 0.19, 0.09, 0xd9473a),
+  ]);
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(body, charMat));
+  const cv2 = document.createElement('canvas'); cv2.width = 128; cv2.height = 48; const cx = cv2.getContext('2d');
+  const tex = new THREE.CanvasTexture(cv2); tex.colorSpace = THREE.SRGBColorSpace;
+  const disp = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.056), new THREE.MeshBasicMaterial({ map: tex }));
+  disp.rotation.x = -Math.PI / 2; disp.position.set(0, 0.203, -0.095); g.add(disp);
+  const ledMat = new THREE.MeshBasicMaterial({ color: 0x4a0808 }), led = new THREE.Mesh(GEO.box, ledMat);
+  led.scale.set(0.03, 0.012, 0.03); led.position.set(0.075, 0.203, -0.03); g.add(led);   // a flat light on the control box, beside the keys
+  const B = { group: g, led, _t: null, _c: null };
+  // text on the red display: numbers get a dim "88:88" ghost behind them, like a real LED display
+  B.setDisplay = (text, col = '#ff2a1a') => {
+    if (B._t === text && B._c === col) return; B._t = text; B._c = col;
+    cx.fillStyle = '#140505'; cx.fillRect(0, 0, 128, 48);
+    cx.font = 'bold ' + Math.min(38, Math.floor(118 / (text.length * 0.62))) + 'px "Courier New",monospace'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    if (/^[0-9:.\-]+$/.test(text)) { cx.fillStyle = '#3a0c0c'; cx.fillText(text.replace(/[0-9]/g, '8'), 64, 26); }
+    cx.shadowColor = col; cx.shadowBlur = 8; cx.fillStyle = col; cx.fillText(text, 64, 26); cx.shadowBlur = 0;
+    tex.needsUpdate = true;
+  };
+  B.setLed = (on, col = 0xff2a2a) => ledMat.color.setHex(on ? col : 0x4a0808);
+  B.setDisplay('--:--', '#ff2a1a');
+  return B;
 }
 
 // ------------------------------------------------------------------ first-person guns (low-poly, round barrels and scopes)
@@ -561,6 +628,55 @@ export function buildGun(id, acc) {
       b(.01, .01, .2, .04, -.03, -.55, C.light); b(.01, .01, .2, -.04, -.03, -.55, C.light); b(.012, .045, .012, 0, .065, -.7, C.dark); b(.04, .03, .04, 0, .1, .05, C.dark);
       b(.07, .12, .3, 0, -.03, .32, C.wood, .08); b(.05, .1, .06, 0, -.09, .08, C.dark, -.3);
       spec = { sy: 0.13, mz: [0, 0.02, -0.9], grip: [0, -0.09, 0.08], fore: [0, -0.09, -0.3], ads: [-0.4, 1.35] }; break;
+    case 'trio': {
+      // Trio: burst pistol, long slide with three vents in the accent colour and a little foregrip
+      const s = 1.08, q = (w, h, d, x, y, z, c, rx = 0) => b(w * s, h * s, d * s, x * s, y * s, z * s, c, rx);
+      q(.036, .042, .21, 0, .05, -.09, 0x3a3d42); q(.014, .004, .19, 0, .073, -.09, C.dark);
+      for (let i = 0; i < 3; i++) q(.0372, .016, .014, 0, .052, -.07 - i * .035, A);
+      q(.033, .022, .19, 0, .016, -.08, C.dark); q(.022, .006, .05, 0, -.014, -.037, C.dark); q(.022, .03, .006, 0, 0, -.062, C.dark);
+      q(.022, .07, .026, 0, -.035, -.145, C.dark);
+      q(.034, .11, .05, 0, -.045, .026, 0x2a2c31, -.28); q(.034, .028, .05, 0, -.1, .012, A);
+      q(.008, .012, .012, .0105, .074, .016, C.dark); q(.008, .012, .012, -.0105, .074, .016, C.dark); q(.007, .01, .01, 0, .0745, -.188, C.dark);
+      spec = { sy: .08 * s, mz: [0, .05 * s, -.2 * s], grip: [0, -.045 * s, .026 * s], ads: [-0.42, 1.2], pistol: true, hs: s }; break;
+    }
+    case 'duster': {
+      // Duster: sawed-off double barrel, brass shell rims, break-open hinge, stubby wood grip
+      cz(.022, .34, -.024, .03, -.2, C.dark); cz(.022, .34, .024, .03, -.2, C.dark); b(.014, .008, .34, 0, .056, -.2, C.metal);
+      b(.074, .075, .13, 0, .015, -.02, C.body); b(.076, .012, .1, 0, .055, -.02, A); b(.078, .03, .02, 0, -.02, -.1, C.light);
+      cz(.014, .012, -.024, .03, -.035, C.brass, 8); cz(.014, .012, .024, .03, -.035, C.brass, 8);
+      b(.07, .04, .14, 0, -.008, -.18, C.woodD); b(.052, .13, .07, 0, -.07, .04, C.wood, -.35); b(.01, .026, .02, 0, .06, .03, C.dark, .4);
+      b(.022, .006, .05, 0, -.025, -.03, C.dark); b(.006, .02, .006, 0, -.012, -.04, C.dark, .25);
+      b(.01, .014, .01, 0, .066, -.37, C.light);
+      spec = { sy: .1, mz: [0, .03, -.38], grip: [0, -.06, .05], ads: [-0.42, 1.2], pistol: true, hs: 1.1 }; break;
+    }
+    case 'brute':
+      // Brute: heavy SMG, chunky receiver, vented shroud, 40-round magazine, vertical foregrip
+      b(.092, .115, .4, 0, 0, -.08, C.body); b(.082, .04, .36, 0, .078, -.08, C.dark); b(.096, .05, .14, 0, -.005, -.18, A);
+      cz(.038, .24, 0, .015, -.42, C.dark); for (let i = 0; i < 4; i++) b(.078, .012, .02, 0, .045, -.34 - i * .045, C.metal);
+      cz(.016, .08, 0, .015, -.58, C.metal, 8);
+      b(.052, .26, .082, 0, -.19, -.08, C.dark, .12); b(.056, .04, .09, 0, -.33, -.07, A, .12);
+      b(.046, .1, .056, 0, -.075, .08, C.dark, -.28); b(.04, .012, .08, 0, -.06, -.02, C.dark);
+      b(.05, .09, .18, 0, 0, .31, C.body); b(.056, .12, .03, 0, -.01, .41, C.dark); b(.044, .09, .03, 0, -.09, -.35, C.dark);
+      b(.012, .04, .02, .02, .108, .02, C.dark); b(.012, .04, .02, -.02, .108, .02, C.dark); b(.01, .036, .012, 0, .1, -.3, C.dark);
+      spec = { sy: 0.14, mz: [0, 0.015, -0.62], fore: [0, -0.1, -0.35], ads: [-0.46, 1.3] }; break;
+    case 'ghost':
+      // Ghost: slim rifle with a long suppressor, slotted handguard, skeleton stock, little red-dot sight
+      b(.068, .09, .32, 0, 0, -.04, C.dark); b(.062, .03, .36, 0, .06, -.06, C.metal);
+      b(.066, .075, .3, 0, .005, -.36, C.dark); for (let i = 0; i < 3; i++) b(.07, .01, .02, 0, .045, -.28 - i * .05, C.metal);
+      cz(.015, .14, 0, .025, -.55, C.dark); cz(.034, .36, 0, .025, -.78, 0x2a2c33); cz(.036, .02, 0, .025, -.6, A); cz(.036, .02, 0, .025, -.96, A);
+      b(.05, .15, .06, 0, -.12, -.12, C.dark, .1); b(.046, .09, .052, 0, -.08, .08, C.dark, -.3); b(.04, .01, .09, 0, -.065, 0, C.dark);
+      b(.02, .02, .2, .022, .02, .28, C.metal); b(.02, .02, .2, -.022, .02, .28, C.metal); b(.05, .1, .04, 0, 0, .39, C.dark);
+      b(.04, .04, .09, 0, .105, -.08, C.dark); b(.034, .034, .01, 0, .105, -.128, C.lens);
+      spec = { sy: 0.13, mz: [0, 0.025, -0.98], grip: [0, -0.08, 0.08], fore: [0, -0.07, -0.36], ads: [-0.42, 1.45] }; break;
+    case 'breaker':
+      // Breaker: black semi-auto shotgun, box magazine, spare shells on the side, accent fore-end
+      b(.082, .12, .36, 0, 0, -.02, C.dark); b(.07, .03, .3, 0, .075, -.02, C.metal);
+      cz(.03, .5, 0, .035, -.45, C.dark); cz(.026, .46, 0, -.03, -.42, C.metal); b(.08, .07, .18, 0, 0, -.36, A);
+      b(.06, .17, .1, 0, -.14, -.06, C.body, .08);
+      for (let i = 0; i < 3; i++) cz(.016, .06, .05, .03 - i * .03, -.02, 0xd9472a, 8);
+      b(.05, .1, .05, 0, -.085, .1, C.dark, -.3); b(.044, .01, .09, 0, -.065, .02, C.dark);
+      b(.04, .1, .24, 0, -.01, .3, C.dark); b(.06, .12, .03, 0, -.02, .43, C.metal); b(.012, .014, .012, 0, .07, -.7, C.light);
+      spec = { sy: 0.085, mz: [0, 0.035, -0.74], fore: [0, -0.075, -0.36], ads: [-0.42, 1.15] }; break;
     case 'knife': {
       // KARAMBIT: finger ring at the back, short handle, then a blade that curves down like a claw
       parts.push([new THREE.TorusGeometry(0.03, 0.008, 6, 14), m4(0, -0.005, 0.1, 1, 1, 1, 0, Math.PI / 2), C.dark]);
@@ -601,7 +717,7 @@ export function buildGun(id, acc) {
   g.add(new THREE.Mesh(mergeParts(parts), gunMat));
   for (const e of extra) g.add(e);
   const mz = new THREE.Object3D(); mz.position.set(...spec.mz); g.add(mz);
-  const k = { raptor: 0.8, sentinel: 0.8, buzz: 0.84, thumper: 0.8, longbow: 0.8, chopper: 0.84, scatter: 0.8, carbine: 0.8, ranger: 0.8, dmr: 0.8, lmg: 0.78 }[id] || 1;
+  const k = { raptor: 0.8, sentinel: 0.8, buzz: 0.84, thumper: 0.8, longbow: 0.8, chopper: 0.84, scatter: 0.8, carbine: 0.8, ranger: 0.8, dmr: 0.8, lmg: 0.78, brute: 0.84, ghost: 0.8, breaker: 0.8 }[id] || 1;
   if (k !== 1) { g.scale.setScalar(k); spec.sy *= k; }
   return { ...spec, g, mz };
 }
