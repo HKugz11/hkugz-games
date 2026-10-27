@@ -300,6 +300,7 @@ const DEFS = {
     roomM(15, 52, 37, 58); roomM(15, 5, 37, 11);                           // the long top and bottom corridors
     room(24, 22, 51, 41);                                                  // the temple plaza in the middle
     roomM(26, 12, 31, 21); roomM(18, 23, 23, 28); roomM(13, 30, 23, 34);  // ways into the plaza from the corridors, the bowls and the lanes
+    roomM(3, 3, 22, 22, 'a', 'b');                                         // the sites again, so the A / B floor letters win where a corridor runs into them (planting needs them)
     // temple (self-matching): a raised floor with stairs on all four sides
     run(34, 28, 41, 35, 'P');
     atM(33, 31, '3'); atM(32, 31, '2'); atM(31, 31, '1'); atM(33, 32, '3'); atM(32, 32, '2'); atM(31, 32, '1');
