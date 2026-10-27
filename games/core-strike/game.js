@@ -1,9 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=109';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=109';
-import { createOnline } from './online.js?v=109';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=109';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=110';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=110';
+import { createOnline } from './online.js?v=110';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=110';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -324,7 +324,7 @@ function gunOK(id) {
 const pickGun = (list) => { const l = list.filter(gunOK); return l.length ? pick(l) : null; };
 const GEAR = {
   kevlar: { name: 'Kevlar Vest', price: 650, desc: '100 armor: soaks about a third of body damage' },
-  helm: { name: 'Vest + Helmet', price: 1000, desc: 'Armor + head protection' },
+  helm: { name: 'Vest + Helmet', price: 1000, desc: 'Armor + a helmet: most headshots no longer kill in one hit (Raptor, Hammer, Viper and snipers still do)' },
   kit: { name: 'Defuse Kit', price: 400, desc: 'Defuse in 5 s (Wardens only)' },
 };
 const KNIFE = { id: 'knife' };
@@ -437,10 +437,10 @@ function vmSet() {
 
 // ---------------- game state ----------------
 const DIFF = {
-  easy: { react: 0.65, turn: 5, err: 6, settle: 1.6, head: 0.1, spread: 1.5, comp: 0.2, see: 32, nade: 0.2, team: 0.15, lead: 0, peek: 0, rotDelay: 4.5 },
-  normal: { react: 0.42, turn: 8, err: 3.6, settle: 2.4, head: 0.22, spread: 1.15, comp: 0.5, see: 42, nade: 0.45, team: 0.5, lead: 0.04, peek: 0.35, rotDelay: 2.4 },
-  hard: { react: 0.28, turn: 12, err: 2.1, settle: 3.5, head: 0.36, spread: 1.0, comp: 0.7, see: 50, nade: 0.7, team: 0.8, lead: 0.09, peek: 0.6, rotDelay: 1.3 },
-  insane: { react: 0.19, turn: 18, err: 1.2, settle: 5, head: 0.52, spread: 0.9, comp: 0.85, see: 58, nade: 0.9, team: 1, lead: 0.14, peek: 0.85, rotDelay: 0.6 },
+  easy: { react: 0.65, turn: 5, err: 6, settle: 1.6, head: 0.08, spread: 1.5, comp: 0.2, see: 32, nade: 0.2, team: 0.15, lead: 0, peek: 0, rotDelay: 4.5 },
+  normal: { react: 0.42, turn: 8, err: 3.6, settle: 2.4, head: 0.15, spread: 1.15, comp: 0.5, see: 42, nade: 0.45, team: 0.5, lead: 0.04, peek: 0.35, rotDelay: 2.4 },
+  hard: { react: 0.28, turn: 12, err: 2.1, settle: 3.5, head: 0.25, spread: 1.0, comp: 0.7, see: 50, nade: 0.7, team: 0.8, lead: 0.09, peek: 0.6, rotDelay: 1.3 },
+  insane: { react: 0.19, turn: 18, err: 1.2, settle: 5, head: 0.35, spread: 0.9, comp: 0.85, see: 58, nade: 0.9, team: 1, lead: 0.14, peek: 0.85, rotDelay: 0.6 },
 };
 const GS = {
   state: 'menu', mode: 'comp', actors: [], player: null, round: 0, score: [0, 0], loss: [0, 0], target: 5, halfAt: 4, maxRounds: 8,
@@ -572,7 +572,7 @@ function fireWeapon(a, cont) {   // cont: this is the 2nd / 3rd bullet of a burs
   if (w.mag === 0 && w.res > 0) setTimeout(() => { if (a.alive && curW(a) === w && w.mag === 0) startReload(a); }, 250);
 }
 function shotDamage(def, part, dist) {
-  if (part === 'head') return Math.max(def.dmg * 4, 400);   // headshot = always a kill
+  if (part === 'head') return Math.max(def.dmg * 4, 100);   // a headshot with no helmet is always a kill; a helmet takes some of it back (see damage())
   return def.dmg * Math.pow(def.range, dist / 10) * (part === 'legs' ? 0.75 : 1);
 }
 // a LMG bullet that misses still shakes enemies it passes close to
@@ -630,7 +630,7 @@ function damage(v, amt, att, part, wid, dir) {
     if (z === (att.side === 0 ? 'T' : 'D') && zoneAt(v.pos.x, v.pos.z) !== z) { if (att.isPlayer && GS.time - (GS.spawnMsgT || -9) > 4) { GS.spawnMsgT = GS.time; toast('Move out of your spawn to fight'); } return; }
   }
   let dmg = amt;
-  const armored = v.armor > 0 && part !== 'legs' && (part !== 'head' || v.helmet) && wid !== 'bomb';
+  const armored = part !== 'legs' && wid !== 'bomb' && (part === 'head' ? v.helmet : v.armor > 0);   // the helmet guards the head even once the vest is worn out
   if (armored) {   // the vest soaks bullet damage; rifles, SMGs and LMGs (pen 0.6 to 0.87) lose another 12% to a vest on the body, while snipers and hand cannons (0.87+) punch through and pistols were already weak against it
     let pen = (WD[wid] && WD[wid].pen) || 0.5; if (part !== 'head' && pen >= 0.6 && pen < 0.87) pen -= 0.12;
     const real = dmg * pen; v.armor = Math.max(0, v.armor - (dmg - real) * 0.5); dmg = real;
@@ -1203,7 +1203,7 @@ function botBuy(a) {
     if (pickId) buy(a, pickId);
     else if (m() >= 650 && a.sec.id === 'p9') { const gn = pickGun(['revolver', 'viper', 'tec', 'trio', 'duster']); if (gn) buy(a, gn); }
   } else if (!a.prim && mode === 'eco' && a.sec.id === 'p9' && m() >= 900 && Math.random() < 0.35) { const gn = pickGun(['tec', 'revolver', 'trio', 'duster']); if (gn) buy(a, gn); }
-  if (mode === 'full') { if (m() >= 1000 && !a.helmet) buy(a, 'helm'); else if (m() >= 650 && a.armor < 60) buy(a, 'kevlar'); }
+  if (mode === 'full') { if (!a.helmet && m() >= priceOf(a, 'helm')) buy(a, 'helm'); else if (m() >= 650 && a.armor < 60) buy(a, 'kevlar'); }
   else if (mode === 'half' || mode === 'force') { if (m() >= 650 && a.armor < 60 && Math.random() < 0.8) buy(a, 'kevlar'); }
   if (a.prim && mode !== 'eco') {
     if (mode === 'full') {
