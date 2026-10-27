@@ -30,6 +30,7 @@ try { Object.assign(STATS, JSON.parse(localStorage.getItem('cs.stats') || localS
 const saveStats = () => { try { localStorage.setItem('cs.stats', JSON.stringify(STATS)); } catch { } };
 const LITE = S.gfx === 'lite', LOW = S.gfx !== 'high';
 GFX.lite = LITE;
+const GFX_AT_LOAD = S.gfx;   // what this page started with: a different choice only takes effect after a reload
 document.body.classList.toggle('lite', LITE); document.body.classList.toggle('low', LOW);
 // online play: role is 'none' (single player), 'host' (runs the match) or 'client' (draws what the host sends)
 const MP = { on: false, role: 'none', idx: -1, pid: 0, cfg: null, nid: 0 };
@@ -247,7 +248,7 @@ function recoilAt(def, f) {
 
 // ---------------- actors ----------------
 const SIDE = [
-  { name: 'RAIDERS', role: 'attack', css: '#ff9a3d', main: 0xff8a2a, vest: 0x5b3a22, pants: 0x6b4a2f, visor: 0xffd04a },
+  { name: 'RAIDERS', role: 'attack', css: '#ff9ccf', main: 0xff8fc4, vest: 0x5b3a22, pants: 0x6b4a2f, visor: 0xffd04a },
   { name: 'WARDENS', role: 'defend', css: '#4aa3ff', main: 0x2f8cff, vest: 0x1d2b48, pants: 0x2a3550, visor: 0x40e0ff },
 ];
 const sideMats = SIDE.map((s) => ({
@@ -1461,7 +1462,7 @@ document.addEventListener('pointerlockchange', () => {
   if (locked) { $('clickLock').classList.add('hidden'); $('pause').classList.add('hidden'); GS.paused = false; }
   else if (!uiOpen() && !DEBUG) pauseGame();
 });
-function pauseGame() { GS.paused = true; $('pause').classList.remove('hidden'); for (const k in keys) keys[k] = false; mouse.fill(false); }
+function pauseGame() { GS.paused = true; $('board').classList.add('hidden'); $('pause').classList.remove('hidden'); for (const k in keys) keys[k] = false; mouse.fill(false); }
 $('clickLock').onclick = () => lock();
 canvas.addEventListener('mousedown', (e) => {
   padMode = false;
@@ -1496,6 +1497,7 @@ document.addEventListener('mousemove', (e) => {
 addEventListener('keydown', (e) => {
   if (e.code === 'Tab') e.preventDefault();
   padMode = false; document.querySelectorAll('.padf').forEach((el) => el.classList.remove('padf'));
+  if (e.code === 'Escape') { const sp = ['setP', 'keysP'].find((id) => !$(id).classList.contains('hidden')); if (sp) { $(sp).classList.add('hidden'); e.preventDefault(); return; } }   // Esc closes Settings / Controls first
   if (GS.state === 'menu') return;
   if (e.code === 'KeyB' || (e.code === 'Escape' && !$('buy').classList.contains('hidden'))) { e.preventDefault(); toggleBuy(); return; }
   if (e.code === 'Escape' && softLock && GS.state !== 'over') { if (GS.paused) { GS.paused = false; $('pause').classList.add('hidden'); } else pauseGame(); return; }
@@ -1818,7 +1820,7 @@ function feed(k, v, wid, hs) {
   f.prepend(d); while (f.children.length > 6) f.lastChild.remove();
   setTimeout(() => d.remove(), 7000);
 }
-function feedText(t) { if (MP.role === 'host') MPH.feedTextEvent(t); const f = $('feed'), d = document.createElement('div'); d.textContent = t; d.style.color = '#ffb13d'; f.prepend(d); setTimeout(() => d.remove(), 6000); }
+function feedText(t) { if (MP.role === 'host') MPH.feedTextEvent(t); const f = $('feed'), d = document.createElement('div'); d.textContent = t; d.style.color = '#ff9ccf'; f.prepend(d); setTimeout(() => d.remove(), 6000); }
 function showHit(cls, killed) {
   const h = $('hitm'); h.className = killed ? 'kill' : cls; h.style.transition = 'none'; h.style.opacity = 1;
   requestAnimationFrame(() => { h.style.transition = 'opacity .35s'; h.style.opacity = 0; });
@@ -1924,7 +1926,7 @@ function drawRadar(viewA) {
   const c = GS.core;
   if (c && GS.mode === 'comp' && (P.side === 0 || c.state === 'planted')) {
     const cp = c.state === 'carried' && c.carrier ? c.carrier.pos : c.pos;
-    if (c.state !== 'none' && c.state !== 'boom' && c.state !== 'defused') { rc.fillStyle = c.state === 'planted' ? '#ff3b3b' : '#ffb13d'; rc.fillRect(cp.x - 1.4, cp.z - 1.4, 2.8, 2.8); }
+    if (c.state !== 'none' && c.state !== 'boom' && c.state !== 'defused') { rc.fillStyle = c.state === 'planted' ? '#ff3b3b' : '#ff9ccf'; rc.fillRect(cp.x - 1.4, cp.z - 1.4, 2.8, 2.8); }
   }
   rc.restore();
   rc.fillStyle = '#fff'; rc.beginPath(); rc.moveTo(100, 92); rc.lineTo(106, 106); rc.lineTo(100, 103); rc.lineTo(94, 106); rc.closePath(); rc.fill();
@@ -2245,7 +2247,7 @@ document.querySelectorAll('.seg').forEach((seg) => seg.addEventListener('click',
   if (seg.dataset.k === 'map') setMap(S.map);
   if (seg.dataset.k === 'gfx' && GS.state === 'menu') { // graphics are chosen when the page loads, so reload now (and drop ?lite / ?pretty from the address)
     const u = new URL(location.href); u.searchParams.delete('lite'); u.searchParams.delete('pretty'); setTimeout(() => location.assign(u.toString()), 200);
-  }
+  } else if (seg.dataset.k === 'gfx') $('gfxNote').style.display = S.gfx !== GFX_AT_LOAD ? '' : 'none';   // in a match: do not reload now, say when it takes effect
 }));
 const sliders = [['sSens', 'sens', 'vSens', (v) => v.toFixed(2)], ['sFov', 'fov', 'vFov', (v) => v], ['sVol', 'vol', 'vVol', (v) => Math.round(v * 100) + '%'], ['sXs', 'xhSize', 'vXs', (v) => v], ['sXg', 'xhGap', 'vXg', (v) => v]];
 for (const [id, k, vid, f] of sliders) {
@@ -2265,6 +2267,7 @@ $('again').onclick = () => { initAudio(S.vol); startMatch(); };
 $('resume').onclick = () => { lock(); if (DEBUG || softLock) { GS.paused = false; $('pause').classList.add('hidden'); } };
 function toMenu() { if (MPH) MPH.leave(); resetToMenu(); }
 function resetToMenu() {
+  if (S.gfx !== GFX_AT_LOAD) { const u = new URL(location.href); u.searchParams.delete('lite'); u.searchParams.delete('pretty'); location.assign(u.toString()); return; }   // graphics were changed in a match: reload now that it is over
   GS.state = 'menu'; GS.paused = false;
   for (const a of GS.actors) if (a.mesh) scene.remove(a.mesh.g);
   GS.actors = []; clearWorld(); coreMesh.visible = false;

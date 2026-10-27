@@ -6,7 +6,7 @@
 <title>Core Strike</title>
 <script src="../../assets/playtimer.js"></script>
 <script src="../../assets/friends-config.js"></script>
-<script src="../../assets/hkfriends.js?v=3" defer></script>
+<script src="../../assets/hkfriends.js?v=5" defer></script>
 <meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the core. Play vs smart bots or online with friends. Seven maps (two XL), 15 guns, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#11131a">
@@ -18,7 +18,7 @@
 
 
 <style>
-:root{--o:#ff9a3d;--b:#4aa3ff;--ink:#f4efe6;--dim:rgba(10,12,18,.62);--line:rgba(255,255,255,.14);--acc:#ffd04a}
+:root{--o:#ff9ccf;--b:#4aa3ff;--ink:#f4efe6;--dim:rgba(10,12,18,.62);--line:rgba(255,255,255,.14);--acc:#ffd04a}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#11131a;color:var(--ink);font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;user-select:none}
 canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
@@ -91,7 +91,7 @@ button{font:inherit;cursor:pointer}
 #killmsg .streak{font-size:34px;color:var(--acc);letter-spacing:.1em;animation:bannerIn .3s}
 #spec{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);background:var(--dim);padding:8px 18px;border-radius:10px;font-size:16px;text-align:center}
 #spec:empty{display:none}
-#coreIcon{position:absolute;left:24px;top:290px;font-size:14px;font-weight:700;color:#ffb13d;letter-spacing:.1em;text-shadow:0 2px 4px #000}
+#coreIcon{position:absolute;left:24px;top:290px;font-size:14px;font-weight:700;color:#ff9ccf;letter-spacing:.1em;text-shadow:0 2px 4px #000}
 #coreIcon:empty{display:none}
 #fps{position:absolute;right:8px;bottom:4px;font-size:11px;opacity:.5}
 
@@ -106,6 +106,7 @@ button{font:inherit;cursor:pointer}
 
 /* ---------- panels ---------- */
 .panel{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,8,12,.55);backdrop-filter:blur(3px)}
+#board{z-index:6}#buy{z-index:8}#pause,#end{z-index:10}#onlineP{z-index:12}#keysP,#setP{z-index:20}   /* Settings and Controls always on top, also over the pause menu */
 body.low .sq,body.low #timer,body.low .stat,body.low #ammo,body.low .panel{backdrop-filter:none}
 body.low #dmgDir i{filter:none}
 body.lite #feed div{animation:none}
@@ -136,7 +137,7 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 
 /* settings */
 .set{display:grid;grid-template-columns:150px 1fr 54px;gap:10px 12px;align-items:center;font-size:14px;min-width:min(440px,86vw)}
-.set input[type=range]{width:100%;accent-color:#ffb13d}
+.set input[type=range]{width:100%;accent-color:#ff9ccf}
 .set .v{text-align:right;opacity:.8}
 .swatches{display:flex;gap:6px}
 .swatches i{width:24px;height:24px;border-radius:6px;cursor:pointer;border:2px solid transparent}
@@ -150,13 +151,13 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 #buyGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
 .cat h3{font-size:12px;letter-spacing:.16em;opacity:.6;margin-bottom:6px}
 .item{display:block;width:100%;text-align:left;background:#20253300;background:rgba(36,41,56,.9);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:8px 10px;margin-bottom:6px}
-.item:hover:not(:disabled){background:#343d56;border-color:#ffb13d}
+.item:hover:not(:disabled){background:#343d56;border-color:#ff9ccf}
 .item:disabled{opacity:.38;cursor:not-allowed}
 .item .n{font-weight:700;font-size:15px}
 .item .p{float:right;color:#7dff9a;font-weight:700}
 .item .d{font-size:11px;opacity:.7;margin-top:2px}
 .item .bars{display:grid;grid-template-columns:44px 1fr;gap:2px 6px;font-size:10px;opacity:.8;margin-top:5px;align-items:center}
-.item .bars i{display:block;height:4px;border-radius:2px;background:#ffb13d}
+.item .bars i{display:block;height:4px;border-radius:2px;background:#ff9ccf}
 .item.own{border-color:#7dff9a}
 #buyFoot{margin-top:10px;font-size:13px;opacity:.7}
 
@@ -295,7 +296,8 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
     <span>Aim style</span><div class="seg" data-k="aimStyle" style="max-width:300px"><button data-v="cross">Tighten crosshair</button><button data-v="iron">Iron sights</button></div><span></span>
     <span>Aim button</span><div class="seg" data-k="ads" style="max-width:260px"><button data-v="hold">Hold right-click</button><button data-v="toggle">Click to toggle</button></div><span></span>
   </div>
-  <p style="font-size:12px;opacity:.6;margin-top:10px"><b>Lite</b> is the super minimized mode for Chromebooks and slow computers (fewer pixels, no shadows, simpler players and map). Changing graphics reloads the page. <b>Aim style</b>: <i>Tighten crosshair</i> keeps your gun where it is and pulls the green crosshair in small and tight when you aim; <i>Iron sights</i> slides the gun to the middle of the screen instead (snipers always use their scope). Press <b>Z</b> any time to aim, no right-click needed. A controller works too (see CONTROLS).</p>
+  <p id="gfxNote" style="display:none;font-size:13px;font-weight:700;color:#ff9ccf;margin-top:8px">Saved. The new graphics start when you go back to the main menu (the game reloads then).</p>
+  <p style="font-size:12px;opacity:.6;margin-top:10px"><b>Lite</b> is the super minimized mode for Chromebooks and slow computers (fewer pixels, no shadows, simpler players and map). Changing graphics reloads the game: straight away in the menu, and after a match when you go back to the menu. <b>Aim style</b>: <i>Tighten crosshair</i> keeps your gun where it is and pulls the green crosshair in small and tight when you aim; <i>Iron sights</i> slides the gun to the middle of the screen instead (snipers always use their scope). Press <b>Z</b> any time to aim, no right-click needed. A controller works too (see CONTROLS).</p>
   <div class="row"><button class="btn" data-close>DONE</button></div>
 </div></div>
 
@@ -355,6 +357,6 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 
 <div id="clickLock" class="hidden">Click to play</div>
 
-<script type="module" src="game.js?v=61"></script>
+<script type="module" src="game.js?v=62"></script>
 </body>
 </html>

@@ -81,7 +81,7 @@
 button,input{font:inherit}[hidden]{display:none!important}
 .pill{position:fixed;top:8px;left:8px;z-index:2147482000;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(20,16,28,.8);color:#fff;cursor:pointer;display:grid;place-items:center;opacity:.8}
 .pill:hover,.pill:focus-visible{opacity:1;background:rgba(58,47,79,.95)}
-.dot{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:9px;background:#ff7a1a;color:#1a0c00;font-weight:800;font-size:11px;line-height:17px;text-align:center;padding:0 4px}
+.dot{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:9px;background:#ffa8d4;color:#4a0f2e;font-weight:800;font-size:11px;line-height:17px;text-align:center;padding:0 4px}
 .back{position:fixed;inset:0;z-index:2147482001;background:rgba(8,40,52,.45);opacity:0;pointer-events:none;transition:opacity .2s}
 .back.on{opacity:1;pointer-events:auto}
 .panel{position:fixed;top:0;right:0;bottom:0;z-index:2147482002;width:min(410px,100vw);background:#e9fafd;color:#0b2a33;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.35);transform:translateX(106%);transition:transform .2s;font-size:15px;line-height:1.35}
@@ -95,8 +95,8 @@ p{margin:6px 0}.small{font-size:13px;opacity:.75}
 input[type=text],input[type=password]{width:100%;padding:10px 12px;border:2px solid rgba(11,42,51,.25);border-radius:12px;font-size:16px;background:#fff;color:#0b2a33;margin:4px 0 8px}
 input:focus{outline:none;border-color:#7a3bff}label{display:block;font-weight:700;font-size:14px}
 .chk{display:flex;gap:8px;align-items:flex-start;font-weight:600;font-size:13px;margin:6px 0 10px}.chk input{margin-top:3px;width:18px;height:18px;flex:none}
-.btn{display:inline-block;border:0;cursor:pointer;background:#ff7a1a;color:#1a0c00;font-weight:800;font-size:14px;padding:8px 14px;border-radius:12px;box-shadow:0 3px 0 #a24a00}
-.btn:hover{filter:brightness(1.06)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #a24a00}
+.btn{display:inline-block;border:0;cursor:pointer;background:#ffa8d4;color:#4a0f2e;font-weight:800;font-size:14px;padding:8px 14px;border-radius:12px;box-shadow:0 3px 0 #d4659d}
+.btn:hover{filter:brightness(1.06)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #d4659d}
 .btn.alt{background:#7a3bff;color:#fff;box-shadow:0 3px 0 #3a1a9a}.btn.ghost{background:#fff;color:#0b2a33;box-shadow:0 3px 0 rgba(11,42,51,.25)}
 .btn.sm{font-size:13px;padding:5px 10px;border-radius:10px}.btn.danger{background:#d6402f;color:#fff;box-shadow:0 3px 0 #8a2418}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
@@ -109,7 +109,7 @@ input:focus{outline:none;border-color:#7a3bff}label{display:block;font-weight:70
 .msg{min-height:1.2em;font-weight:700;font-size:14px;margin:4px 0}.msg.ok{color:#0b6a3a}.msg.err{color:#b3261e}
 .inline{display:flex;gap:8px}.inline input{margin:0}
 .toasts{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:2147482003;display:flex;flex-direction:column;gap:8px;width:min(460px,94vw);pointer-events:none}
-.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;background:#fff;color:#0b2a33;border-radius:14px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.4);border:2px solid #ff7a1a}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;background:#fff;color:#0b2a33;border-radius:14px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.4);border:2px solid #ffa8d4}
 .toast span{flex:1;font-size:14px}.toast b{font-weight:800}.toast .hint{display:block;font-size:12px;font-weight:600;opacity:.7}
 .toast{animation:slide .25s ease-out}@keyframes slide{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}}
@@ -217,7 +217,7 @@ details summary{cursor:pointer;font-weight:700;font-size:14px}
     const rm = room();
     els.room.textContent = rm ? 'Your room: ' + rm.code + ' in ' + gameName(rm.game) + '. Press Invite next to a friend who is online.' : where() === 'hub' ? 'To invite a friend: open a game, press Host (or Host online), then open Friends there.' : 'Host a game (or join one) first, then you can invite friends to it.';
     // invites
-    els.invites.replaceChildren(...state.invites.map(inv => h('div', { class: 'card', style: 'border:2px solid #ff7a1a' }, h('div', { class: 'row' }, h('span', { class: 'nm' }, h('b', { text: inv.from }), ' invited you to ', h('b', { text: inv.gameName }), h('small', { text: 'Room ' + inv.code })), h('button', { class: 'btn sm', type: 'button', text: 'Join', onclick: () => join(inv) }), h('button', { class: 'btn sm ghost', type: 'button', text: 'No', onclick: () => dismiss(inv.id) })))));
+    els.invites.replaceChildren(...state.invites.map(inv => h('div', { class: 'card', style: 'border:2px solid #ffa8d4' }, h('div', { class: 'row' }, h('span', { class: 'nm' }, h('b', { text: inv.from }), ' invited you to ', h('b', { text: inv.gameName }), h('small', { text: 'Room ' + inv.code })), h('button', { class: 'btn sm', type: 'button', text: 'Join', onclick: () => join(inv) }), h('button', { class: 'btn sm ghost', type: 'button', text: 'No', onclick: () => dismiss(inv.id) })))));
     // requests
     const reqs = [...state.incoming.map(r => h('div', { class: 'row' }, h('span', { class: 'nm', text: r.from }), h('button', { class: 'btn sm', type: 'button', text: 'Accept', onclick: () => respond(r.from, true) }), h('button', { class: 'btn sm ghost', type: 'button', text: 'Decline', onclick: () => respond(r.from, false) }), h('button', { class: 'btn sm ghost', type: 'button', text: 'Block', onclick: () => blockUser(r.from) }))),
       ...state.outgoing.map(r => h('div', { class: 'row' }, h('span', { class: 'nm' }, r.to, h('small', { text: 'waiting for them to answer' })), h('button', { class: 'btn sm ghost', type: 'button', text: 'Cancel', onclick: () => doIt('/api/friend/cancel', { to: r.to }) })))];
