@@ -1,9 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=101';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=101';
-import { createOnline } from './online.js?v=101';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=101';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=104';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=104';
+import { createOnline } from './online.js?v=104';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=104';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -18,7 +18,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Mat
 const V = () => new THREE.Vector3();
 
 // ---------------- settings ----------------
-const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', name: '' };
+const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', name: '' };
 const S = { ...DEFAULTS };
 try { Object.assign(S, JSON.parse(localStorage.getItem('cs.settings') || localStorage.getItem('coreStrike') || '{}')); } catch { }
 const saveS = () => { try { localStorage.setItem('cs.settings', JSON.stringify(S)); } catch { } };
@@ -28,6 +28,67 @@ if (QS.has('lite')) { S.gfx = 'lite'; S.gfxSet = true; saveS(); } else if (QS.ha
 let STATS = { wins: 0, losses: 0, range: 0 };
 try { Object.assign(STATS, JSON.parse(localStorage.getItem('cs.stats') || localStorage.getItem('coreStrikeStats') || '{}')); } catch { }
 const saveStats = () => { try { localStorage.setItem('cs.stats', JSON.stringify(STATS)); } catch { } };
+// ---- ranks, like Counter-Strike: win Competitive matches against bots to earn rank points (RP) and climb the leagues
+// Bronze, Silver, Gold, Platinum, Diamond and Master each have 3 divisions (III, II, I) of 100 RP; above that is Elite. Your first 3 ranked matches are placement matches.
+// Easier bots can only take you so far: Chill up to Silver I, Normal up to Platinum I, Sweaty up to Master I, Pro all the way to Elite.
+const LEAGUES = [['Bronze', '#cd7f32'], ['Silver', '#c3c9d1'], ['Gold', '#ffd34a'], ['Platinum', '#7fe8d6'], ['Diamond', '#6fb4ff'], ['Master', '#d58bff'], ['Elite', '#ff6a6a']];
+const DIVS = ['III', 'II', 'I'];
+const RANK_CAP = { easy: 599, normal: 1199, hard: 1799, insane: 999999 };
+const RANK = { rp: 0, m: 0, w: 0, l: 0, d: 0, peak: 0, last: null };
+try { Object.assign(RANK, JSON.parse(localStorage.getItem('cs.rank') || '{}')); } catch { }
+const saveRank = () => { try { localStorage.setItem('cs.rank', JSON.stringify(RANK)); } catch { } };
+function rankInfo(rp) {
+  const li = Math.min(6, Math.floor(rp / 300)), L = LEAGUES[li];
+  if (li === 6) return { li, step: 18, name: 'Elite', col: L[1], div: -1, lo: 1800, pct: Math.min(1, (rp - 1800) / 400) };
+  const di = Math.min(2, Math.floor((rp - li * 300) / 100)), lo = li * 300 + di * 100;
+  return { li, step: li * 3 + di, name: L[0] + ' ' + DIVS[di], col: L[1], div: di, lo, pct: (rp - lo) / 100 };
+}
+function rankDelta(res, margin, mvp) {
+  const W = { easy: 12, normal: 20, hard: 28, insane: 36 }[S.diff] || 20, Lz = { easy: 20, normal: 14, hard: 10, insane: 8 }[S.diff] || 14;
+  let d = res === 'win' ? W + Math.min(5, margin) * 2 + (mvp ? 4 : 0) : res === 'loss' ? -(Lz + (margin >= 4 ? 4 : 0)) : 0;
+  if (RANK.m < 3) d = d > 0 ? d * 2 : d * 0.5;   // placement matches: wins count double, losses half
+  return Math.round(d * (S.length === 'duper' ? 1.5 : S.length === 'long' ? 1.25 : 1));
+}
+function settleRank(res, margin, mvp) {
+  const before = RANK.rp, d = rankDelta(res, margin, mvp), cap = RANK_CAP[S.diff] ?? 999999;
+  let after = before + d; if (d > 0) after = Math.min(after, Math.max(before, cap)); after = Math.max(0, after);
+  RANK.rp = after; RANK.m++; if (res === 'win') RANK.w++; else if (res === 'loss') RANK.l++; else RANK.d++; RANK.peak = Math.max(RANK.peak, after);
+  const out = { delta: after - before, before, after, capped: d > 0 && after < before + d, res, diff: S.diff, m: RANK.m };
+  RANK.last = out; saveRank(); return out;
+}
+const rankPlacing = () => RANK.m < 3;
+// match lengths: Short (first to 5), Full (first to 9), Duper long (first to 11 = 20 rounds: 10 before the side swap, 10 after). Deathmatch: kills / minutes.
+const LEN = { short: { target: 5, dm: 40, dmTime: 300 }, long: { target: 9, dm: 75, dmTime: 480 }, duper: { target: 11, dm: 120, dmTime: 720 } };
+const lenOf = (k) => LEN[k] || LEN.long;
+const rankShield = (info, txt) => `<span class="shield" style="--rc:${info.col}">${txt}</span>`;
+function rankBadgeHTML() {
+  if (rankPlacing()) return `<span class="shield" style="--rc:#8a90a0">?</span><span><b>UNRANKED</b> · ${3 - RANK.m} ranked match${3 - RANK.m === 1 ? '' : 'es'} to go</span>`;
+  const r = rankInfo(RANK.rp);
+  return `${rankShield(r, r.div < 0 ? 'E' : DIVS[r.div])}<span><b style="color:${r.col}">${r.name.toUpperCase()}</b> · ${RANK.rp} RP</span><span class="bar"><i style="width:${Math.round(r.pct * 100)}%;background:${r.col}"></i></span>`;
+}
+function renderRank() {
+  const el = $('rankBadge'); if (!el) return;
+  el.innerHTML = rankBadgeHTML() + (GS.menuMsg ? `<span class="warn">${GS.menuMsg}</span>` : '');
+}
+function rankListHTML() {
+  const me = rankInfo(RANK.rp), placing = rankPlacing();
+  let rows = '';
+  for (let li = 0; li < 7; li++) {
+    const L = LEAGUES[li], here = !placing && me.li === li, lo = li * 300;
+    rows += `<div class="rl ${here ? 'here' : ''}" style="--rc:${L[1]}">${rankShield({ col: L[1] }, li === 6 ? 'E' : 'I')}<b>${L[0]}</b><span>${li === 6 ? '1800+ RP' : DIVS.map((d, i) => `${d} ${lo + i * 100}`).join(' · ')}</span>${here ? `<em>${me.name} · ${RANK.rp} RP</em>` : ''}</div>`;
+  }
+  return rows + `<p class="fine">Win Competitive matches against bots to earn rank points (RP); lose and you drop a little. Your first 3 ranked matches are placement matches (wins count double). Chill bots can only take you up to Silver I, Normal up to Platinum I, Sweaty up to Master I, and Pro bots all the way to Elite. Leaving a match early counts as a loss. Online matches with friends are not ranked.</p>
+  <p class="fine">Your record: ${RANK.w} wins · ${RANK.l} losses · ${RANK.d} draws · best ${rankInfo(RANK.peak).name} (${RANK.peak} RP)</p>`;
+}
+function rankEndHTML(r) {
+  const a = rankInfo(r.before), b = rankInfo(r.after), placing = RANK.m < 3, sign = r.delta > 0 ? '+' : '';
+  if (placing) return `<div class="rk"><div class="rkt">PLACEMENT MATCH ${RANK.m} OF 3</div><div class="rkd" style="color:${r.delta >= 0 ? '#7dff9a' : '#ff8a7a'}">${sign}${r.delta} RP</div><div class="rkn">${3 - RANK.m ? 'Your rank is revealed after ' + (3 - RANK.m) + ' more ranked match' + (3 - RANK.m === 1 ? '' : 'es') : ''}</div></div>`;
+  const up = b.step > a.step, down = b.step < a.step, reveal = RANK.m === 3;
+  const title = reveal ? 'YOUR RANK' : up ? 'RANK UP!' : down ? 'RANK DOWN' : 'RANK';
+  const cap = r.capped ? `<div class="rkn">${({ easy: 'Chill bots only take you up to Silver I', normal: 'Normal bots only take you up to Platinum I', hard: 'Sweaty bots only take you up to Master I' })[r.diff] || ''}: pick a harder bot skill to keep climbing</div>` : '';
+  return `<div class="rk"><div class="rkt" style="color:${up || reveal ? '#ffd04a' : down ? '#ff8a7a' : '#fff'}">${title}</div><div class="rkr">${rankShield(b, b.div < 0 ? 'E' : DIVS[b.div])}<b style="color:${b.col}">${b.name.toUpperCase()}</b></div>
+    <div class="rkd" style="color:${r.delta >= 0 ? '#7dff9a' : '#ff8a7a'}">${sign}${r.delta} RP <small>(${RANK.rp} total)</small></div><div class="rkbar"><i style="width:${Math.round(b.pct * 100)}%;background:${b.col}"></i></div>${cap}</div>`;
+}
 const LITE = S.gfx === 'lite', LOW = S.gfx !== 'high';
 GFX.lite = LITE;
 const GFX_AT_LOAD = S.gfx;   // what this page started with: a different choice only takes effect after a reload
@@ -253,6 +314,14 @@ const WD = {
 };
 for (const k in WD) if (WD[k].mag) WD[k].pat = pattern(WD[k], k);
 const fireMode = (d) => (d.burst ? 'BURST' : d.shell && d.rpm < 100 ? 'PUMP' : d.scope && d.rpm < 100 ? 'BOLT' : d.auto ? (d.spin ? 'AUTO · SPIN-UP' : 'AUTO') : 'SEMI');
+// Simple mode keeps 8 guns (a pistol upgrade, an SMG, a shotgun, three rifles, a sniper); Pro mode has all of them
+const SIMPLE_GUNS = new Set(['p9', 'viper', 'buzz', 'thumper', 'carbine', 'raptor', 'longbow', 'lmg']);
+function gunOK(id) {
+  const d = WD[id]; if (!d || !d.mag) return true;   // grenades, gear and the knife are always there
+  const ar = MP.on && MP.cfg && MP.cfg.arsenal ? MP.cfg.arsenal : S.arsenal;
+  return ar !== 'simple' || SIMPLE_GUNS.has(id);
+}
+const pickGun = (list) => { const l = list.filter(gunOK); return l.length ? pick(l) : null; };
 const GEAR = {
   kevlar: { name: 'Kevlar Vest', price: 650, desc: '100 armor (body)' },
   helm: { name: 'Vest + Helmet', price: 1000, desc: 'Armor + head protection' },
@@ -794,10 +863,11 @@ function addDrop(w, p) {
   mbox(g, 0.11, 0.04, def.slot === 'prim' ? 0.5 : 0.25, vmMat('acc', new THREE.Color(def.acc).getHex()), 0, 0.07, 0);
   g.position.set(p.x + rand(-0.4, 0.4), hPos(p.x, p.z) + 0.1, p.z + rand(-0.4, 0.4)); g.rotation.y = Math.random() * 6;
   scene.add(g);
-  GS.drops.push({ w: { id, mag: w.mag, res: w.res }, g, t: 0 });
+  const d = { w: { id, mag: w.mag, res: w.res }, g, t: 0 }; GS.drops.push(d); return d;
 }
 function clearDrops() { for (const d of GS.drops) scene.remove(d.g); GS.drops = []; }
 function takeDrop(a, d) {
+  a.buyLog = [];
   const def = WD[d.w.id], slot = def.slot;
   if (a[slot]) addDrop(a[slot], a.pos);
   a[slot] = d.w; scene.remove(d.g); GS.drops.splice(GS.drops.indexOf(d), 1);
@@ -805,6 +875,7 @@ function takeDrop(a, d) {
   else a.slot = slot;
 }
 function dropCurrent(a) {
+  a.buyLog = [];
   const s = a.slot; if (s !== 'prim' && s !== 'sec') return;
   addDrop(a[s], _v1.copy(a.pos).addScaledVector(fwd(a.yaw, 0), 1.2));
   a[s] = null; a.slot = bestSlot(a); a.switchT = 0.3; if (a.isPlayer) vmSet();
@@ -829,7 +900,7 @@ function startMatch() {
   for (const a of GS.actors) if (a.mesh) scene.remove(a.mesh.g);
   GS.actors = []; clearWorld();
   GS.mode = S.mode; GS.score = [0, 0]; GS.loss = [0, 0]; GS.round = 0;
-  GS.target = GS.mode === 'dm' ? (S.length === 'short' ? 40 : 75) : S.length === 'short' ? 5 : 9;
+  GS.target = GS.mode === 'dm' ? lenOf(S.length).dm : lenOf(S.length).target;
   GS.halfAt = GS.target - 1; GS.maxRounds = 2 * (GS.target - 1);
   const pSide = S.side === 'atk' ? 0 : S.side === 'def' ? 1 : (Math.random() < 0.5 ? 0 : 1);
   const names = shuffle(NAMES.slice());
@@ -840,9 +911,9 @@ function startMatch() {
   }
   for (const a of GS.actors) { makeSoldier(a); a.money = 800; }
   $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('playing');
-  GS.paused = false; resetCore(null);
+  GS.paused = false; resetCore(null); GS.rankDone = GS.mode !== 'comp'; GS.menuMsg = '';
   if (GS.mode === 'comp') startRound();
-  else if (GS.mode === 'dm') { GS.state = 'live'; GS.roundT = S.length === 'short' ? 300 : 480; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
+  else if (GS.mode === 'dm') { GS.state = 'live'; GS.roundT = lenOf(S.length).dmTime; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
   else startRange();
   lock();
 }
@@ -861,7 +932,7 @@ function resetActorForRound(a) {
   if (a.fullReset || !a.alive) {
     a.prim = null; a.sec = newGun('p9'); a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.armor = 0; a.helmet = false; a.kit = false;
   } else if (a.prim) { /* survivors keep gear */ }
-  a.fullReset = false;
+  a.fullReset = false; a.buyLog = [];
   a.hp = 100; a.alive = true; a.act = null; a.blindT = 0; a.reloadT = 0; a.switchT = 0; a.rc = 0; a.scoped = 0; a.rescope = 0; a.roundKills = 0; a.crouch = false; a.crouchAmt = 0; a.tagT = 0;
   a.slot = bestSlot(a); a.onGround = true;
   if (a.mesh) a.mesh.g.visible = !a.isPlayer;
@@ -967,6 +1038,7 @@ function updateRound(dt) {
 }
 function endMatch() {
   if (GS.state === 'over' && !$('end').classList.contains('hidden')) return;
+  $('endRank').innerHTML = '';
   GS.state = 'over'; document.exitPointerLock && document.exitPointerLock();
   if (MP.role === 'host') MPH.matchEnd();
   const P = GS.player, hsP = P.kills ? Math.round(P.hs / P.kills * 100) : 0;
@@ -986,6 +1058,10 @@ function endMatch() {
     $('endStats').innerHTML = stat(P.kills, 'ELIMS') + stat(P.deaths, 'DEATHS') + stat(hsP + '%', 'HEADSHOT %') + stat(Math.round(P.dmg), 'DAMAGE');
     const mvp = GS.actors.slice().sort((a, b) => b.kills * 100 + b.dmg / 10 - (a.kills * 100 + a.dmg / 10))[0];
     $('endMvp').textContent = `MVP: ${mvp.name} (${mvp.kills} elims)`;
+    if (GS.mode === 'comp' && !MP.on && !GS.rankDone) {   // a ranked match: rank points up or down
+      GS.rankDone = true; const r = settleRank(draw ? 'draw' : win ? 'win' : 'loss', Math.abs(GS.score[ms] - GS.score[1 - ms]), mvp === P);
+      $('endRank').innerHTML = rankEndHTML(r); if (!draw && win) { const a0 = rankInfo(r.before), b0 = rankInfo(r.after); if (b0.step > a0.step) SFX.streak(); }
+    }
     SFX.fanfare(win);
   }
   $('endTitle').textContent = title; $('endTitle').style.color = title === 'DEFEAT' ? '#ff6a5a' : title === 'DRAW' ? '#ddd' : '#ffd04a';
@@ -1006,7 +1082,7 @@ function dmSpawn(a) {
   a.pos.set(cellX(bestC), 0, cellZ(bestC)); a.vel.set(0, 0, 0); a.yaw = Math.random() * 6.28; a.pitch = 0;
   a.hp = 100; a.armor = 100; a.helmet = true; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
   a.sec = newGun('p9');
-  a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow', 'brute', 'ghost', 'breaker']));
+  a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow', 'brute', 'ghost', 'breaker'].filter(gunOK)));
   a.nades = { he: 1, flash: 1, smoke: 0, molly: 0 };
   a.slot = 'prim';
   if (a.brain) { a.brain.path = []; a.brain.goal = -1; a.brain.target = null; a.brain.roam = -1; }
@@ -1049,7 +1125,7 @@ function priceOf(a, id) {
   return (WD[id] || GEAR[id]).price;
 }
 function canBuy(a, id) {
-  if (!a.alive) return false;
+  if (!a.alive || !gunOK(id)) return false;
   const p = priceOf(a, id); if (a.money < p) return false;
   if (WD[id] && WD[id].nade) { const tot = a.nades.he + a.nades.flash + a.nades.smoke + a.nades.molly; return a.nades[id] < WD[id].max && tot < 4; }
   if (id === 'kevlar') return a.armor < 100;
@@ -1060,6 +1136,8 @@ function canBuy(a, id) {
 }
 function buy(a, id) {
   if (!canBuy(a, id)) return false;
+  const snap = { money: a.money, armor: a.armor, helmet: a.helmet, kit: a.kit, nades: { ...a.nades }, prim: a.prim, sec: a.sec, slot: a.slot };   // so the purchase can be undone
+  let dropped = null;
   a.money -= priceOf(a, id);
   if (WD[id] && WD[id].nade) a.nades[id]++;
   else if (id === 'kevlar') a.armor = 100;
@@ -1067,13 +1145,24 @@ function buy(a, id) {
   else if (id === 'kit') a.kit = true;
   else {
     const def = WD[id];
-    if (a[def.slot] && a[def.slot].id !== id && GS.mode === 'comp') addDrop(a[def.slot], a.pos);
+    if (a[def.slot] && a[def.slot].id !== id && GS.mode === 'comp') dropped = addDrop(a[def.slot], a.pos);
     a[def.slot] = newGun(id);
     if (GS.mode === 'range') a[def.slot].res = 999;
     if ((a.isPlayer || a.remote) && def.slot === 'prim') a.dmPick = id;
     a.slot = def.slot; a.switchT = def.draw || 0.4;
   }
+  if (GS.mode === 'comp') (a.buyLog ||= []).push({ id, snap, dropped, spent: snap.money - a.money });
   if (a.isPlayer) { vmSet(); }
+  return true;
+}
+// UNDO: take back the last thing you bought (only while you can still buy): you get the money back and the gun you swapped out comes back
+function undoBuy(a) {
+  const log = a.buyLog;
+  if (!a.alive || !log || !log.length || GS.mode !== 'comp' || !inBuyZone(a)) return false;
+  const { snap, dropped, spent } = log.pop();
+  if (dropped) { const i = GS.drops.indexOf(dropped); if (i >= 0) { scene.remove(dropped.g); GS.drops.splice(i, 1); } }
+  a.money += spent; a.armor = snap.armor; a.helmet = snap.helmet; a.kit = snap.kit; a.nades = snap.nades; a.prim = snap.prim; a.sec = snap.sec; a.slot = snap.slot; a.switchT = 0.3;
+  if (a.isPlayer) { vmSet(); } else if (a.remote && MPH) MPH.sendLoadout(a);
   return true;
 }
 function teamBuyMode(side) {
@@ -1090,25 +1179,26 @@ function botBuy(a) {
   const pistolRound = GS.round === 1 || GS.round === GS.halfAt + 1;
   if (pistolRound) {
     const r = Math.random();
-    if (r < 0.3) buy(a, 'kevlar'); else if (r < 0.55) buy(a, pick(['viper', 'revolver', 'tec', 'trio', 'duster'])); else { buy(a, 'flash'); buy(a, pick(['smoke', 'molly'])); }
+    if (r < 0.3) buy(a, 'kevlar'); else if (r < 0.55) { const gn = pickGun(['viper', 'revolver', 'tec', 'trio', 'duster']); if (gn) buy(a, gn); } else { buy(a, 'flash'); buy(a, pick(['smoke', 'molly'])); }
     return;
   }
   const teamHas = (id) => GS.actors.some((t) => t.side === a.side && t !== a && t.prim && t.prim.id === id);
   if (!a.prim && mode !== 'eco') {
     const reserve = mode === 'full' ? 700 : 350;
     let list;
-    if (mode === 'full') {
+    if (mode === 'full') {   // (every list below is cut down to the guns of the chosen gun set a few lines further on)
       list = a.side === 0 ? ['raptor', 'raptor', 'raptor', 'sentinel', 'carbine', 'ghost', 'ghost'] : ['sentinel', 'sentinel', 'sentinel', 'raptor', 'carbine', 'ghost'];
       if (m() >= 5400 && !teamHas('lmg') && Math.random() < 0.18) list = ['lmg'];
       else if (m() >= 5000 && !teamHas('longbow') && Math.random() < 0.3) list = ['longbow'];
       else if (m() >= 3900 && !teamHas('dmr') && Math.random() < 0.2) list = ['dmr'];
     } else if (mode === 'half') list = ['chopper', 'buzz', 'carbine', 'scatter', 'thumper', 'ranger', 'chopper', 'buzz', 'brute', 'breaker'];
     else list = ['buzz', 'chopper', 'thumper', 'scatter', 'ranger', 'buzz', 'chopper', 'brute', 'breaker'];
+    list = list.filter(gunOK); if (!list.length) list = ['raptor'];
     const ok = list.filter((id) => WD[id].price + reserve <= m());
     const pickId = ok.length ? pick(ok) : list.filter((id) => WD[id].price <= m()).sort((p, q) => WD[q].price - WD[p].price)[0];
     if (pickId) buy(a, pickId);
-    else if (m() >= 650 && a.sec.id === 'p9') buy(a, pick(['revolver', 'viper', 'tec', 'trio', 'duster']));
-  } else if (!a.prim && mode === 'eco' && a.sec.id === 'p9' && m() >= 900 && Math.random() < 0.35) buy(a, pick(['tec', 'revolver', 'trio', 'duster']));
+    else if (m() >= 650 && a.sec.id === 'p9') { const gn = pickGun(['revolver', 'viper', 'tec', 'trio', 'duster']); if (gn) buy(a, gn); }
+  } else if (!a.prim && mode === 'eco' && a.sec.id === 'p9' && m() >= 900 && Math.random() < 0.35) { const gn = pickGun(['tec', 'revolver', 'trio', 'duster']); if (gn) buy(a, gn); }
   if (mode === 'full') { if (m() >= 1000 && !a.helmet) buy(a, 'helm'); else if (m() >= 650 && a.armor < 60) buy(a, 'kevlar'); }
   else if (mode === 'half' || mode === 'force') { if (m() >= 650 && a.armor < 60 && Math.random() < 0.8) buy(a, 'kevlar'); }
   if (a.prim && mode !== 'eco') {
@@ -2016,6 +2106,7 @@ addEventListener('keydown', (e) => {
   padMode = false; document.querySelectorAll('.padf').forEach((el) => el.classList.remove('padf'));
   if (e.code === 'Escape') { const sp = ['setP', 'keysP'].find((id) => !$(id).classList.contains('hidden')); if (sp) { $(sp).classList.add('hidden'); e.preventDefault(); return; } }   // Esc closes Settings / Controls first
   if (GS.state === 'menu') return;
+  if (e.code === 'KeyU' && !$('buy').classList.contains('hidden')) { e.preventDefault(); undoClick(); return; }   // U undoes the last buy while the buy menu is open
   if (e.code === 'KeyB' || (e.code === 'Escape' && !$('buy').classList.contains('hidden'))) { e.preventDefault(); toggleBuy(); return; }
   if (e.code === 'Escape' && softLock && GS.state !== 'over') { if (GS.paused) { GS.paused = false; $('pause').classList.add('hidden'); } else pauseGame(); return; }
   if (e.repeat) return;
@@ -2524,8 +2615,10 @@ const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver']], 
 function renderBuy() {
   const P = GS.player;
   $('buyMoney').textContent = GS.mode === 'comp' ? `$${P.money}` : 'FREE';
+  const last = P.buyLog && P.buyLog[P.buyLog.length - 1], un = $('buyUndo');   // (an online guest does not keep the list: the host does, so the button just asks the host)
+  un.textContent = last ? 'UNDO · ' + ((WD[last.id] || GEAR[last.id] || {}).name || '') : 'UNDO'; un.disabled = GS.mode !== 'comp' || (MP.role === 'client' ? !inBuyZone(P) : !last);
   $('buyTime').textContent = GS.mode === 'comp' ? (GS.state === 'freeze' ? `buy time ${Math.ceil(GS.phaseT + 20)}s` : `buy time ${Math.max(0, Math.ceil(GS.buyLeft))}s`) : '';
-  $('buyGrid').innerHTML = BUY.map(([cat, ids]) => `<div class="cat"><h3>${cat}</h3>${ids.map((id) => {
+  $('buyGrid').innerHTML = BUY.map(([cat, ids]) => `<div class="cat"><h3>${cat}</h3>${ids.filter(gunOK).map((id) => {
     const d = WD[id] || GEAR[id];
     const own = (WD[id] && !d.nade && P[d.slot] && P[d.slot].id === id) || (id === 'kit' && P.kit) || (id === 'helm' && P.helmet) || (id === 'kevlar' && P.armor >= 100);
     const bar = (l, v) => `<span>${l}</span><i style="width:${Math.max(6, Math.min(100, v))}%"></i>`;
@@ -2540,6 +2633,13 @@ $('buyGrid').addEventListener('click', (e) => {
   else if (buy(GS.player, b.dataset.id)) SFX.buy(); else SFX.deny();
   renderBuy();
 });
+function undoClick() {
+  const P = GS.player; if (!P) return;
+  if (MP.role === 'client') { if (inBuyZone(P)) { SFX.swap(); MPH.clientUndo(); } else SFX.deny(); }
+  else if (undoBuy(P)) SFX.swap(); else SFX.deny();
+  renderBuy();
+}
+$('buyUndo').addEventListener('click', undoClick);
 function toggleBuy() {
   const el = $('buy'), P = GS.player;
   if (el.classList.contains('hidden')) {
@@ -2735,7 +2835,7 @@ function startMatchMP(cfg, myIdx, role) {
   for (const a of GS.actors) if (a.mesh) scene.remove(a.mesh.g);
   GS.actors = []; clearWorld();
   GS.mode = cfg.mode; GS.score = [0, 0]; GS.loss = [0, 0]; GS.round = 0; GS.lastPlan = null;
-  GS.target = GS.mode === 'dm' ? (cfg.length === 'short' ? 40 : 75) : cfg.length === 'short' ? 5 : 9;
+  GS.target = GS.mode === 'dm' ? lenOf(cfg.length).dm : lenOf(cfg.length).target;
   GS.halfAt = GS.target - 1; GS.maxRounds = 2 * (GS.target - 1);
   const botN = [0, 0];
   cfg.slots.forEach((s, i) => {
@@ -2748,16 +2848,16 @@ function startMatchMP(cfg, myIdx, role) {
   for (const a of GS.actors) { makeSoldier(a); a.money = 800; }
   $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('playing');
   $('again').classList.add('hidden'); $('toLobby').classList.toggle('hidden', role !== 'host');
-  GS.paused = false; resetCore(null);
+  GS.paused = false; resetCore(null); GS.rankDone = true;   // online matches with friends are not ranked
   const P = GS.player; P.alive = false; vmRoot.visible = false;
   if (role === 'host') {
     if (GS.mode === 'comp') startRound();
-    else { GS.state = 'live'; GS.roundT = cfg.length === 'short' ? 300 : 480; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
+    else { GS.state = 'live'; GS.roundT = lenOf(cfg.length).dmTime; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
   } else GS.state = 'freeze';
   lock();
 }
 function reviveLocal() {
-  const P = GS.player;
+  const P = GS.player; P.buyLog = [];
   P.hp = 100; P.alive = true; P.act = null; P.blindT = 0; P.reloadT = 0; P.switchT = 0; P.rc = 0; P.scoped = 0; P.rescope = 0; P.roundKills = 0; P.crouch = false; P.crouchAmt = 0; P.tagT = 0; P.onGround = true; P.protT = 0;
   if (P.mesh) P.mesh.g.visible = false;
   vmRoot.visible = true; vmRefresh(); sleeveMat.color.setHex(SIDE_SLEEVE[P.side]); GS.deathT = 0; $('scope').classList.add('hidden');
@@ -2811,8 +2911,9 @@ function syncSeg() {
   $('optSide').style.display = comp ? '' : 'none';
   $('optDiff').style.display = S.mode === 'range' ? 'none' : '';
   $('optLen').style.display = S.mode === 'range' ? 'none' : '';
-  $('optLen').querySelectorAll('small')[0].textContent = S.mode === 'dm' ? 'first to 40' : 'first to 5';
-  $('optLen').querySelectorAll('small')[1].textContent = S.mode === 'dm' ? 'first to 75' : 'first to 9';
+  const lsm = $('optLen').querySelectorAll('small'), dm = S.mode === 'dm';
+  lsm[0].textContent = dm ? 'first to 40' : 'first to 5'; lsm[1].textContent = dm ? 'first to 75' : 'first to 9'; lsm[2].textContent = dm ? 'first to 120' : 'first to 11 · 20 rounds';
+  renderRank();
   $('best').textContent = `Record: ${STATS.wins} wins · ${STATS.losses} losses · Aim Range best ${STATS.range}`;
 }
 document.querySelectorAll('.seg').forEach((seg) => seg.addEventListener('click', (e) => {
@@ -2833,13 +2934,19 @@ $('sXc').innerHTML = XC.map((c) => `<i style="background:${c}" data-c="${c}" cla
 $('sXc').onclick = (e) => { const c = e.target.dataset.c; if (!c) return; S.xhColor = c; saveS(); [...$('sXc').children].forEach((i) => i.classList.toggle('on', i.dataset.c === c)); };
 document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => b.closest('.panel').classList.add('hidden')));
 $('openSet').onclick = () => $('setP').classList.remove('hidden');
+$('rankBadge').onclick = () => { $('rankList').innerHTML = rankListHTML(); $('rankP').classList.remove('hidden'); };
 $('openKeys').onclick = () => $('keysP').classList.remove('hidden');
 $('pSet').onclick = () => $('setP').classList.remove('hidden');
 $('pKeys').onclick = () => $('keysP').classList.remove('hidden');
 $('play').onclick = () => { initAudio(S.vol); startMatch(); };
 $('again').onclick = () => { initAudio(S.vol); startMatch(); };
 $('resume').onclick = () => { lock(); if (DEBUG || softLock) { GS.paused = false; $('pause').classList.add('hidden'); } };
-function toMenu() { if (MPH) MPH.leave(); resetToMenu(); }
+function toMenu() {
+  if (GS.mode === 'comp' && !MP.on && !GS.rankDone && GS.round >= 2 && (GS.state === 'live' || GS.state === 'freeze' || GS.state === 'end')) {   // leaving a ranked match early counts as a loss
+    GS.rankDone = true; const r = settleRank('loss', 3, false); GS.menuMsg = `You left a ranked match early: ${r.delta} RP`;
+  }
+  if (MPH) MPH.leave(); resetToMenu();
+}
 function resetToMenu() {
   if (S.gfx !== GFX_AT_LOAD) { const u = new URL(location.href); u.searchParams.delete('lite'); u.searchParams.delete('pretty'); location.assign(u.toString()); return; }   // graphics were changed in a match: reload now that it is over
   GS.state = 'menu'; GS.paused = false;
@@ -2854,8 +2961,8 @@ $('quit').onclick = toMenu; $('toMenu').onclick = toMenu;
 syncSeg();
 $('loading').remove();
 
-if (DEBUG) window.__cs = { setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
+if (DEBUG) window.__cs = { endMatch, RANK, rankInfo, settleRank, rankEndHTML, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
 
 MPH = createOnline({ GS, MP, S, WD, $, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
-  makeSoldier, botTakeover, shotDamage, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
+  makeSoldier, botTakeover, shotDamage, undoBuy, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
   spawnNade, netDetonate, remoteShotFx, killFx, hurtLocal, roundEndFx, roundBannerLocal, netEvent, endMatch, moneyPop, reviveLocal, vmRefresh, renderBuy, clearWorld, sleeveTint });

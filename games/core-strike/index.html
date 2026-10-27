@@ -7,12 +7,12 @@
 <script src="../../assets/playtimer.js"></script>
 <script src="../../assets/friends-config.js"></script>
 <script src="../../assets/hkfriends.js?v=5" defer></script>
-<meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the bomb. Play vs smart bots or online with friends. Eleven maps (some extra large), 20 guns that all handle differently, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
+<meta name="description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the bomb. Play vs smart bots or online with friends. Eleven maps (some extra large), 20 guns that all handle differently (or a Simple 8-gun mode), ranked Competitive with leagues from Bronze to Elite, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#11131a">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Core Strike - free browser game">
-<meta property="og:description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the bomb. Play vs smart bots or online with friends. Eleven maps (some extra large), 20 guns that all handle differently, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
+<meta property="og:description" content="A 5v5 tactical shooter: buy guns, then plant or defuse the bomb. Play vs smart bots or online with friends. Eleven maps (some extra large), 20 guns that all handle differently (or a Simple 8-gun mode), ranked Competitive with leagues from Bronze to Elite, a Lite mode for Chromebooks. No blood. Free, runs in your browser (mouse and keyboard, trackpad or a controller).">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/core-strike/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/core-strike.jpg">
 <meta name="twitter:card" content="summary_large_image">
 
@@ -134,6 +134,15 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 .keys{font-size:13px;line-height:1.75;opacity:.9;columns:2;column-gap:24px}
 .keys b{display:inline-block;min-width:58px;color:var(--acc)}
 #best{font-size:13px;opacity:.7;margin-top:12px}
+#rankBadge{display:inline-flex;align-items:center;gap:10px;margin:8px 0 6px;padding:6px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(30,35,48,.7);cursor:pointer;font-size:13px;letter-spacing:.05em;flex-wrap:wrap;justify-content:center}
+#rankBadge:hover{border-color:var(--o)}
+#rankBadge .warn{width:100%;font-size:12px;color:#ff8a7a;text-align:center}
+.shield{display:inline-grid;place-items:center;width:24px;height:28px;background:var(--rc,#888);clip-path:polygon(50% 0,100% 16%,100% 62%,50% 100%,0 62%,0 16%);color:#10121a;font-weight:800;font-size:11px;flex:none}
+#rankBadge .bar{width:84px;height:5px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}#rankBadge .bar i{display:block;height:100%}
+.rl{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:9px;margin-bottom:4px;background:rgba(255,255,255,.04);font-size:14px}.rl b{width:84px;color:var(--rc)}.rl span:not(.shield){opacity:.75;font-size:12px;flex:1}.rl em{font-style:normal;color:#ffd04a;font-size:12px}
+.rl.here{outline:2px solid var(--rc);background:rgba(255,255,255,.1)}
+#endRank{margin:10px 0 4px}.rk{display:flex;flex-direction:column;align-items:center;gap:4px}.rkt{font-size:13px;letter-spacing:.2em;opacity:.9}.rkr{display:flex;align-items:center;gap:10px;font-size:22px}.rkd{font-size:20px;font-weight:700}.rkd small{font-size:12px;opacity:.6;font-weight:400}.rkn{font-size:12px;opacity:.7}
+.rkbar{width:220px;height:7px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden}.rkbar i{display:block;height:100%}
 
 /* settings */
 .set{display:grid;grid-template-columns:150px 1fr 54px;gap:10px 12px;align-items:center;font-size:14px;min-width:min(440px,86vw)}
@@ -233,6 +242,7 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
   <div id="menuBox">
     <div class="logo">CORE<br><span>STRIKE</span></div>
     <div class="tag">5v5 tactical toy-soldier shooter · plant the bomb or stop it</div>
+    <div id="rankBadge" title="Click to see all the ranks"></div>
     <div class="opt"><label>MAP</label><div class="seg" data-k="map" id="mapSeg"></div></div>
     <div class="opt"><label>MODE</label><div class="seg" data-k="mode">
       <button data-v="comp">Competitive<small>plant / defuse rounds</small></button>
@@ -247,9 +257,13 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
     <div class="opt" id="optDiff"><label>BOT SKILL</label><div class="seg" data-k="diff">
       <button data-v="easy">Chill</button><button data-v="normal">Normal</button><button data-v="hard">Sweaty</button><button data-v="insane">Pro</button>
     </div></div>
+    <div class="opt" id="optGuns"><label>GUNS</label><div class="seg" data-k="arsenal">
+      <button data-v="simple">Simple<small>8 guns</small></button><button data-v="pro">Pro<small>all 20 guns</small></button>
+    </div></div>
     <div class="opt" id="optLen"><label>MATCH LENGTH</label><div class="seg" data-k="length">
       <button data-v="short">Short<small>first to 5</small></button>
       <button data-v="long">Full<small>first to 9</small></button>
+      <button data-v="duper">Duper long<small>first to 11 · 20 rounds</small></button>
     </div></div>
     <div class="row">
       <button class="btn go" id="play">PLAY</button>
@@ -303,9 +317,9 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 </div></div>
 
 <div id="buy" class="panel hidden"><div class="card">
-  <div id="buyTop"><h2 style="margin:0">BUY MENU</h2><div><span id="buyTime"></span> &nbsp; <span id="buyMoney">$0</span></div></div>
+  <div id="buyTop"><h2 style="margin:0">BUY MENU</h2><div><button class="btn" id="buyUndo" disabled style="padding:5px 12px;font-size:13px;margin-right:10px">UNDO</button><span id="buyTime"></span> &nbsp; <span id="buyMoney">$0</span></div></div>
   <div id="buyGrid"></div>
-  <div id="buyFoot">Click to buy · B or Esc to close · you keep your gear if you survive the round</div>
+  <div id="buyFoot">Click to buy · U or the UNDO button takes back your last buy · B or Esc to close · you keep your gear if you survive the round</div>
 </div></div>
 
 <div id="board" class="panel hidden" style="background:rgba(6,8,12,.25);backdrop-filter:none"><div class="card" id="boardCard"></div></div>
@@ -325,7 +339,14 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
   <div id="endScore"></div>
   <div id="endStats"></div>
   <div id="endMvp" style="opacity:.85"></div>
+  <div id="endRank"></div>
   <div class="row" style="justify-content:center"><button class="btn go" id="again">PLAY AGAIN</button><button class="btn go hidden" id="toLobby">BACK TO LOBBY</button><button class="btn" id="toMenu">MENU</button></div>
+</div></div>
+
+<div id="rankP" class="panel hidden"><div class="card" style="width:min(600px,95vw)">
+  <h2>RANKS &amp; LEAGUES</h2>
+  <div id="rankList"></div>
+  <div class="row"><button class="btn" data-close>CLOSE</button></div>
 </div></div>
 
 <div id="onlineP" class="panel hidden"><div class="card" style="width:min(720px,95vw)">
@@ -348,7 +369,8 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
       <div class="opt"><label>MAP</label><div class="seg" data-k="map" id="onMapSeg"></div></div>
       <div class="opt"><label>MODE</label><div class="seg" data-k="mode"><button data-v="comp">Competitive<small>plant / defuse rounds</small></button><button data-v="dm">Deathmatch<small>respawns, free guns</small></button></div></div>
       <div class="opt"><label>BOT SKILL</label><div class="seg" data-k="diff"><button data-v="easy">Chill</button><button data-v="normal">Normal</button><button data-v="hard">Sweaty</button><button data-v="insane">Pro</button></div></div>
-      <div class="opt"><label>MATCH LENGTH</label><div class="seg" data-k="length"><button data-v="short">Short</button><button data-v="long">Full</button></div></div>
+      <div class="opt"><label>GUNS</label><div class="seg" data-k="arsenal"><button data-v="simple">Simple</button><button data-v="pro">Pro</button></div></div>
+      <div class="opt"><label>MATCH LENGTH</label><div class="seg" data-k="length"><button data-v="short">Short</button><button data-v="long">Full</button><button data-v="duper">Duper long</button></div></div>
     </div>
     <div id="onSummary" class="fine hidden"></div>
     <div id="onStatus" class="fine"></div>
@@ -358,6 +380,6 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 
 <div id="clickLock" class="hidden">Click to play</div>
 
-<script type="module" src="game.js?v=101"></script>
+<script type="module" src="game.js?v=104"></script>
 </body>
 </html>

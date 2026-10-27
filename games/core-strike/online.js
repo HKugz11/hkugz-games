@@ -27,10 +27,10 @@ export function createOnline(X) {
   function show(stage) { $('onHome').classList.toggle('hidden', stage !== 'home'); $('onLobby').classList.toggle('hidden', stage !== 'lobby'); }
   function openPanel() { $('onlineP').classList.remove('hidden'); $('onName').value = S.name || ''; show(L ? 'lobby' : 'home'); if (L) renderLobby(); }
   function closePanel() { $('onlineP').classList.add('hidden'); }
-  function cfgFromS() { return { map: S.map, mode: S.mode === 'dm' ? 'dm' : 'comp', length: S.length, diff: S.diff }; }
+  function cfgFromS() { return { map: S.map, mode: S.mode === 'dm' ? 'dm' : 'comp', length: S.length, diff: S.diff, arsenal: S.arsenal === 'simple' ? 'simple' : 'pro' }; }
   function summary(c) {
     const mp = X.MAP_LIST.find((m) => m.id === c.map);
-    return `${mp ? mp.name : c.map} · ${c.mode === 'dm' ? 'Deathmatch' : 'Competitive'} · ${c.length === 'short' ? 'short' : 'full'} match · bots: ${({ easy: 'Chill', normal: 'Normal', hard: 'Sweaty', insane: 'Pro' })[c.diff] || c.diff}`;
+    return `${mp ? mp.name : c.map} · ${c.mode === 'dm' ? 'Deathmatch' : 'Competitive'} · ${({ short: 'short', long: 'full', duper: 'duper long (20 rounds)' })[c.length] || 'full'} match · bots: ${({ easy: 'Chill', normal: 'Normal', hard: 'Sweaty', insane: 'Pro' })[c.diff] || c.diff} · ${c.arsenal === 'simple' ? 'simple guns' : 'all guns'}`;
   }
   function renderLobby() {
     if (!L) return;
@@ -154,6 +154,7 @@ export function createOnline(X) {
         net.hostBroadcast({ t: 'nade', i: a.idx, ty: d.ty | 0, p, v, id: num(d.id) }, pid);
         break;
       }
+      case 'undo': { if (a.alive && X.inBuyZone(a) && X.undoBuy(a)) sendLoadout(a); else net.hostSend(pid, loadoutMsg(a)); break; }
       case 'buy': { if (typeof d.id === 'string' && a.alive && X.inBuyZone(a) && X.buy(a, d.id)) sendLoadout(a); else net.hostSend(pid, loadoutMsg(a)); break; }
       case 'act': {
         if (!d.on) { a.act = null; break; }
@@ -359,6 +360,7 @@ export function createOnline(X) {
   function clientShot(a, wid, o, d) { if (net) net.clientSend({ t: 'shot', w: wi(wid), o: [r2(o.x), r2(o.y), r2(o.z)], d: [r2(d.x), r2(d.y), r2(d.z)] }); }
   function clientNade(a, type, x, y, z, vx, vy, vz) { const id = (myPid + 1) * 100000 + (++nidCounter); if (net) net.clientSend({ t: 'nade', id, ty: NS.indexOf(type), p: [r2(x), r2(y), r2(z)], v: [r2(vx), r2(vy), r2(vz)] }); return id; }
   function clientBuy(id) { if (net) net.clientSend({ t: 'buy', id }); }
+  function clientUndo() { if (net) net.clientSend({ t: 'undo' }); }
   function clientTeam(sq) { if (MP.role === 'host') { const p = L.players.find((q) => q.pid === 0); if (p && p.sq !== sq && teamCount(sq) < 5) { p.sq = sq; broadcastLobby(); } } else if (net) net.clientSend({ t: 'team', sq }); }
 
   // ======================================================================= wire up the lobby buttons
@@ -389,5 +391,5 @@ export function createOnline(X) {
   }
 
   return { openPanel, leave, hostTick, roundStart, spawn, hurt, killEvent, money, shotFx, nadeEvent, detEvent, banner, event, feedTextEvent, roundEnd, matchEnd,
-    mirrorTick, clientTick, claim, clientShot, clientNade, clientBuy, sendLoadout, applySnapshot, isLobbyOpen: () => !$('onlineP').classList.contains('hidden'), L: () => L };
+    mirrorTick, clientTick, claim, clientShot, clientNade, clientBuy, clientUndo, sendLoadout, applySnapshot, isLobbyOpen: () => !$('onlineP').classList.contains('hidden'), L: () => L };
 }
