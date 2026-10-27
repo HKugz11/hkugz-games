@@ -6,9 +6,9 @@
 <title>HKugz Games</title>
 <script src="assets/playtimer.js"></script>
 <script src="assets/friends-config.js"></script>
-<script src="assets/hkfriends.js?v=3" defer></script>
+<script src="assets/hkfriends.js?v=4" defer></script>
 <meta name="description" content="Free browser games built by HKugz: a 3D robot shooter, a building shooter, a kart racer, a tower defense game, an obstacle race, mini golf, a 3D obby tower, classics like Snake and Breakout, and original one-button games.">
-<link rel="stylesheet" href="assets/site.css?v=2">
+<link rel="stylesheet" href="assets/site.css?v=3">
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="assets/logo.png"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="theme-color" content="#42d7f1">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
@@ -17,112 +17,217 @@
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
 </head>
-<body>
-<div class="wrap">
-  <header class="hero">
-    <img class="logo" src="assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
-    <h1>HKugz Games</h1>
-    <p>Free games you can play right here in your browser. No downloads, no sign-ups needed.</p>
-    <div class="toolbar">
+<body class="hub">
+<a class="skip" href="#games">Skip to the games</a>
+
+<header class="topnav">
+  <div class="topnav-in">
+    <a class="brand" href="./"><img src="assets/logo.svg" alt="" width="36" height="36"><span>HKugz <b>Games</b></span></a>
+    <nav class="navlinks" id="navlinks" aria-label="Main menu">
+      <a href="#games">Games</a>
+      <a href="#friends" data-hkf="show" hidden>Play together</a>
+      <a href="save/">Save codes</a>
+      <a href="#submit">Submit a game</a>
+      <a href="timer/">For parents</a>
+    </nav>
+    <div class="navright">
       <a class="tbtn" id="hkFriendsBtn" href="#" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.2c2.9-.3 4.9 1.2 4.9 4.3"/></svg><span>Friends</span><b class="cnt" id="hkFriendsOn" hidden></b><b class="cnt new" id="hkFriendsNew" hidden></b></a>
-      <a class="tbtn" href="save/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3"/><path d="M8 21v-7h8v7"/></svg><span>Save codes</span></a>
+      <button class="burger" id="burger" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="navlinks"><span></span><span></span><span></span></button>
     </div>
-    <span class="tstatus" id="hkTimerBadge" hidden></span>
-    <p class="facts">Works on phones &middot; Saves your best scores &middot; Made from scratch</p>
-  </header>
-
-  <h2 class="section">Featured</h2>
-  <div class="grid">
-    <a class="card" href="games/tower-of-destiny/">
-      <div class="thumb"><img src="assets/thumbs/tower.png" alt="Tower of Destiny screenshot" loading="lazy"></div>
-      <div class="body"><h3>Tower of Destiny</h3><p>Climb the tower, open chests, dodge traps and stomp monsters. Buy skins and upgrades. A one-button classic by DrDerico, shared here with his permission.</p><span class="tag new">New &middot; By DrDerico</span></div>
-    </a>
-    <a class="card" href="games/blaster-arena/">
-      <div class="thumb"><img src="assets/thumbs/blaster-arena.png" alt="Blaster Arena screenshot" loading="lazy"></div>
-      <div class="body"><h3>Blaster Arena</h3><p>3D robot shooter vs bots. 21 maps (4 are huge battle royale maps, 5 are new XL maps for every mode (neon city, frozen wastes, desert canyon, toy kingdom, and a dusk village full of hiding places), a Test Lab room, 2 are a sniper-only Vietnam-style jungle, one of them 8x bigger, and a zero-gravity Ender's Game Battle Room), 14 modes (team deathmatch, horde, blitz, brawl, battle royale, gun game, moon brawl, pop-gun party, utility blitz, C4 Flash (sneak around in a ninja suit, stick C4 on bots, then blow them all up at once), a gentle Baby Mode for little kids, a test lab with a wall of buttons, sniper's alley with 6 sniper rifles, 5 scopes, bamboo towers and bot teammates, freeplay practice), 12 blasters with rarities and ammo (including a rare RPG), a 5-slot hotbar, chests, seven kinds of grenades (frag, flash, smoke, molly, sticky, cluster and toxic gas) plus C4 with a remote, and shields. Runs on Chromebooks, plays on phones and tablets with on-screen controls, and works with game controllers. Play solo or online co-op with up to 3 friends.</p><span class="tag new">New &middot; C4 Flash mode, ninja suit</span></div>
-    </a>
-    <a class="card" href="games/core-strike/">
-      <div class="thumb"><img src="assets/thumbs/core-strike.jpg" alt="Core Strike screenshot" loading="lazy"></div>
-      <div class="body"><h3>Core Strike</h3><p>A 5v5 tactical shooter. Buy guns with round money, then plant the core or stop it from going off. Play against bots or team up online with friends (up to 6 players, room codes). Seven maps, from tight alleys to two XL ones (desert streets, an indoor warehouse, an open plaza, a container port, a desert canyon, a snow outpost and an old town), 15 guns from pistols to a sniper and a heavy LMG, grenades and molotovs, and bots that talk to each other, trade kills, flash and push, and save their guns. Also Deathmatch and an Aim Range. No blood: players pop into cubes. Runs on Chromebooks with the Lite graphics mode. Aim with a tight green crosshair or switch to iron sights in Settings. Mouse or trackpad and keyboard on a computer, or plug in a controller (Xbox / PlayStation style).</p><span class="tag new">New &middot; Play online</span></div>
-    </a>
-    <a class="card" href="games/core-strike/?lite">
-      <div class="thumb"><img src="assets/thumbs/core-strike.jpg" alt="Core Strike Lite screenshot" loading="lazy"></div>
-      <div class="body"><h3>Core Strike Lite</h3><p>The same 5v5 tactical shooter squeezed down for Chromebooks and slow computers: a smaller picture, no shadows, simpler players and map, and a lighter download. Click once to aim down sights (or press Z), so a trackpad is enough. Plays against bots or online with friends. Open Settings to switch to the full-detail graphics.</p><span class="tag new">New &middot; Chromebook mode</span></div>
-    </a>
-    <a class="card" href="games/fort-fight/">
-      <div class="thumb"><img src="assets/thumbs/fort-fight.png" alt="Fort Fight screenshot" loading="lazy"></div>
-      <div class="body"><h3>Fort Fight</h3><p>Build walls, ramps, floors and roofs, edit them, and out-build the bots or your friends. A first-person building shooter with a build range, box fights (online up to 4 players) and a big island. Runs on Chromebooks and plays on phones and tablets with on-screen controls.</p><span class="tag new">New &middot; Phone controls</span></div>
-    </a>
-    <a class="card" href="games/sky-tower/">
-      <div class="thumb"><img src="assets/thumbs/sky-tower.png" alt="Sky Tower screenshot" loading="lazy"></div>
-      <div class="body"><h3>Sky Tower</h3><p>Climb a huge 3D obby tower: moving lifts, crumbling tiles, ice, bounce pads, conveyor belts, spinning bars and hammers. Ten themed stages with checkpoints and best times, plus random and hardcore towers. Runs on Chromebooks. Plays on phones and tablets with on-screen controls.</p><span class="tag new">New &middot; 3D obby</span></div>
-    </a>
-    <a class="card" href="games/kart-rush/">
-      <div class="thumb"><img src="assets/thumbs/kart-rush.png" alt="Kart Rush screenshot" loading="lazy"></div>
-      <div class="body"><h3>Kart Rush</h3><p>Toon kart racing against seven robots on three tracks (a sunny loop, a neon city and icy mountains). Drift for mini-turbos, grab item boxes (turbo, rockets, oil slicks, shields, zaps), race a Grand Prix or beat your best lap. Runs on Chromebooks, and plays on phones and tablets with on-screen controls.</p><span class="tag new">New &middot; Kart racer</span></div>
-    </a>
-    <a class="card" href="games/gadget-guard/">
-      <div class="thumb"><img src="assets/thumbs/gadget-guard.png" alt="Gadget Guard screenshot" loading="lazy"></div>
-      <div class="body"><h3>Gadget Guard</h3><p>Toon tower defense: build and upgrade six kinds of gadgets (blasters, cannons, frost, rail snipers, tesla coils, boosters), stop 30 waves of robots plus giant MEGA BOT bosses, and call in airstrikes. Three maps, three difficulties and an endless mode. Runs on Chromebooks, and plays on phones and tablets.</p><span class="tag new">New &middot; Tower defense</span></div>
-    </a>
-    <a class="card" href="games/wobble-dash/">
-      <div class="thumb"><img src="assets/thumbs/wobble-dash.png" alt="Wobble Dash screenshot" loading="lazy"></div>
-      <div class="body"><h3>Wobble Dash</h3><p>A wobbly bean obstacle race against 11 computer racers: dodge spinning bars and swinging hammers, hop gaps, ride ferries and bounce across trampolines. Showdown mode eliminates racers round by round until one bean wins the crown, or pick any course for a quick race. Runs on Chromebooks, and plays on phones and tablets.</p><span class="tag new">New &middot; Obstacle race</span></div>
-    </a>
-    <a class="card" href="games/putt-party/">
-      <div class="thumb"><img src="assets/thumbs/putt-party.png" alt="Putt Party screenshot" loading="lazy"></div>
-      <div class="body"><h3>Putt Party</h3><p>Toon mini golf: drag back and let go to putt around nine holes with windmills, bumpers, sand, water, boost strips, sliding walls and teleport pipes. Everybody putts at the same time against computer golfers. Runs on Chromebooks, and plays on phones and tablets.</p><span class="tag new">New &middot; Mini golf</span></div>
-    </a>
   </div>
+</header>
+<span class="tstatus" id="hkTimerBadge" hidden></span>
 
-  <h2 class="section">Original games</h2>
-  <div class="grid">
-    <a class="card" href="games/block-stack/">
-      <div class="thumb"><img src="assets/thumbs/block-stack.png" alt="Block Stack screenshot" loading="lazy"></div>
-      <div class="body"><h3>Block Stack</h3><p>One button. Drop the sliding block and build the tallest tower you can.</p><span class="tag">One button</span></div>
-    </a>
-    <a class="card" href="games/cube-flap/">
-      <div class="thumb"><img src="assets/thumbs/cube-flap.png" alt="Cube Flap screenshot" loading="lazy"></div>
-      <div class="body"><h3>Cube Flap</h3><p>Flap a pink cube through the gaps between towers. Grab the coins!</p><span class="tag">One button</span></div>
-    </a>
+<main>
+<section class="hero2">
+  <div class="wrap hero2-in">
+    <div class="hero2-text">
+      <p class="eyebrow">Free browser games</p>
+      <h1>Play awesome games right in your browser.</h1>
+      <p class="lead">No downloads, no ads, no tracking, no sign-ups needed. Works on phones, tablets and Chromebooks. Team up online with friends in the shooters.</p>
+      <div class="cta"><a class="btn big" href="games/core-strike/">Play Core Strike</a><a class="btn big ghost" href="#games">Browse all games</a></div>
+      <ul class="perks"><li>Made from scratch</li><li>Saves your best scores</li><li>Plays with game controllers</li></ul>
+    </div>
+    <div class="show" id="show" aria-roledescription="carousel" aria-label="Featured games">
+      <a class="slide on" href="games/core-strike/"><img src="assets/thumbs/core-strike.jpg" alt="Core Strike screenshot" width="960" height="540"><span class="cap"><b>Core Strike</b><small>5v5 tactical shooter &middot; online with friends</small></span></a>
+      <a class="slide" href="games/blaster-arena/"><img src="assets/thumbs/blaster-arena.png" alt="Blaster Arena screenshot" width="800" height="500" loading="lazy"><span class="cap"><b>Blaster Arena</b><small>3D robot shooter &middot; 21 maps &middot; 14 modes</small></span></a>
+      <a class="slide" href="games/fort-fight/"><img src="assets/thumbs/fort-fight.png" alt="Fort Fight screenshot" width="800" height="500" loading="lazy"><span class="cap"><b>Fort Fight</b><small>Build walls and ramps &middot; box fights online</small></span></a>
+      <div class="dots" id="dots"><button type="button" class="on" aria-label="Show Core Strike"></button><button type="button" aria-label="Show Blaster Arena"></button><button type="button" aria-label="Show Fort Fight"></button></div>
+    </div>
   </div>
+</section>
 
-  <h2 class="section">Classics</h2>
-  <div class="grid">
-    <a class="card" href="games/snake/">
-      <div class="thumb"><img src="assets/thumbs/snake.png" alt="Snake screenshot" loading="lazy"></div>
-      <div class="body"><h3>Snake</h3><p>Eat the apples, grow longer, don't bite yourself.</p><span class="tag">Classic</span></div>
+<section class="section" id="games">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><p class="eyebrow dark">The library</p><h2>All games <span class="count" id="gameCount"></span></h2></div>
+      <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off"></label>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter games">
+      <button type="button" class="chip on" data-f="all" aria-pressed="true">All</button>
+      <button type="button" class="chip" data-f="online" aria-pressed="false">Online with friends</button>
+      <button type="button" class="chip" data-f="shooter" aria-pressed="false">Shooters</button>
+      <button type="button" class="chip" data-f="racing" aria-pressed="false">Racing &amp; obstacles</button>
+      <button type="button" class="chip" data-f="strategy" aria-pressed="false">Strategy &amp; sports</button>
+      <button type="button" class="chip" data-f="classic" aria-pressed="false">Classics &amp; one-button</button>
+    </div>
+
+    <div class="ggrid" id="ggrid">
+    <a class="gcard" href="games/core-strike/" data-cat="shooter online">
+      <div class="gthumb"><img src="assets/thumbs/core-strike.jpg" alt="Core Strike screenshot" loading="lazy"><span class="gbadge">Online</span></div>
+      <div class="gbody"><h3>Core Strike</h3><p>5v5 tactical shooter: buy guns, then plant or defuse the core. Seven maps, smart bots, up to 6 players online. No blood.</p><div class="gtags"><span>Shooter</span><span>1-6 players</span></div></div>
     </a>
-    <a class="card" href="games/breakout/">
-      <div class="thumb"><img src="assets/thumbs/breakout.png" alt="Breakout screenshot" loading="lazy"></div>
-      <div class="body"><h3>Breakout</h3><p>Bounce the ball and smash every brick. New levels get harder.</p><span class="tag">Classic</span></div>
+    <a class="gcard" href="games/core-strike/?lite" data-cat="shooter online" data-nocount>
+      <div class="gthumb"><img src="assets/thumbs/core-strike.jpg" alt="Core Strike Lite screenshot" loading="lazy"><span class="gbadge">Online</span></div>
+      <div class="gbody"><h3>Core Strike Lite</h3><p>The same shooter squeezed down for Chromebooks and slow computers, with a trackpad-friendly aim.</p><div class="gtags"><span>Shooter</span><span>Chromebook mode</span></div></div>
     </a>
+    <a class="gcard" href="games/blaster-arena/" data-cat="shooter online">
+      <div class="gthumb"><img src="assets/thumbs/blaster-arena.png" alt="Blaster Arena screenshot" loading="lazy"><span class="gbadge">Online</span></div>
+      <div class="gbody"><h3>Blaster Arena</h3><p>3D robot shooter with 21 maps, 14 modes, 12 blasters and seven kinds of grenades. Solo or online co-op with up to 3 friends.</p><div class="gtags"><span>Shooter</span><span>1-4 players</span></div></div>
+    </a>
+    <a class="gcard" href="games/fort-fight/" data-cat="shooter online">
+      <div class="gthumb"><img src="assets/thumbs/fort-fight.png" alt="Fort Fight screenshot" loading="lazy"><span class="gbadge">Online</span></div>
+      <div class="gbody"><h3>Fort Fight</h3><p>Build walls, ramps and roofs, edit them, and out-build the bots or your friends. Box fights online for up to 4.</p><div class="gtags"><span>Building shooter</span><span>1-4 players</span></div></div>
+    </a>
+    <a class="gcard" href="games/tower-of-destiny/" data-cat="classic">
+      <div class="gthumb"><img src="assets/thumbs/tower.png" alt="Tower of Destiny screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Tower of Destiny</h3><p>Climb the tower, open chests, dodge traps and stomp monsters. A one-button classic, shared here with the developer's permission.</p><div class="gtags"><span>One-button</span><span>By DrDerico</span></div></div>
+    </a>
+    <a class="gcard" href="games/sky-tower/" data-cat="racing">
+      <div class="gthumb"><img src="assets/thumbs/sky-tower.png" alt="Sky Tower screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Sky Tower</h3><p>Climb a huge 3D obby: moving lifts, crumbling tiles, ice and spinning hammers across ten themed stages.</p><div class="gtags"><span>Obby</span><span>Phone friendly</span></div></div>
+    </a>
+    <a class="gcard" href="games/kart-rush/" data-cat="racing">
+      <div class="gthumb"><img src="assets/thumbs/kart-rush.png" alt="Kart Rush screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Kart Rush</h3><p>Toon kart racing against seven robots: drift for mini-turbos, grab item boxes and race a Grand Prix.</p><div class="gtags"><span>Racing</span><span>Phone friendly</span></div></div>
+    </a>
+    <a class="gcard" href="games/wobble-dash/" data-cat="racing">
+      <div class="gthumb"><img src="assets/thumbs/wobble-dash.png" alt="Wobble Dash screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Wobble Dash</h3><p>A wobbly bean obstacle race against 11 racers. Dodge hammers, ride ferries and win the crown.</p><div class="gtags"><span>Obstacle race</span><span>Phone friendly</span></div></div>
+    </a>
+    <a class="gcard" href="games/gadget-guard/" data-cat="strategy">
+      <div class="gthumb"><img src="assets/thumbs/gadget-guard.png" alt="Gadget Guard screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Gadget Guard</h3><p>Toon tower defense: six gadgets, 30 waves, giant MEGA BOT bosses and airstrikes. Endless mode too.</p><div class="gtags"><span>Tower defense</span><span>Phone friendly</span></div></div>
+    </a>
+    <a class="gcard" href="games/putt-party/" data-cat="strategy">
+      <div class="gthumb"><img src="assets/thumbs/putt-party.png" alt="Putt Party screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Putt Party</h3><p>Toon mini golf: nine holes with windmills, sand, water and teleport pipes. Everyone putts at once.</p><div class="gtags"><span>Mini golf</span><span>Phone friendly</span></div></div>
+    </a>
+    <a class="gcard" href="games/block-stack/" data-cat="classic">
+      <div class="gthumb"><img src="assets/thumbs/block-stack.png" alt="Block Stack screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Block Stack</h3><p>One button. Drop the sliding block and build the tallest tower you can.</p><div class="gtags"><span>One-button</span><span>Original</span></div></div>
+    </a>
+    <a class="gcard" href="games/cube-flap/" data-cat="classic">
+      <div class="gthumb"><img src="assets/thumbs/cube-flap.png" alt="Cube Flap screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Cube Flap</h3><p>Flap a pink cube through the gaps between towers. Grab the coins!</p><div class="gtags"><span>One-button</span><span>Original</span></div></div>
+    </a>
+    <a class="gcard" href="games/snake/" data-cat="classic">
+      <div class="gthumb"><img src="assets/thumbs/snake.png" alt="Snake screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Snake</h3><p>Eat the apples, grow longer, don't bite yourself.</p><div class="gtags"><span>Classic</span></div></div>
+    </a>
+    <a class="gcard" href="games/breakout/" data-cat="classic">
+      <div class="gthumb"><img src="assets/thumbs/breakout.png" alt="Breakout screenshot" loading="lazy"></div>
+      <div class="gbody"><h3>Breakout</h3><p>Bounce the ball and smash every brick. New levels get harder.</p><div class="gtags"><span>Classic</span></div></div>
+    </a>
+    <div class="gcard soon" data-cat="classic">
+      <div class="gthumb soonthumb" aria-hidden="true">&#128570;</div>
+      <div class="gbody"><h3>Scratch game</h3><p>A game made in Scratch is on its way.</p><div class="gtags"><span>Coming soon</span></div></div>
+    </div>
+    </div>
+    <p class="nomatch" id="nomatch" hidden>No games match that. Try another word, or press <b>All</b>.</p>
   </div>
+</section>
 
-  <h2 class="section">Made in Scratch</h2>
-  <div class="grid" id="scratch">
-    <div class="card"><div class="thumb" style="background:#4d97ff;display:grid;place-items:center;font-size:56px">😺</div><div class="body"><h3>Scratch game</h3><p>Coming soon.</p><span class="tag soon">Coming soon</span></div></div>
+<section class="section alt" id="friends" data-hkf="show" hidden>
+  <div class="wrap promo">
+    <div class="promo-text">
+      <p class="eyebrow dark">Play together</p>
+      <h2>Invite your friends to a game</h2>
+      <p>Make a free account (just a username and a password, no email), add your friends, and invite them to a room in Blaster Arena, Fort Fight or Core Strike. They see the invite right on the page and press Join. There is no chat, only game invites.</p>
+      <div class="cta"><button type="button" class="btn big" data-hkf="open">Open Friends</button><a class="btn big ghost" href="docs/FRIENDS-SAFETY.md">What is stored</a></div>
+      <p class="fine">You need a sign-up code from HKugz to make an account.</p>
+    </div>
+    <ol class="steps">
+      <li><b>Make an account</b><span>A username and a password, nothing else. Never use your real name.</span></li>
+      <li><b>Add friends</b><span>By username or friend code. They accept, and you can see who is online.</span></li>
+      <li><b>Host and invite</b><span>Start a game, press Host, then invite a friend who is online. They press Join or Enter.</span></li>
+    </ol>
   </div>
+</section>
 
-  <section class="dev" id="submit">
-    <h2>Made a game? Put it here!</h2>
-    <p>This is a great place to start. If you make games and want more people to play yours, send it to me. I usually put games up here with your name on them, and I am reaching out to other young developers too. Anything that runs in a web page works: HTML, Scratch, Unity WebGL, and more.</p>
-    <div class="dev-actions"><a class="btn" id="submitBtn" href="https://github.com/HKugz11/hkugz-games/issues/new?title=Game%20submission%3A%20&amp;body=Game%20name%3A%0A%0AWho%20made%20it%20(the%20name%20you%20want%20shown)%3A%0A%0ALink%20to%20play%20it%2C%20or%20how%20to%20send%20me%20the%20files%3A%0A%0AIn%20one%20sentence%2C%20what%20is%20it%3F%0A%0AI%20am%20OK%20with%20my%20game%20being%20on%20HKugz%20Games%20(yes%2Fno)%3A" target="_blank" rel="noopener">Send me your game</a><a class="btn alt" id="mailBtn" href="#" style="display:none">Email me</a></div>
-    <p class="fine">I play every game before I put it up, I always credit the person who made it, and if you ever want yours taken down, just ask.</p>
-  </section>
+<section class="section" id="submit">
+  <div class="wrap">
+    <div class="submit">
+      <div>
+        <p class="eyebrow dark">For game makers</p>
+        <h2>Made a game? Put it here!</h2>
+        <p>This is a great place to start. If you make games and want more people to play yours, send it to me. I usually put games up here with your name on them, and I am reaching out to other young developers too. Anything that runs in a web page works: HTML, Scratch, Unity WebGL, and more.</p>
+        <p class="fine">I play every game before I put it up, I always credit the person who made it, and if you ever want yours taken down, just ask.</p>
+      </div>
+      <div class="dev-actions"><a class="btn big" id="submitBtn" href="https://github.com/HKugz11/hkugz-games/issues/new?title=Game%20submission%3A%20&amp;body=Game%20name%3A%0A%0AWho%20made%20it%20(the%20name%20you%20want%20shown)%3A%0A%0ALink%20to%20play%20it%2C%20or%20how%20to%20send%20me%20the%20files%3A%0A%0AIn%20one%20sentence%2C%20what%20is%20it%3F%0A%0AI%20am%20OK%20with%20my%20game%20being%20on%20HKugz%20Games%20(yes%2Fno)%3A" target="_blank" rel="noopener">Send me your game</a><a class="btn big alt" id="mailBtn" href="#" style="display:none">Email me</a></div>
+    </div>
+  </div>
+</section>
+</main>
 
-  <footer>
-    Games by HKugz. Tower of Destiny was made by DrDerico and is shared here with his permission; its HTML5 version was sponsored by <a href="https://www.coolmathgames.com/0-tower-of-destiny" target="_blank" rel="noopener">Coolmath Games</a>.<br>
-    Everything here is free to play, with no ads and no tracking. Scores are saved only in your own browser; move your progress to another device with a <a href="save/">save code</a>.<br>Online play in Blaster Arena, Core Strike and Fort Fight (only if you choose Host or Join) connects friends through the free <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> service.<br>
-    <span id="hkFriendsNote" hidden>Friends are optional: an account is just a username and a password, kept on HKugz's own server. Read <a href="docs/FRIENDS-SAFETY.md">what is stored and what is not protected</a>.<br></span>
-    Parents: <a href="timer/">set a daily play timer</a> on your kids' device.<br>
-    Questions or removal requests: <a href="https://github.com/HKugz11/hkugz-games/issues" target="_blank" rel="noopener">open an issue</a>.
-  </footer>
-</div>
+<footer class="foot">
+  <div class="wrap foot-grid">
+    <div class="foot-brand">
+      <a class="brand" href="./"><img src="assets/logo.svg" alt="" width="36" height="36"><span>HKugz <b>Games</b></span></a>
+      <p>Free browser games, made from scratch. No ads, no tracking. Scores are saved only in your own browser; move your progress to another device with a <a href="save/">save code</a>.</p>
+    </div>
+    <div><h4>Games</h4><a href="games/core-strike/">Core Strike</a><a href="games/blaster-arena/">Blaster Arena</a><a href="games/fort-fight/">Fort Fight</a><a href="#games">All games</a></div>
+    <div><h4>Help</h4><a href="save/">Save codes</a><a href="#submit">Submit a game</a><a href="https://github.com/HKugz11/hkugz-games/issues" target="_blank" rel="noopener">Report a problem or ask for removal</a></div>
+    <div><h4>Parents</h4><a href="timer/">Set a daily play timer</a><a href="docs/FRIENDS-SAFETY.md" data-hkf="show" hidden>Friends safety notes</a><a href="https://github.com/HKugz11/hkugz-games" target="_blank" rel="noopener">Source code</a></div>
+  </div>
+  <div class="wrap foot-small">
+    <p>Games by HKugz. Tower of Destiny was made by DrDerico and is shared here with his permission; its HTML5 version was sponsored by <a href="https://www.coolmathgames.com/0-tower-of-destiny" target="_blank" rel="noopener">Coolmath Games</a>.</p>
+    <p>Everything here is free to play, with no ads and no tracking. Online play in Blaster Arena, Core Strike and Fort Fight (only if you choose Host or Join) connects friends through the free <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> service.</p>
+    <p id="hkFriendsNote" hidden>Friends are optional: an account is just a username and a password, kept on HKugz's own server. Read <a href="docs/FRIENDS-SAFETY.md">what is stored and what is not protected</a>.</p>
+    <p>Questions or removal requests: <a href="https://github.com/HKugz11/hkugz-games/issues" target="_blank" rel="noopener">open an issue</a>.</p>
+  </div>
+</footer>
+
 <script>
   // Put a public contact email here to show an "Email me" button next to the submit button. Left empty on purpose.
   const CONTACT_EMAIL = "";
   if (CONTACT_EMAIL) { const b = document.getElementById("mailBtn"); b.href = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent("Game submission"); b.style.display = ""; }
+
+  // menu button on phones
+  (function () {
+    var burger = document.getElementById("burger"), links = document.getElementById("navlinks");
+    function set(open) { links.classList.toggle("open", open); burger.setAttribute("aria-expanded", open ? "true" : "false"); burger.setAttribute("aria-label", open ? "Close the menu" : "Open the menu"); }
+    burger.addEventListener("click", function () { set(!links.classList.contains("open")); });
+    links.addEventListener("click", function (e) { if (e.target.closest("a")) set(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") set(false); });
+  })();
+
+  // the featured-games slideshow: changes by itself every 6 seconds, stops when you point at it, and the dots jump to a game
+  (function () {
+    var slides = document.querySelectorAll("#show .slide"), dots = document.querySelectorAll("#dots button"), at = 0, timer = 0, box = document.getElementById("show");
+    function go(i) { at = (i + slides.length) % slides.length; slides.forEach(function (s, n) { s.classList.toggle("on", n === at); s.tabIndex = n === at ? 0 : -1; }); dots.forEach(function (d, n) { d.classList.toggle("on", n === at); }); }
+    function start() { stop(); if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) timer = setInterval(function () { go(at + 1); }, 6000); }
+    function stop() { clearInterval(timer); }
+    dots.forEach(function (d, n) { d.addEventListener("click", function () { go(n); start(); }); });
+    box.addEventListener("mouseenter", stop); box.addEventListener("mouseleave", start); box.addEventListener("focusin", stop); box.addEventListener("focusout", start);
+    go(0); start();
+  })();
+
+  // filter buttons + search
+  (function () {
+    var cards = [].slice.call(document.querySelectorAll("#ggrid .gcard")), chips = document.querySelectorAll("#chips .chip"), q = document.getElementById("q"), none = document.getElementById("nomatch"), filter = "all";
+    function apply() {
+      var word = q.value.trim().toLowerCase(), shown = 0;
+      cards.forEach(function (c) {
+        var ok = (filter === "all" || (" " + c.dataset.cat + " ").indexOf(" " + filter + " ") >= 0) && (!word || c.textContent.toLowerCase().indexOf(word) >= 0);
+        c.hidden = !ok; if (ok && !c.classList.contains("soon")) shown++;
+      });
+      none.hidden = shown > 0;
+    }
+    chips.forEach(function (b) { b.addEventListener("click", function () { filter = b.dataset.f; chips.forEach(function (x) { var on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false"); }); apply(); }); });
+    q.addEventListener("input", apply);
+    document.getElementById("gameCount").textContent = "(" + cards.filter(function (c) { return !c.classList.contains("soon") && !c.hasAttribute("data-nocount"); }).length + ")";
+  })();
 </script>
 </body>
 </html>

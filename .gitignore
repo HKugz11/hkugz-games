@@ -6,3 +6,4 @@ node_modules/
 cloudflare/.dev.vars
 cloudflare/.wrangler/
 cloudflare/node_modules/
+cloudflare/.admin-token

@@ -8,17 +8,22 @@
 //   node admin.js clear-reports         clear the report list
 //   node admin.js signups open|close    open or close sign-ups
 // On the server itself it talks to the running server with the secret in data/admin-token.txt. Nobody else has that secret.
-// For the Cloudflare version (or any server somewhere else) set two things first, then run the same commands:
+// For the Cloudflare version it finds the server in assets/friends-config.js and the secret in cloudflare/.admin-token (made by cloudflare/set-admin-token.js).
+// To point it at any other server, set two things first, then run the same commands:
 //   Windows (Command Prompt):  set HKF_URL=https://hkugz-friends.YOURNAME.workers.dev  &  set HKF_ADMIN_TOKEN=the-secret-you-made
 //   Linux / Mac:               export HKF_URL=https://...  HKF_ADMIN_TOKEN=...
 const fs = require('fs'), path = require('path'), http = require('http'), https = require('https');
 const cfgFile = process.env.HKF_CONFIG || path.join(__dirname, 'config.json');
 let cfg = {}; try { cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8')); } catch (e) {}
-const REMOTE = (process.env.HKF_URL || '').replace(/\/+$/, '');
+let REMOTE = (process.env.HKF_URL || '').replace(/\/+$/, '');
 const dataDir = path.resolve(path.dirname(cfgFile), cfg.dataDir || path.join(__dirname, 'data'));
 const port = +process.env.PORT || cfg.port || 8787, secure = !!(cfg.tls && cfg.tls.cert);
+if (!REMOTE && !fs.existsSync(path.join(dataDir, 'admin-token.txt'))) {     // no local server's data here: maybe this site uses the Cloudflare one
+  try { const m = /HK_FRIENDS_API\s*=\s*"(https:\/\/[^"]+)"/.exec(fs.readFileSync(path.join(__dirname, '..', 'assets', 'friends-config.js'), 'utf8')); if (m) { REMOTE = m[1].replace(/\/+$/, ''); console.log('Using the server at ' + REMOTE + ' (from assets/friends-config.js).'); } } catch (e) {}
+}
 let token = process.env.HKF_ADMIN_TOKEN || '';
-if (REMOTE && !token) { console.error('Set HKF_ADMIN_TOKEN to the admin secret first (see the top of admin.js).'); process.exit(1); }
+if (REMOTE && !token) { try { token = fs.readFileSync(path.join(__dirname, '..', 'cloudflare', '.admin-token'), 'utf8').trim(); } catch (e) {} }   // written by cloudflare/set-admin-token.js
+if (REMOTE && !token) { console.error('No admin secret found. Run "node set-admin-token.js" in the cloudflare folder, or set HKF_ADMIN_TOKEN (see the top of admin.js).'); process.exit(1); }
 if (!REMOTE) { try { token = fs.readFileSync(path.join(dataDir, 'admin-token.txt'), 'utf8').trim(); } catch (e) { console.error('Start the server once first (no data/admin-token.txt yet).'); process.exit(1); } }
 
 function call(method, url, body) {

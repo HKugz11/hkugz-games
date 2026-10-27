@@ -131,6 +131,8 @@ details summary{cursor:pointer;font-weight:700;font-size:14px}
     document.body.append(host);
     if (hubBtn) { hubBtn.hidden = false; pill.hidden = true; hubBtn.addEventListener('click', e => { e.preventDefault(); toggle(); }); }
     const note = document.getElementById('hkFriendsNote'); if (note) note.hidden = false;
+    for (const e of document.querySelectorAll('[data-hkf="show"]')) e.hidden = false;                    // parts of the page that only make sense when friends are on
+    for (const e of document.querySelectorAll('[data-hkf="open"]')) e.addEventListener('click', ev => { ev.preventDefault(); openPanel(); });
     document.addEventListener('pointerlockchange', () => { pill.hidden = !!hubBtn || !!document.pointerLockElement; });
     render(true); if (token) { startTimer(); poll(); }
   }

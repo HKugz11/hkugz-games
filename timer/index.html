@@ -6,8 +6,29 @@
 <meta name="description" content="For parents: set a daily play-time limit for the games on this device, protected by a PIN.">
 <link rel="icon" type="image/svg+xml" href="../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../assets/logo.png"><link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#42d7f1">
-<link rel="stylesheet" href="../assets/site.css">
-<body>
+<link rel="stylesheet" href="../assets/site.css?v=3">
+<body class="has-nav">
+<header class="topnav">
+  <div class="topnav-in">
+    <a class="brand" href="../"><img src="../assets/logo.svg" alt="" width="36" height="36"><span>HKugz <b>Games</b></span></a>
+    <nav class="navlinks" id="navlinks" aria-label="Main menu">
+      <a href="../#games">Games</a>
+      <a href="../save/">Save codes</a>
+      <a href="../#submit">Submit a game</a>
+      <a href="../timer/" aria-current="page">For parents</a>
+    </nav>
+    <div class="navright"><button class="burger" id="burger" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="navlinks"><span></span><span></span><span></span></button></div>
+  </div>
+</header>
+<script>
+  (function () {
+    var burger = document.getElementById("burger"), links = document.getElementById("navlinks");
+    function set(open) { links.classList.toggle("open", open); burger.setAttribute("aria-expanded", open ? "true" : "false"); burger.setAttribute("aria-label", open ? "Close the menu" : "Open the menu"); }
+    burger.addEventListener("click", function () { set(!links.classList.contains("open")); });
+    links.addEventListener("click", function (e) { if (e.target.closest("a")) set(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") set(false); });
+  })();
+</script>
 <div class="wrap">
   <header class="hero" style="padding-top:38px">
     <img class="logo" src="../assets/logo.svg" alt="HKugz Games logo" width="92" height="92">

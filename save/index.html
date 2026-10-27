@@ -6,7 +6,7 @@
 <meta name="description" content="Move your game progress to another device or keep a backup with a save code. No account, no password, no email.">
 <link rel="icon" type="image/svg+xml" href="../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../assets/logo.png"><link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#42d7f1">
-<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/site.css?v=3">
 <style>
   .box { background: rgba(255, 255, 255, .66); border-radius: 20px; padding: 20px 24px 22px; margin: 18px 0; box-shadow: var(--shadow); }
   .box h2 { margin: 0 0 8px; font-size: 22px; }
@@ -25,7 +25,28 @@
   #ldPreview { margin-top: 14px; }
   .back { display: inline-block; margin: 6px 0 30px; font-weight: 700; }
 </style>
-<body>
+<body class="has-nav">
+<header class="topnav">
+  <div class="topnav-in">
+    <a class="brand" href="../"><img src="../assets/logo.svg" alt="" width="36" height="36"><span>HKugz <b>Games</b></span></a>
+    <nav class="navlinks" id="navlinks" aria-label="Main menu">
+      <a href="../#games">Games</a>
+      <a href="../save/" aria-current="page">Save codes</a>
+      <a href="../#submit">Submit a game</a>
+      <a href="../timer/">For parents</a>
+    </nav>
+    <div class="navright"><button class="burger" id="burger" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="navlinks"><span></span><span></span><span></span></button></div>
+  </div>
+</header>
+<script>
+  (function () {
+    var burger = document.getElementById("burger"), links = document.getElementById("navlinks");
+    function set(open) { links.classList.toggle("open", open); burger.setAttribute("aria-expanded", open ? "true" : "false"); burger.setAttribute("aria-label", open ? "Close the menu" : "Open the menu"); }
+    burger.addEventListener("click", function () { set(!links.classList.contains("open")); });
+    links.addEventListener("click", function (e) { if (e.target.closest("a")) set(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") set(false); });
+  })();
+</script>
 <div class="wrap">
   <header class="hero" style="padding-top:38px">
     <img class="logo" src="../assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
