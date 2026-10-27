@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=49';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=61';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -32,6 +32,11 @@ function makeTextures() {
   TEX.floor = soft(16, [178, 116, 88], 12);
   TEX.floorConcrete = soft(16, [172, 174, 176], 10, (x, S) => { x.fillStyle = 'rgba(0,0,0,.1)'; x.fillRect(0, 0, S, 1); x.fillRect(0, 0, 1, S); x.fillRect(0, 8, S, 1); x.fillRect(8, 0, 1, S); });
   TEX.floorPave = soft(16, [206, 196, 176], 11, (x, S) => { x.fillStyle = 'rgba(70,55,35,.2)'; x.fillRect(0, 0, S, 1); x.fillRect(0, 8, S, 1); x.fillRect(0, 0, 1, 8); x.fillRect(8, 8, 1, 8); });
+  TEX.floorAsphalt = soft(16, [118, 124, 132], 10, (x, S) => { x.fillStyle = 'rgba(255,255,255,.07)'; x.fillRect(0, 0, S, 1); x.fillRect(0, 0, 1, S); x.fillStyle = 'rgba(255,214,70,.16)'; x.fillRect(5, 6, 6, 1); });
+  TEX.floorSnow = soft(16, [226, 233, 240], 7, (x, S) => { x.fillStyle = 'rgba(120,150,190,.12)'; x.fillRect(0, 8, S, 1); x.fillRect(8, 0, 1, S); });
+  TEX.floorDirt = soft(16, [184, 150, 108], 13, (x, S) => { x.fillStyle = 'rgba(80,55,30,.12)'; x.fillRect(3, 5, 3, 1); x.fillRect(10, 12, 4, 1); });
+  TEX.floorTile = soft(16, [204, 200, 190], 8, (x, S) => { x.fillStyle = 'rgba(40,40,40,.16)'; x.fillRect(0, 0, S, 1); x.fillRect(0, 0, 1, S); x.fillRect(0, 8, S, 1); x.fillRect(8, 0, 1, S); });
+  TEX.container = soft(16, [238, 238, 238], 5, (x, S) => { x.fillStyle = 'rgba(0,0,0,.16)'; for (let i = 1; i < S; i += 2) x.fillRect(i, 1, 1, S - 2); x.fillStyle = 'rgba(0,0,0,.42)'; x.fillRect(0, 0, S, 1); x.fillRect(0, S - 1, S, 1); x.fillRect(0, 0, 1, S); x.fillRect(S - 1, 0, 1, S); });
   TEX.site = soft(16, [198, 192, 182], 9, (x, S) => { x.fillStyle = 'rgba(0,0,0,.08)'; x.fillRect(0, 15, S, 1); x.fillRect(15, 0, 1, S); });
   TEX.crate = soft(16, [170, 122, 78], 8, (x, S) => {
     x.fillStyle = 'rgba(70,40,15,.25)'; for (let i = 3; i < S; i += 4) x.fillRect(1, i, S - 2, 1);
@@ -184,18 +189,18 @@ export function buildWorld(root) {
   for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
     const ch = G[z * W + x], h = HG[z * W + x], x0 = x * CS, z0 = z * CS, x1 = x0 + CS, z1 = z0 + CS;
     if (ch === '#') {
-      const side = (dx, dz) => { const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= W || nz >= H) return false; return G[nz * W + nx] !== '#' || HG[nz * W + nx] < h; };
+      const side = (dx, dz) => { const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= W || nz >= H) return false; return G[nz * W + nx] !== '#'; };   // faces between two wall cells are never seen from the ground (the rock is at least 5 m tall), so only faces next to open ground are built
       let f = ''; if (side(-1, 0)) f += 'x'; if (side(1, 0)) f += 'X'; if (side(0, -1)) f += 'z'; if (side(0, 1)) f += 'Z';
       const pal = TH.walls[(Math.floor(x / 5) * 7 + Math.floor(z / 4) * 13) % TH.walls.length];
       const t = 0.97 + rnd() * 0.05, T = pal.map((v) => v * t);
       if (f) { wb.add(x0, 0, z0, x1, 0.6, z1, { c0: T.map((v) => v * 0.72), c1: T, faces: f }); wb.add(x0, 0.6, z0, x1, h, z1, { c0: T, faces: f }); }
 
-      tops.add(x0, h - 0.01, z0, x1, h, z1, { faces: 'y', c0: T });
-      if (f) { const o = 0.1; trim.add(x0 - (f.includes('x') ? o : 0), h - 0.25, z0 - (f.includes('z') ? o : 0), x1 + (f.includes('X') ? o : 0), h + 0.1, z1 + (f.includes('Z') ? o : 0), { c0: T.map((v) => v * 0.85), faces: 'xXyzZ' }); }
+      if (f) tops.add(x0, h - 0.01, z0, x1, h, z1, { faces: 'y', c0: T });   // wall tops are never seen from the ground, so solid rock deep inside gets none (big maps are mostly rock)
+      if (f) { const o = 0.1; trim.add(x0 - (f.includes('x') ? o : 0), h - 0.25, z0 - (f.includes('z') ? o : 0), x1 + (f.includes('X') ? o : 0), h + 0.1, z1 + (f.includes('Z') ? o : 0), { c0: T.map((v) => v * 0.85), faces: f }); }   // the ledge only needs the sides that face open ground
     } else if (ch === 'C') {
-      crates.add(x0 + 0.02, 0, z0 + 0.02, x1 - 0.02, 1.96, z1 - 0.02, { uvMode: 'face' });
+      crates.add(x0 + 0.02, 0, z0 + 0.02, x1 - 0.02, 1.96, z1 - 0.02, TH.crates ? { uvMode: 'face', c0: TH.crates[(Math.floor(x / 3) * 7 + z * 13) % TH.crates.length] } : { uvMode: 'face' });   // maps with shipping containers colour them in runs of 3
     } else if (ch === 'c') {
-      for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const t = 0.88 + rnd() * 0.16; crates.add(x0 + a + 0.02, 0, z0 + b + 0.02, x0 + a + 0.98, 0.98, z0 + b + 0.98, { uvMode: 'face', c0: [t, t, t] }); }
+      for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const t = 0.88 + rnd() * 0.16, pc = TH.crates ? TH.crates[(x * 5 + z * 3) % TH.crates.length] : [1, 1, 1]; crates.add(x0 + a + 0.02, 0, z0 + b + 0.02, x0 + a + 0.98, 0.98, z0 + b + 0.98, { uvMode: 'face', c0: [pc[0] * t, pc[1] * t, pc[2] * t] }); }
     } else if ('P123'.includes(ch)) {
       conc.add(x0, 0, z0, x1, h, z1, { c0: [0.8, 0.8, 0.8], c1: [1, 1, 1] });
       if (ch === 'P') conc.add(x0, h, z0, x1, h + 0.04, z1, { c0: [1, 0.85, 0.3], faces: 'y' });
@@ -206,7 +211,7 @@ export function buildWorld(root) {
   addMesh(scene, wb.geometry(), lam({ map: TEX.wall, vertexColors: true }));
   addMesh(scene, tops.geometry(), lam({ map: TEX.wallTop, vertexColors: true }), false, true);
   addMesh(scene, trim.geometry(), lam({ map: TEX.wallTop, vertexColors: true }));
-  addMesh(scene, crates.geometry(), lam({ map: TEX.crate, vertexColors: true }));
+  addMesh(scene, crates.geometry(), lam({ map: TH.crates ? TEX.container : TEX.crate, vertexColors: true }));
   addMesh(scene, conc.geometry(), lam({ map: TEX.concrete, vertexColors: true }));
   addMesh(scene, bags.geometry(), lam({ map: TEX.bag, vertexColors: true }));
 
@@ -256,7 +261,7 @@ export function buildWorld(root) {
   // ---- skyline (skipped in Lite) ----
   const sk = new BoxBatch(), roofs = [], palms = [];
   for (let i = 0; i < (GFX.lite ? 0 : 70); i++) {
-    const a = rnd() * Math.PI * 2, r = 66 + rnd() * 80, x = W + Math.cos(a) * r * 1.15, z = H + Math.sin(a) * r;
+    const a = rnd() * Math.PI * 2, r = 66 + Math.max(0, Math.max(W, H) - 44) * CS * 0.5 + rnd() * 80, x = W + Math.cos(a) * r * 1.15, z = H + Math.sin(a) * r;
     const w = 6 + rnd() * 12, d = 6 + rnd() * 12, h = 7 + rnd() * 16;
     sk.add(x - w / 2, 0, z - d / 2, x + w / 2, h, z + d / 2, { c0: [0.85, 0.85, 0.85] });
     if (rnd() < 0.3) roofs.push(pt.box(w * 0.5, 2.5, d * 0.5, x, h + 1.25, z, rnd() < 0.5 ? TH.roofs[0] : TH.roofs[1]));

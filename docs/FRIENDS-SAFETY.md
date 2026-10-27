@@ -1,6 +1,8 @@
 # HKugz Games friends: what is stored, what a stranger could do, what is NOT protected
 
-This is the safety note for the optional **accounts, friends and game invites** feature. It is written to be read by a parent or any other adult who wants to check it before it is switched on. It describes what the code in `server/` and `assets/hkfriends.js` really does (the server has automated tests for most of the rules below, such as the log-in lock, blocking, the sign-up code and the hidden `server/` folder: `cd server && node --test test.js`).
+This is the safety note for the optional **accounts, friends and game invites** feature. It is written to be read by a parent or any other adult who wants to check it before it is switched on. It describes what the code in `server/core.js` (the rules), `cloudflare/` (the Cloudflare version) and `assets/hkfriends.js` (the panel) really does (the server has automated tests for most of the rules below, such as the log-in lock, blocking, the sign-up code and the hidden `server/` folder: `cd server && node --test test.js`).
+
+**Where it runs.** The recommended way is Cloudflare's free plan (`cloudflare/README.md`): the saved data then lives in Cloudflare's storage, and the Cloudflare account owner (a parent) controls it. It can also run on a computer you control (`server/README.md`), where the saved data is the file `server/data/db.json`. The rules are the same file either way.
 
 **The feature is off by default.** Until someone puts a server address in `assets/friends-config.js`, the hub and the games do not load any of it, show nothing and send nothing. Every game works the same with no account, and nothing here changes how the play timer works.
 
@@ -16,16 +18,16 @@ This is the safety note for the optional **accounts, friends and game invites** 
 
 | What | Where | Notes |
 |---|---|---|
-| Username (as typed) | `server/data/db.json` | Public to anyone who can type it exactly (see below). The sign-up form tells kids to make one up and rejects phone-number-like names. |
-| Password | `db.json`, as a **scrypt hash with its own random salt** | The password itself is never stored or logged. A wrong password takes as long to check as a right one. |
-| Friend code | `db.json` | 8 random characters (about 850 billion possibilities). A player can replace it any time. |
-| Friends, blocked players, waiting requests | `db.json` | Only the two people involved can see their own lists. |
-| Settings | `db.json` | "Appear offline" and "let people add me by username". |
-| Log-in sessions | `db.json`, only a **hash** of each session token and its expiry | 30 days, up to 5 devices, ended by log out, password change or a ban. |
-| Reports | `db.json` | Who reported, who was reported, one of four fixed reasons, and the time. No free text. |
-| Created / last log-in times | `db.json` | For housekeeping. |
+| Username (as typed) | the saved data (Cloudflare storage, or `server/data/db.json`) | Public to anyone who can type it exactly (see below). The sign-up form tells kids to make one up and rejects phone-number-like names. |
+| Password | the saved data, as a **scrypt hash with its own random salt** | The password itself is never stored or logged. A wrong password takes as long to check as a right one. |
+| Friend code | the saved data | 8 random characters (about 850 billion possibilities). A player can replace it any time. |
+| Friends, blocked players, waiting requests | the saved data | Only the two people involved can see their own lists. |
+| Settings | the saved data | "Appear offline" and "let people add me by username". |
+| Log-in sessions | the saved data, only a **hash** of each session token and its expiry | 30 days, up to 5 devices, ended by log out, password change or a ban. |
+| Reports | the saved data | Who reported, who was reported, one of four fixed reasons, and the time. No free text. |
+| Created / last log-in times | the saved data | For housekeeping. |
 | Who is online, what game they are in, open invites | **memory only** | Gone when the server restarts. Invites vanish after 10 minutes. |
-| IP addresses | **not stored** | They are used for a moment for rate limits and then forgotten. Logging is off unless the operator turns it on, and even then no IPs or passwords are written. |
+| IP addresses | **not stored by us** | They are used for a moment, in memory, for rate limits and then forgotten. Logging is off unless the operator turns it on, and even then no IPs or passwords are written. (On Cloudflare, Cloudflare itself sees every visitor's address and keeps its own short-lived logs, as any website host does.) |
 
 Nothing is sent to anyone else: no analytics, no ads, no Google, no fonts or scripts from other sites. The only outside service involved is the one the games already use (PeerJS, for introducing players in online games).
 
@@ -48,17 +50,17 @@ Assuming the server is set up as recommended (with a **sign-up code**, see `serv
 
 ## What is NOT protected (the honest list)
 
-1. **A hacked server or a hacked computer.** Whoever runs the server (or breaks into it) can see everything in the table above. Passwords are scrambled, but a weak or reused password can still be guessed offline from a stolen copy of the data. Tell kids never to reuse a password from another site.
-2. **No encryption unless HTTPS is set up.** The hub is on HTTPS, so browsers refuse to talk to a plain `http://` server; the setup guide covers getting a certificate. Without HTTPS nobody should be using the feature.
+1. **A hacked server, a hacked Cloudflare account, or a hacked computer.** Whoever runs the server, controls the Cloudflare account, or breaks into either can see everything in the table above. (Cloudflare itself could too, as the host.) Use a strong password and two-step login on the Cloudflare account. Passwords are scrambled, but a weak or reused password can still be guessed offline from a stolen copy of the data. Tell kids never to reuse a password from another site.
+2. **No encryption unless HTTPS is set up.** The hub is on HTTPS, so browsers refuse to talk to a plain `http://` server. Cloudflare gives HTTPS automatically; on your own computer the setup guide covers getting a certificate. Without HTTPS nobody should be using the feature.
 3. **Other code on the same web address can read the log-in.** The hub lives at `hkugz11.github.io`, the same address as Hyrum's other public site, and it also hosts a third-party game (Tower of Destiny). Any script that runs on that address could read the saved session token from `localStorage`. Moving the games site to its own server or address (planned) fixes the "other site" part; the third-party game stays a small risk until it is moved or separated.
-4. **Rate limits are only as good as the address the server can see.** If the server sits behind a plain tunnel (playit.gg), every visitor looks like the same address, so the "per address" limits become one limit for everybody. That is still a brake on floods, but one attacker could use up the shared allowance and block sign-ups or log-ins for a while. (A wrong-password lock can also be triggered on purpose against one account; it is capped at 15 minutes.) A proper reverse proxy (nginx, Caddy) with `"trustProxy": true` gives real per-address limits.
+4. **Rate limits are only as good as the address the server can see.** On Cloudflare the real address of every visitor is known, so the limits work per person. On your own computer behind a plain tunnel (playit.gg), every visitor looks like the same address, so the "per address" limits become one limit for everybody. That is still a brake on floods, but one attacker could use up the shared allowance and block sign-ups or log-ins for a while. (A wrong-password lock can also be triggered on purpose against one account; it is capped at 15 minutes.) A proper reverse proxy (nginx, Caddy) with `"trustProxy": true` gives real per-address limits.
 5. **No password reset by email**, because there is no email. A forgotten password is fixed by the operator with `node admin.js resetpw NAME`, and the operator has to be sure it really is that person (for example by asking in real life).
 6. **Moderation is one person.** Reports are a list that the operator reads with `node admin.js reports`. Nobody is watching all the time. Please agree who looks at it and how often (a weekly look is a sensible minimum), and what happens when the operator is away. A report also blocks the person, so the reporter is protected straight away.
 7. **A pop-up shows on the screen.** An invite notification contains the friend's username and the game name, and it appears wherever the browser shows notifications (including over a screen share or a shared family computer's screen). Turn it off in Settings on shared devices. The chime is off in Settings too.
 8. **Names are not checked for meaning.** There is a small list of banned words (admin, staff, hkugz and so on) and a phone-number check, not a swear-word filter. Report and ban are the safety net.
 9. **Room codes and in-game names are not part of this system.** After pressing Join, a player is in a normal game room: they can see the other players' in-game names (typed by each player, up to 12 characters) and, because the games connect directly (WebRTC), other players in the room can see their network address. That is how the games already worked, and the games' pages say so.
 10. **Age rules.** The sign-up form asks people to tick "I am 13 or older, or a parent or guardian said it is OK". Anyone can tick it, so it is a reminder and a record of intent, not a check. Whether a username plus friends list for under-13s counts as personal information under US children's privacy law (COPPA) is a question for an adult to settle (the FTC hotline or a lawyer), not something the code can answer.
-11. **Backups and "what if nobody looks after it".** Saved data is one file (`server/data/db.json`, with a copy of the previous save). If the disk dies and nobody made a backup, accounts are lost. If the person running the server stops, the safe shutdown is: set `window.HK_FRIENDS_API = ""` in `assets/friends-config.js` (everything disappears from the site), stop the server and delete `server/data/`.
+11. **Backups and "what if nobody looks after it".** On Cloudflare the saved data is in Cloudflare's storage and there is no easy download, so if the Cloudflare account were lost the accounts would be lost; on your own computer it is one file (`server/data/db.json`) that you can copy. If the person running it stops, the safe shutdown is: set `window.HK_FRIENDS_API = ""` in `assets/friends-config.js` (everything disappears from the site), then delete the server (`npx wrangler delete` on Cloudflare, or stop it and delete `server/data/`).
 
 ## Questions to go through together
 

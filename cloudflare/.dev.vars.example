@@ -1,0 +1,8 @@
+# Test secrets for `npm run dev` on this computer. Copy to .dev.vars (which git ignores) and change them.
+# These are NOT the real secrets: the real ones are set with `npx wrangler secret put` (see README.md).
+SIGNUP_CODE=localtest
+ADMIN_TOKEN=change-me-to-a-long-random-test-secret
+IP_SIGNUPS_PER_HOUR=500
+ALL_SIGNUPS_PER_HOUR=500
+ALLOWED_ORIGINS=https://hkugz11.github.io,http://localhost:8787,http://127.0.0.1:8787
+LOG=true

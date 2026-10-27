@@ -1,6 +1,6 @@
 # HKugz Friends server
 
-The small server behind **accounts, friends and game invites** on HKugz Games. GitHub Pages can only serve files, so this is the one piece that has to run somewhere. It is a single Node.js file with **no packages to install** (Node 18 or newer).
+The small server behind **accounts, friends and game invites** on HKugz Games. GitHub Pages can only serve files, so this is the one piece that has to run somewhere. This folder is the version for a computer you control (the Ubuntu server, or this PC): `server.js` is a Node.js file with **no packages to install** (Node 18 or newer) and all the rules are in `core.js`. **No access to a server? Use the Cloudflare version instead: [`../cloudflare/README.md`](../cloudflare/README.md)** (free, always on, nothing to keep running; it uses the same `core.js`).
 
 What it stores and what it does not protect: [`docs/FRIENDS-SAFETY.md`](../docs/FRIENDS-SAFETY.md). Please read that before switching it on.
 
@@ -16,7 +16,7 @@ node server.js
 
 Edit `config.json` first: at least change `signupCode`. To see the whole thing working on one computer, set `"siteDir": ".."` (the server then serves the games site too), open `http://localhost:8787/?hkapi=same`, and open a second tab at `http://127.0.0.1:8787/?hkapi=same` (a different address, so it is a different log-in). `?hkapi=` only works on `localhost` and `127.0.0.1`.
 
-Tests: `node --test test.js` (15 tests, they start their own throw-away copies of the server).
+Tests: `node --test test.js` (16 tests, they start their own throw-away copies of the server).
 
 ## Put it on the Ubuntu server
 

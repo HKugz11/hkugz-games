@@ -302,3 +302,20 @@ test('serving the site: files yes, server folder and dotfiles no', async () => {
     assert.equal((await s.raw('GET', '/api/info')).status, 200, 'the API still works next to the site');
   } finally { await s.close(); }
 });
+
+test('the core alone: admin is off without a secret, and a snapshot brings everything back', async () => {
+  const { createCore } = require('./core.js');
+  const mk = (cfg, raw) => createCore(Object.assign({ ipSignupsPerHour: 500, allSignupsPerHour: 500 }, cfg), raw);
+  const call = (c, method, path, body, token, headers) => c.handle({ method, path, headers: Object.assign(token ? { authorization: 'Bearer ' + token } : {}, headers || {}), ip: '1.2.3.4', text: body === undefined ? '' : JSON.stringify(body) }).then(r => ({ status: r.status, json: r.body ? JSON.parse(r.body) : null }));
+  const a = mk({});
+  assert.equal((await call(a, 'GET', '/admin/users', undefined, null, { 'x-admin-token': '' })).status, 403, 'no secret set = admin is off, even for an empty header');
+  assert.equal((await call(mk({ adminToken: 'short' }), 'GET', '/admin/users', undefined, null, { 'x-admin-token': 'short' })).status, 403, 'a short secret is refused');
+  const s = await call(a, 'POST', '/api/signup', { username: 'Alice', password: 'purple-giraffe-77', agree: true }); assert.equal(s.status, 200);
+  await call(a, 'POST', '/api/signup', { username: 'Bob', password: 'purple-giraffe-77', agree: true });
+  await call(a, 'POST', '/api/friend/request', { to: 'Bob' }, s.json.token);
+  assert.equal(a.dirty, true); a.clearDirty(); assert.equal(a.dirty, false);
+  const b = mk({}, JSON.parse(JSON.stringify(a.snapshot())));   // "restart": a new core from the saved data
+  assert.equal((await call(b, 'POST', '/api/poll', {}, s.json.token)).json.outgoing[0].to, 'Bob');
+  assert.equal((await call(b, 'POST', '/api/login', { username: 'bob', password: 'purple-giraffe-77' })).status, 200);
+  const big2 = await a.handle({ method: 'POST', path: '/api/login', headers: {}, ip: 'x', text: '', tooBig: true }); assert.equal(big2.status, 413); assert.equal(big2.close, true);
+});

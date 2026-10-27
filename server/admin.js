@@ -7,15 +7,25 @@
 //   node admin.js resetpw NAME          make a new temporary password for someone who forgot theirs
 //   node admin.js clear-reports         clear the report list
 //   node admin.js signups open|close    open or close sign-ups
-// It talks to the running server on this computer with the secret in data/admin-token.txt. Nobody else has that secret.
+// On the server itself it talks to the running server with the secret in data/admin-token.txt. Nobody else has that secret.
+// For the Cloudflare version (or any server somewhere else) set two things first, then run the same commands:
+//   Windows (Command Prompt):  set HKF_URL=https://hkugz-friends.YOURNAME.workers.dev  &  set HKF_ADMIN_TOKEN=the-secret-you-made
+//   Linux / Mac:               export HKF_URL=https://...  HKF_ADMIN_TOKEN=...
 const fs = require('fs'), path = require('path'), http = require('http'), https = require('https');
 const cfgFile = process.env.HKF_CONFIG || path.join(__dirname, 'config.json');
 let cfg = {}; try { cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8')); } catch (e) {}
+const REMOTE = (process.env.HKF_URL || '').replace(/\/+$/, '');
 const dataDir = path.resolve(path.dirname(cfgFile), cfg.dataDir || path.join(__dirname, 'data'));
 const port = +process.env.PORT || cfg.port || 8787, secure = !!(cfg.tls && cfg.tls.cert);
-let token; try { token = fs.readFileSync(path.join(dataDir, 'admin-token.txt'), 'utf8').trim(); } catch (e) { console.error('Start the server once first (no data/admin-token.txt yet).'); process.exit(1); }
+let token = process.env.HKF_ADMIN_TOKEN || '';
+if (REMOTE && !token) { console.error('Set HKF_ADMIN_TOKEN to the admin secret first (see the top of admin.js).'); process.exit(1); }
+if (!REMOTE) { try { token = fs.readFileSync(path.join(dataDir, 'admin-token.txt'), 'utf8').trim(); } catch (e) { console.error('Start the server once first (no data/admin-token.txt yet).'); process.exit(1); } }
 
 function call(method, url, body) {
+  if (REMOTE) {
+    return fetch(REMOTE + url, { method, headers: { 'x-admin-token': token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      .then(async r => { let j = {}; try { j = await r.json(); } catch (e) {} if (r.status !== 200) throw new Error(j.error || 'failed (' + r.status + ')'); return j; }, e => { throw new Error('Could not reach ' + REMOTE + ' (' + e.message + ')'); });
+  }
   return new Promise((res, rej) => {
     const data = body ? JSON.stringify(body) : '';
     const r = (secure ? https : http).request({ host: '127.0.0.1', port, path: url, method, rejectUnauthorized: false, headers: { 'x-admin-token': token, 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) } }, resp => {

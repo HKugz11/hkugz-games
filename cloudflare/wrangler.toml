@@ -1,0 +1,17 @@
+# HKugz Friends on Cloudflare (Worker + one Durable Object). Guide: cloudflare/README.md
+name = "hkugz-friends"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [{ name = "WORLD", class_name = "World" }]
+
+# The free plan only allows Durable Objects that store in SQLite, which is what this asks for.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["World"]
+
+# Safe to keep in the public repo. The SIGNUP_CODE and ADMIN_TOKEN secrets are NOT here: they are set with `wrangler secret put`.
+[vars]
+ALLOWED_ORIGINS = "https://hkugz11.github.io"

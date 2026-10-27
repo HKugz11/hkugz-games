@@ -1,9 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=49';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=61';
 import { initAudio, setVolume, setListener, SFX } from './audio.js';
-import { createOnline } from './online.js?v=50';
-import { buildWorld, soldierParts, soldierPartsLite, tpGuns, charMat, lensMats, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=49';
+import { createOnline } from './online.js?v=51';
+import { buildWorld, soldierParts, soldierPartsLite, tpGuns, charMat, lensMats, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=61';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -95,9 +95,10 @@ if (!MAP_LIST.some((m) => m.id === S.map)) S.map = 'sandstone';
 loadMap(S.map);
 const holdLookCache = new Map();
 let WORLD = null;
-const radarImg = document.createElement('canvas'); radarImg.width = W * 4; radarImg.height = H * 4;
+const radarImg = document.createElement('canvas');
 function drawRadarImg() {
-  const x = radarImg.getContext('2d'); x.clearRect(0, 0, radarImg.width, radarImg.height);
+  radarImg.width = W * 4; radarImg.height = H * 4; // bigger maps have a bigger map picture (this also clears it)
+  const x = radarImg.getContext('2d');
   for (let z = 0; z < H; z++) for (let cx = 0; cx < W; cx++) {
     const ch = G[z * W + cx], zn = ZONE[z * W + cx];
     x.fillStyle = ch === '#' ? 'rgba(0,0,0,0)' : 'Cc'.includes(ch) ? '#6d6253' : 'P123'.includes(ch) ? '#8f8a80' : ch === 'o' || ch === 's' ? '#7a6d55' : zn === 'a' || zn === 'b' ? '#b06a5a' : '#c9b48e';
@@ -109,7 +110,10 @@ function drawRadarImg() {
 function applyWorld() {
   if (WORLD) disposeWorld(WORLD.group);
   WORLD = buildWorld(scene);
-  sun.position.copy(sun.target.position).addScaledVector(WORLD.sunDir, 130);
+  // the sun and its shadow box follow the size of the map (bigger maps have a wider shadow box)
+  const sb = Math.max(60, Math.max(W, H) * CS * 0.68), ex = sb / 60;
+  sun.target.position.set(W, 0, H); sun.position.copy(sun.target.position).addScaledVector(WORLD.sunDir, 130 * ex);
+  Object.assign(sun.shadow.camera, { left: -sb, right: sb, top: sb, bottom: -sb, far: 220 * ex }); sun.shadow.camera.updateProjectionMatrix();
   scene.fog.color.setHex(MAP.theme.fog); renderer.setClearColor(MAP.theme.fog); // Lite has no sky dome: the fog colour is the sky
   drawRadarImg(); holdLookCache.clear();
   renderer.shadowMap.needsUpdate = true;
@@ -826,7 +830,7 @@ function startRound() {
   clearWorld();
   GS.state = 'freeze';
   GS.phaseT = GS.round === 1 || half ? 12 : 8;
-  GS.roundT = 105; GS.buyLeft = 20; GS.execute = false; GS.execT = 0; GS.fetcher = null; GS.roundStart = GS.time; GS.deathT = 0;
+  GS.roundT = 105 + MAP.roundBonus; GS.buyLeft = 20; GS.execute = false; GS.execT = 0; GS.fetcher = null; GS.roundStart = GS.time; GS.deathT = 0;
   const used = [[], []];
   for (const a of GS.actors) { resetActorForRound(a); spawnAt(a, a.side === 0 ? SPAWN.T : SPAWN.D, used[a.side]); a.mesh.g.visible = !a.isPlayer; }
   { let pl = Math.random() < 0.5 ? 'a' : 'b'; if (pl === GS.lastPlan && Math.random() < 0.6) pl = pl === 'a' ? 'b' : 'a'; GS.plan = GS.lastPlan = pl; }
@@ -2118,7 +2122,8 @@ function frame(now) {
   if (GS.state === 'menu') {
     if (LITE && (menuTick++ % 4)) return; // Lite: the spinning map behind the menu only redraws 15 times a second
     const t = now / 1000 * 0.06;
-    camera.position.set(W + Math.cos(t) * 34, 30, H + Math.sin(t) * 30); camera.lookAt(W, 0, H);
+    const zoomOut = Math.max(1, Math.max(W, H) / 44); // bigger maps: the spinning camera backs off
+    camera.position.set(W + Math.cos(t) * 34 * zoomOut, 30 * zoomOut, H + Math.sin(t) * 30 * zoomOut); camera.lookAt(W, 0, H);
     camera.fov = 60; camera.updateProjectionMatrix();
     if (QL.shadows && (QL.frame++ % 30) === 0) renderer.shadowMap.needsUpdate = true;
     if (WORLD.sky) WORLD.sky.position.copy(camera.position);

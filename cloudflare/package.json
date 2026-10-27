@@ -1,0 +1,15 @@
+{
+  "name": "hkugz-friends-cloudflare",
+  "version": "1.0.0",
+  "description": "The HKugz Friends server on Cloudflare Workers + a Durable Object",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8788",
+    "deploy": "wrangler deploy",
+    "test": "node smoke.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

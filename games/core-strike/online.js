@@ -246,7 +246,9 @@ export function createOnline(X) {
   function clientMsg(d) {
     if (!d || typeof d.t !== 'string') return;
     switch (d.t) {
-      case 'lobby': L = { code: d.code, players: d.players, cfg: d.cfg }; myPid = d.you; MP.pid = d.you; renderLobby(); break;
+      case 'lobby':
+        if (d.cfg && !X.MAP_LIST.some((m) => m.id === d.cfg.map)) { say('Your friend picked a map this copy of the game does not have. Refresh the page (Ctrl+Shift+R) and join again.', true); leaveNet(); show('home'); break; }
+        L = { code: d.code, players: d.players, cfg: d.cfg }; myPid = d.you; MP.pid = d.you; renderLobby(); break;
       case 'full': say('That room is full.', true); leaveNet(); show('home'); break;
       case 'busy': say('That match already started. Ask your friend to start a new one.', true); leaveNet(); show('home'); break;
       case 'kick': leaveNet(); show('home'); say('You were removed from the room.', true); break;

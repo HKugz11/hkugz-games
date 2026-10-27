@@ -3,3 +3,6 @@ server/config.json
 server/data/
 server/*.log
 node_modules/
+cloudflare/.dev.vars
+cloudflare/.wrangler/
+cloudflare/node_modules/
