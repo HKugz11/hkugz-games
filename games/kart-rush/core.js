@@ -102,6 +102,10 @@ const SFX = {
   zap: () => { tone(2000, 120, .5, 'sawtooth', .22); noise(.4, .4, 7000); }, lap: () => { tone(600, 900, .12, 'triangle', .22); tone(900, 1350, .16, 'triangle', .22, .1); },
   finish: () => { tone(520, 780, .14, 'triangle', .25); tone(780, 1040, .14, 'triangle', .25, .14); tone(1040, 1560, .35, 'triangle', .25, .28); }, bump: v => { noise(.1, .35 * v, 1500); tone(160, 80, .12, 'square', .16 * v); }, wall: v => noise(.15, .25 * v, 2800),
   click: () => tone(900, 700, .04, 'square', .08), wrong: () => { tone(300, 250, .2, 'square', .16); tone(300, 250, .2, 'square', .16, .3); }, tick: () => tone(1400, 1400, .03, 'square', .05),
+  jump: () => { tone(260, 760, .26, 'triangle', .22); noise(.12, .18, 3000); }, trick: () => { tone(600, 1200, .12, 'square', .13); tone(900, 1800, .14, 'square', .13, .1); tone(1200, 2400, .22, 'triangle', .18, .22); },
+  coin: v => tone(1100 + 70 * v, 1700 + 70 * v, .08, 'triangle', .2), star: () => { for (let i = 0; i < 7; i++) tone(500 + i * 130, 700 + i * 130, .09, 'square', .11, i * .055); },
+  mine: () => { noise(.25, .4, 1800); tone(150, 55, .25, 'sawtooth', .22); }, seeker: () => { tone(900, 200, .5, 'sawtooth', .16); noise(.3, .22, 5000); }, tick2: () => tone(700, 700, .04, 'square', .06),
+  unlock: () => { tone(520, 780, .12, 'triangle', .22); tone(780, 1040, .12, 'triangle', .22, .12); tone(1040, 1560, .12, 'triangle', .22, .24); tone(1560, 2080, .3, 'triangle', .22, .36); },
 };
 // the engine: a buzzing oscillator pair whose pitch follows your speed, plus a tyre squeal for drifting
 let eng = null;
@@ -110,6 +114,15 @@ export function engineStart() { if (!AC || eng) return; const o = AC.createOscil
 export function engineSet(spd, boost, skid, vol = 1) { if (!eng || !AC) return; const t = AC.currentTime; eng.o.frequency.setTargetAtTime(52 + spd * 160 + (boost ? 45 : 0), t, .05); eng.o2.frequency.setTargetAtTime(26 + spd * 80, t, .05); eng.f.frequency.setTargetAtTime(380 + spd * 1500, t, .08); eng.g.gain.setTargetAtTime(.05 * vol, t, .1); eng.ng.gain.setTargetAtTime(skid * .11, t, .05); }
 export function engineStop() { if (!eng) return; try { eng.o.stop(); eng.o2.stop(); eng.ns.stop(); } catch (e) {} eng = null; }
 export const sfx = (k, v = 1) => { if (AC && SFX[k]) SFX[k](v); };
+export const audio = () => ({ AC, master });   // the music module plugs into the same audio graph
+
+// ------------------------------------------------------------------ skid marks: a ring of dark quads laid down where karts drift
+const SK = { n: 420, i: 0, mesh: null }; const _skM = new THREE.Matrix4(), _skQ = new THREE.Quaternion(), _skP = new V3(), _skS = new V3(1, 1, 1), _skUp = new V3(0, 1, 0), _skZero = new THREE.Matrix4().makeScale(0, 0, 0);
+function skidInit() { const g = new THREE.PlaneGeometry(.42, 1.1); g.rotateX(-Math.PI / 2); g.userData.shared = true; const m = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ color: 0x0c0a14, transparent: true, opacity: .38, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -5 }), SK.n); m.frustumCulled = false; m.material.userData.shared = true; for (let i = 0; i < SK.n; i++) m.setMatrixAt(i, _skZero); scene.add(m); SK.mesh = m; }
+export function skid(x, y, z, yaw) { if (!SK.mesh) skidInit(); _skQ.setFromAxisAngle(_skUp, yaw); _skP.set(x, y + .07, z); _skM.compose(_skP, _skQ, _skS); SK.mesh.setMatrixAt(SK.i, _skM); SK.mesh.instanceMatrix.needsUpdate = true; SK.i = (SK.i + 1) % SK.n; }
+export function skidClear() { if (!SK.mesh) return; for (let i = 0; i < SK.n; i++) SK.mesh.setMatrixAt(i, _skZero); SK.mesh.instanceMatrix.needsUpdate = true; SK.i = 0; }
+export const hash32 = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; };
+export const S2 = { music: load('music', .55) };
 
 // ------------------------------------------------------------------ shared state
 export const W = { time: 0, state: 'menu' };

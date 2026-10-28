@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Kart Rush</title>
 <script src="../../assets/playtimer.js"></script>
-<meta name="description" content="A bright toon kart racer: drift for mini-turbos, grab item boxes, and beat seven robots around three tracks. Free, runs in your browser, on Chromebooks and on phones.">
+<meta name="description" content="A bright toon kart racer: drift for mini-turbos, grab item boxes, and beat seven robots around six tracks. Free, runs in your browser, on Chromebooks and on phones.">
 <style>
   :root { --y: #ffd34e; --c: #2ee6ff; --p: #ff4fa8; }
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
@@ -66,25 +66,41 @@
   #resTable { margin: 10px auto; border-collapse: collapse; min-width: 380px; } #resTable td, #resTable th { padding: 5px 12px; border-bottom: 1px solid rgba(255,255,255,.15); font-weight: 700; text-align: left; } #resTable th { font-size: 12px; letter-spacing: .15em; opacity: .65; } #resTable tr.me { color: var(--y); } #resTable i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 2px solid rgba(0,0,0,.4); vertical-align: -1px; }
   @media (max-width: 700px) { .stick { position: static; margin: 0; padding: 0; background: none; } #posN { font-size: 52px; } #lapN { font-size: 20px; min-width: 90px; } #mini { width: 120px; height: 120px; } #msgA { font-size: 52px; } }
   @media (max-height: 900px) { .screen { padding: 12px 16px; } h1 { font-size: clamp(34px, 9vh, 70px); } .sub { font-size: 15px; margin: 6px 0 10px; } .grp { margin: 8px 0; } button { font-size: 15px; padding: 9px 20px; } button.big { font-size: 22px; padding: 11px 34px; } button.modec { padding: 8px 12px; } button.modec span { font-size: 11.5px; } }
+  /* kart rush v3: speed lines, coins, star, unlock notes, the garage */
+  #speedfx { inset: 0; opacity: 0; background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(255,255,255,0) 0deg 3.2deg, rgba(255,255,255,.55) 3.5deg 4deg, rgba(255,255,255,0) 4.3deg 7deg); -webkit-mask-image: radial-gradient(circle at 50% 52%, transparent 38%, #000 80%); mask-image: radial-gradient(circle at 50% 52%, transparent 38%, #000 80%); mix-blend-mode: screen; }
+  #coinBox { left: 16px; bottom: 20px; font-size: 34px; font-weight: 900; text-shadow: 0 3px 0 rgba(0,0,0,.6); display: flex; align-items: center; gap: 8px; line-height: 1; } #coinBox small { font-size: 16px; opacity: .8; } #coinBox.max { color: var(--y); }
+  .coinIc { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6b0, #ffd23a 45%, #e09a10); border: 3px solid #a86a00; display: inline-block; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+  #starBox { left: 50%; top: 92px; transform: translateX(-50%); font-size: 15px; font-weight: 900; letter-spacing: .18em; color: #fff27a; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #note { position: fixed; left: 50%; top: 16px; transform: translateX(-50%) translateY(-140%); z-index: 20; background: linear-gradient(180deg, #ffe48a, #ffb02a); color: #3a2000; font-weight: 900; padding: 10px 22px; border-radius: 16px; box-shadow: 0 6px 0 rgba(120,60,0,.6); transition: transform .35s; letter-spacing: .04em; max-width: 92vw; text-align: center; pointer-events: none; } #note.on { transform: translateX(-50%) translateY(0); }
+  .garage { display: grid; grid-template-columns: minmax(250px, 320px) 1fr; gap: 16px; align-items: start; text-align: left; } .garage canvas { width: 100%; max-width: 320px; aspect-ratio: 300 / 190; border-radius: 18px; border: 3px solid rgba(255,255,255,.2); background: radial-gradient(ellipse at 50% 30%, #5a3aa0, #1a0f40); display: block; }
+  .garage .col { min-width: 0; } .garage h4 { margin: 8px 0 6px; font-size: 11px; letter-spacing: .22em; opacity: .6; } .garage .row { justify-content: flex-start; margin: 6px 0; }
+  @media (max-width: 760px) { .garage { grid-template-columns: 1fr; justify-items: center; } .garage .col { width: 100%; } }
+  button.locked { opacity: .55; filter: grayscale(.7); position: relative; } button.locked::after { content: '\1F512'; position: absolute; right: 6px; top: 4px; font-size: 13px; } button.swatch.locked::after { right: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 16px; }
+  .hats { display: flex; flex-wrap: wrap; gap: 8px; } button.hat { padding: 7px 12px; font-size: 13px; } .lockNote { font-size: 12.5px; min-height: 16px; margin-top: 6px; color: #ffe08a; } .stats { font-size: 12.5px; opacity: .75; margin: 8px 0 0; }
+  .lobRoster { display: grid; gap: 8px; margin: 12px 0; text-align: left; } .lobRoster .pl { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.1); border-radius: 12px; padding: 8px 14px; font-weight: 800; } .lobRoster .pl i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0,0,0,.4); flex: none; } .lobRoster .pl small { margin-left: auto; opacity: .7; font-weight: 700; letter-spacing: .08em; }
+  .lobCfg { margin: 10px 0; } .lobCfg .row { margin: 8px 0; } .lobCfg .txt { font-weight: 800; opacity: .9; margin: 6px 0; } select { font: inherit; font-weight: 800; padding: 9px 12px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.7); color: #fff; }
 </style>
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#0b0720">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Kart Rush - free browser game">
-<meta property="og:description" content="A bright toon kart racer: drift for mini-turbos, grab item boxes, and beat seven robots around three tracks. Free, runs in your browser, on Chromebooks and on phones.">
+<meta property="og:description" content="A bright toon kart racer: drift for mini-turbos, grab item boxes, and beat seven robots around six tracks. Free, runs in your browser, on Chromebooks and on phones.">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/kart-rush/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/kart-rush.png">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
 <canvas id="view"></canvas>
+<div id="note"></div>
 <div class="hud" id="hud">
-  <div id="zap"></div><div id="hit"></div>
+  <div id="zap"></div><div id="hit"></div><div id="speedfx"></div>
   <div id="pos"><span id="posN">1</span><span id="posS">st</span></div>
   <div id="lapBox"><div id="lapN">1 / 3</div><div id="lapT">0:00.00</div><div id="bestLap"></div></div>
   <div id="itemBox"><canvas id="itemCv" width="64" height="64"></canvas><div id="itemN"></div></div>
   <canvas id="mini" width="170" height="170"></canvas>
   <div id="fps">-- FPS</div>
   <div id="speedBox"><span id="speed">0</span><small>KM/H</small></div>
+  <div id="coinBox"><i class="coinIc"></i><span id="coinN">0</span><small>/ 10</small></div>
+  <div id="starBox" class="hide">STAR</div>
   <div id="boostBar" class="hide">BOOST<div class="trk"><div></div></div></div>
   <div id="driftBar" class="hide">DRIFT<div class="trk"><div id="driftF"></div></div></div>
   <div id="msg"><div id="msgA"></div><div id="msgB"></div></div>
@@ -94,25 +110,36 @@
   <a class="back" href="../../">&larr; All games</a>
   <div class="box">
     <img src="../../assets/logo.svg" alt="HKugz Games logo" style="display:block;margin:0 auto 6px;width:clamp(48px,11vh,88px);height:clamp(48px,11vh,88px);filter:drop-shadow(0 3px 10px rgba(0,0,0,.45))"><h1>KART<br>RUSH</h1>
-    <p class="sub">Drift, grab item boxes, and beat seven robots. No blood, just confetti.</p>
+    <p class="sub">Drift, jump, grab items and coins, and beat seven robots. No blood, just confetti.</p>
     <div id="menuPickers"></div>
-    <div class="stick"><div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">RACE!</button></div></div>
+    <div class="stick"><div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">RACE!</button><span id="onlineRow" class="row hide" style="margin:0"><input type="text" id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" style="width:112px"><button class="alt" id="joinBtn">JOIN</button><button class="big" id="hostBtn">HOST</button></span></div></div>
     <details><summary>Controls</summary>
     <div class="keys">
       <div><b>W / Up</b> gas &nbsp; <b>S / Down</b> brake and reverse</div><div><b>A D / Left Right</b> steer</div>
       <div><b>Shift or Space</b> drift: hold it in a turn, steer through it, then let go for a mini-turbo (blue, orange, purple = bigger)</div><div><b>E, Enter or click</b> use your item</div>
       <div><b>R</b> put yourself back on the road &nbsp; <b>Esc</b> pause</div><div><b>Rocket start:</b> press gas just as the countdown hits GO</div>
-      <div><b>Item boxes</b> give you turbo, rockets, oil slicks, a shield or a zap. The further back you are, the better the items!</div><div><b>Phones and tablets:</b> left thumb steers, DRIFT is the big button, gas is automatic</div>
+      <div><b>Item boxes</b> give you turbo, rockets, bombs, oil slicks, a shield, a zap, a seeker or a star. The further back you are, the better the items!</div><div><b>Ramps:</b> hit one fast to fly. Press drift in the air for a trick: you get a boost when you land</div><div><b>Coins:</b> collect up to 10 for a higher top speed. Getting hit makes you drop 3</div><div><b>Garage:</b> win races and cups, do tricks and collect coins to unlock hats, paints and karts</div><div><b>Phones and tablets:</b> left thumb steers, DRIFT is the big button, gas is automatic</div>
     </div></details>
     <details><summary>Settings</summary>
       <label>Field of view <input type="range" id="fov" min="60" max="110" step="1"></label>
       <label>Volume <input type="range" id="vol" min="0" max="1" step=".05"></label>
+      <label>Music <input type="range" id="music" min="0" max="1" step=".05"></label>
     </details>
     <p class="fine">An original kart racer, not affiliated with any game company.</p>
   </div>
 </div>
+<div class="screen hide" id="lobby"><div class="box" style="max-width:660px">
+  <h1 style="font-size:46px">ONLINE RACE</h1>
+  <p class="sub" style="margin:8px 0">Room code <b id="lobCode" style="font-size:34px;letter-spacing:.2em;color:#ffd34e">-----</b></p>
+  <p class="fine">Tell your friends the code (up to 6 players; robots fill the empty spots). Players connect directly. The free PeerJS service only introduces them, so players can see each other's network address: only share the code with people you know.</p>
+  <div id="lobRoster" class="lobRoster"></div>
+  <div id="lobCfg" class="lobCfg"></div>
+  <div class="row"><button class="big" id="lobStart">START RACE</button><button class="alt" id="lobLeave">Leave room</button></div>
+  <p id="lobMsg" class="mdesc"></p>
+</div></div>
 <div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="restart">Restart race</button><button class="alt" id="quit">Quit to menu</button></div></div></div>
-<div class="screen hide" id="results"><div class="box" style="max-width:640px"><h1 id="resT" style="font-size:54px">RACE OVER</h1><p id="resS"></p><table id="resTable"></table><div class="row"><button class="big" id="again">RACE AGAIN</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
-<script type="module" src="game.js?v=2"></script>
+<div class="screen hide" id="results"><div class="box" style="max-width:640px"><h1 id="resT" style="font-size:54px">RACE OVER</h1><p id="resS"></p><p id="resU" style="color:#ffe08a;font-weight:900;margin:4px 0"></p><table id="resTable"></table><div class="row"><button class="big" id="again">RACE AGAIN</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
+<script src="vendor/peerjs.min.js"></script>
+<script type="module" src="game.js?v=3"></script>
 </body>
 </html>

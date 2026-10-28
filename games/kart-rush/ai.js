@@ -1,6 +1,6 @@
 // KART RUSH - the computer drivers: they follow the track, cut inside corners, slow down for bends, drift, dodge and use items.
-import { clamp, lerp, rnd, angDiff } from './core.js?v=2';
-import { pointAt, nearest } from './track.js?v=2';
+import { clamp, lerp, rnd, angDiff } from './core.js?v=3';
+import { pointAt, nearest } from './track.js?v=3';
 
 export const DIFFS = {
   easy: { name: 'Easy', top: .86, skill: .5, items: .45, noise: .5 },
@@ -24,14 +24,16 @@ export function aiDrive(k, tr, ctx, dt) {
   // drift through longer bends
   const k0 = pointAt(tr, k.s + 14).kappa; const wantDrift = D.skill > .7 && Math.abs(k0) > .0075 && k.vf > 28 && !k.offroad;
   if (wantDrift) { const dir = Math.sign(k0); inp.drift = true; if (!k.drift.on) inp.steer = dir * Math.max(.6, Math.abs(inp.steer)); else if (Math.sign(inp.steer) !== dir) inp.steer = dir * .3; } else inp.drift = false;
+  if (k.air) inp.drift = D.skill > .55;   // tricks in the air
   // items
   inp.itemPressed = false;
   if (k.item) {
     a.itemT += dt; const it = k.item, rank = k.place - 1; let use = false;
-    if (it === 'turbo') use = Math.abs(kap) < .006 && a.itemT > .8; else if (it === 'shield') use = a.itemT > 3 + Math.random() * .02;
+    if (it === 'turbo' || it === 'turbo3') use = Math.abs(kap) < .006 && a.itemT > .8; else if (it === 'shield') use = a.itemT > 3 + Math.random() * .02;
+    else if (it === 'star') use = a.itemT > .5; else if (it === 'seeker') use = rank >= 3 && a.itemT > 1.2;
     else if (it === 'zap') use = rank >= 2 && a.itemT > 1;
-    else if (it === 'banana') { for (const o of ctx.karts) { const behind = k.dist - o.dist; if (o !== k && behind > 4 && behind < 34 && Math.abs(o.d - k.d) < 6) use = true; } if (a.itemT > 14) use = true; }
-    else if (it === 'rocket') { for (const o of ctx.karts) { const ahead = o.dist - k.dist; if (o !== k && ahead > 14 && ahead < 120 && Math.abs(o.d - k.d) < 14) use = true; } if (a.itemT > 12) use = true; }
+    else if (it === 'banana' || it === 'mine') { for (const o of ctx.karts) { const behind = k.dist - o.dist; if (o !== k && behind > 4 && behind < 34 && Math.abs(o.d - k.d) < 6) use = true; } if (a.itemT > 14) use = true; }
+    else if (it === 'rocket' || it === 'rocket3') { for (const o of ctx.karts) { const ahead = o.dist - k.dist; if (o !== k && ahead > 14 && ahead < 120 && Math.abs(o.d - k.d) < 14) use = true; } if (a.itemT > 12) use = true; }
     if (use && Math.random() < D.items * 4 * dt + .02) { inp.itemPressed = true; a.itemT = 0; }
   } else a.itemT = 0;
   // stuck against something? put us back on the road
