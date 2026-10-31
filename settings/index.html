@@ -121,6 +121,9 @@
     { id: "liftoff-labs", name: "Liftoff Labs", thumb: "liftoff-labs.png", store: inObject("ll.settings"), groups: [
       ["Game", [C("mode", "Mode", "career", [["career", "Career (earn money)"], ["sandbox", "Sandbox (all parts free)"]]), C("easy", "Easy mode", false, [[false, "Off"], [true, "On"]], "Stronger steering, tougher parts, gentler air")]],
       ["Sound and graphics", [vol(), (function () { var f = C("quality", "Graphics", null, [[null, "Auto"], ["low", "Low"], ["high", "High"]]); f.tag = "gfx"; f.map = { auto: null, low: "low", med: "high", high: "high" }; return f; })()]]] },
+    { id: "deep-sea-dive", name: "Deep Sea Dive", thumb: "deep-sea-dive.jpg", store: inObject("dsd.settings"), groups: [
+      ["Controls", [R("sens", "Look speed", 0.3, 3, 0.1, 1, function (v) { return v.toFixed(1) + "x"; }), C("camDist", "Camera distance", 1, [[0, "Close"], [1, "Medium"], [2, "Far"]])]],
+      ["Sound and graphics", [vol(), C("lite", "Lite graphics (Chromebooks)", false, [[false, "Off"], [true, "On"]])]]] },
     { id: "tower-of-destiny", name: "Tower of Destiny", thumb: "tower.png", groups: [], note: "This game has no settings of its own, but the volume and brightness in All games work on it." },
     { id: "sky-tower", name: "Sky Tower", thumb: "sky-tower.png", store: eachKey("st."), groups: [
       ["Controls", [sens(1), fov(78, 60, 110)]],

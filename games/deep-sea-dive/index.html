@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Deep Sea Dive</title>
+<script src="../../assets/playtimer.js"></script>
+<script src="../../assets/hksettings.js"></script>
+<meta name="description" content="Dive from your boat, catch colorful fish with a net and spear gun, sell them, upgrade your gear and swim down to the deepest, darkest parts of the ocean. A free 3D underwater game that runs in your browser.">
+<style>
+  /* The look matches the other HKugz Games: Trebuchet MS, chunky rounded buttons with a hard bottom shadow, dark glass panels. */
+  :root { --peach: #FFB780; --coral: #FF9280; --peri: #80ACFF; --aqua: #9CF3FF;
+    --y: var(--peach); --c: var(--aqua); --p: var(--coral); --g: var(--aqua); --r: var(--coral); --panel: rgba(16,26,74,.76); --line: rgba(128,172,255,.42); }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #04122a; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff; overscroll-behavior: none; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+  .hide { display: none !important; }
+  /* the mouse pointer is a little crosshair ring; while you are diving it is hidden, because the crosshair in the middle of the screen is your pointer */
+  html, body, button, .item[data-pick], canvas { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='28'%20height='28'%20viewBox='0%200%2028%2028'%3E%3Ccircle%20cx='14'%20cy='14'%20r='9'%20fill='none'%20stroke='black'%20stroke-opacity='.55'%20stroke-width='4'/%3E%3Ccircle%20cx='14'%20cy='14'%20r='9'%20fill='none'%20stroke='white'%20stroke-width='2'/%3E%3Ccircle%20cx='14'%20cy='14'%20r='2.2'%20fill='white'/%3E%3C/svg%3E") 14 14, crosshair !important; }
+  html.playing, html.playing * { cursor: none !important; }
+  /* icons: dark grey outlines on a white circle, like the HKugz Games logo */
+  .gi { display: inline-block; flex: none; vertical-align: middle; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); }
+  button .gi { margin-right: 2px; } h2 .gi { vertical-align: -10px; margin-right: 8px; }
+  #sharkIcon, #hideIcon { display: flex; align-items: center; gap: 8px; } #sharkIcon.hide, #hideIcon.hide { display: none !important; }
+  #muteBtn { display: flex; align-items: center; padding: 3px 8px; }
+  a.back { position: fixed; left: 16px; top: 12px; z-index: 12; color: #fff; opacity: .7; font-size: 13px; text-decoration: none; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+  a.back:hover { opacity: 1; }
+
+  /* ---------- buttons: game-style plates (bright frame, glossy bevel, slanted corners, shine on hover, press-in) ---------- */
+  button {
+    --f1: #ffffff; --p1: #e4fcff; --p2: #9CF3FF; --p3: #6edbed; --p4: #84e6f5; --txt: #0e3550; --tsh: 0 1px 0 rgba(255,255,255,.7);
+    position: relative; overflow: hidden; font: inherit; font-weight: 900; font-size: 16px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--txt); text-shadow: var(--tsh); border: 0; padding: 12px 26px; cursor: pointer; border-radius: 6px 18px 6px 18px;
+    background: var(--p2);
+    box-shadow: inset 0 0 0 3px var(--f1), 0 5px 14px rgba(40,60,150,.28);
+    transition: transform .08s, filter .12s, box-shadow .12s;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.06) saturate(1.1); transform: translateY(-1px); }
+  button:active:not(:disabled) { transform: translateY(2px); filter: brightness(.97); box-shadow: inset 0 0 0 3px var(--f1), 0 2px 6px rgba(40,60,150,.25); }
+  button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  button:disabled { filter: grayscale(.8); opacity: .55; cursor: default; }
+  button.alt { }
+  button.go { --tsh: 0 1px 0 rgba(255,255,255,.55); --f1: #ffffff; --p1: #ffd0c6; --p2: #FF9280; --p3: #ef6c57; --p4: #f98068; --txt: #4a1208; }
+  button.gold { --tsh: 0 1px 0 rgba(255,255,255,.55); --f1: #ffffff; --p1: #ffe2c9; --p2: #FFB780; --p3: #f2954d; --p4: #fba665; --txt: #4a2406; }
+  button.warn { --tsh: 0 2px 0 rgba(90,10,0,.5); --f1: #ffd6cf; --p1: #ff8a78; --p2: #e4584a; --p3: #bf3a2d; --p4: #d24739; --txt: #ffffff; }
+  button.ghost { --tsh: 0 1px 0 rgba(255,255,255,.55); --f1: #ffffff; --p1: #dbe8ff; --p2: #80ACFF; --p3: #5b8cf0; --p4: #6e9bf7; --txt: #0e2252; }
+  button.small { font-size: 13px; padding: 7px 15px; border-radius: 5px 12px 5px 12px; letter-spacing: .07em; }
+  button.big { font-size: 24px; padding: 15px 46px; letter-spacing: .12em; border-radius: 8px 24px 8px 24px; }
+  button.sel { outline: 4px solid #fff; }
+
+  /* ---------- panels and screens ---------- */
+  .panel { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+  .screen { position: fixed; inset: 0; z-index: 8; display: grid; place-items: start center; overflow-y: auto; text-align: center; padding: 22px; background: radial-gradient(ellipse at 50% 30%, rgba(60,80,190,.5), rgba(8,14,52,.9)); }
+  .screen .box { width: 100%; max-width: 980px; margin: auto; }
+  .screen.side { place-items: center start; background: linear-gradient(90deg, rgba(14,22,74,.84) 0%, rgba(14,22,74,.42) 42%, rgba(14,22,74,0) 68%); padding-left: 5vw; }
+  .screen.side .box { max-width: 420px; margin: 0; text-align: left; }
+  h1 { font-size: clamp(40px, 8.5vw, 84px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff0e0, #FFB780 48%, #FF9280); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(30,30,110,.85)) drop-shadow(0 0 26px rgba(128,172,255,.6)); }
+  h2 { margin: 0 0 6px; font-size: 30px; letter-spacing: .01em; text-shadow: 0 3px 0 rgba(0,0,0,.45); color: var(--y); }
+  h3 { margin: 0; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; opacity: .7; }
+  .logo { width: 52px; height: 52px; filter: drop-shadow(0 3px 10px rgba(0,0,0,.5)); }
+  .sub { opacity: .88; font-size: 16px; margin: 8px 0 16px; line-height: 1.4; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row.c { justify-content: center; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .coins { display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 5px 16px 5px 8px; font-weight: 900; font-size: 20px; color: var(--g); text-shadow: 0 2px 0 rgba(0,0,0,.45); }
+  .coins:before { content: ""; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6b0, #ffc21a 60%, #c27a00); box-shadow: 0 2px 0 rgba(0,0,0,.4), inset 0 0 0 3px rgba(255,255,255,.35); }
+  .fine { font-size: 12px; opacity: .6; line-height: 1.5; }
+  input[type=range] { width: 200px; accent-color: #FFB780; }
+  .setrow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.07); margin: 8px 0; font-weight: 700; text-align: left; }
+
+  /* ---------- boat menu ---------- */
+  #boatMenu .col button { text-align: left; display: flex; align-items: center; gap: 12px; padding: 13px 24px 13px 30px; font-size: 17px; border-radius: 4px 22px 4px 22px; }
+  #boatMenu .col button:before { content: "\25B6"; position: absolute; left: 10px; font-size: 11px; opacity: 0; transform: translateX(-8px); transition: opacity .12s, transform .12s; }
+  #boatMenu .col button:hover:not(:disabled):before { opacity: 1; transform: none; }
+  #boatMenu .col button.big { font-size: 26px; padding: 16px 24px 16px 30px; }
+  #boatMenu .col button span.sm { margin-left: auto; font-size: 13px; opacity: .85; font-weight: 700; }
+  #boatMenu h1 { margin-top: 4px; }
+  #bmTag { font-size: 16px; opacity: .9; margin: 8px 0 14px; font-weight: 700; }
+
+  /* ---------- dive plan ---------- */
+  .zone { display: flex; gap: 12px; align-items: center; text-align: left; padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,.07); border: 2px solid transparent; margin: 8px 0; }
+  .zone .zc { width: 14px; align-self: stretch; border-radius: 8px; flex: none; }
+  .zone b { font-size: 18px; } .zone small { display: block; opacity: .8; font-size: 13px; margin-top: 2px; }
+  .zone .st { margin-left: auto; font-weight: 900; font-size: 13px; letter-spacing: .08em; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+  .zone .st.ok { background: #9CF3FF; color: #0e3550; } .zone .st.no { background: #FF9280; color: #4a1208; }
+  .need { font-size: 12px; color: #FF9280; font-weight: 700; }
+  .need.ok { color: #9CF3FF; }
+
+  /* ---------- shop ---------- */
+  .tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0; } .tabs .gi { margin-right: 4px; }
+  .tabs button { font-size: 13px; padding: 9px 20px; border-radius: 5px 14px 5px 14px; --f1: rgba(255,255,255,.9); --p1: #80ACFF; --p2: #80ACFF; --p3: #80ACFF; --p4: #80ACFF; --txt: #0e2252; --tsh: 0 1px 0 rgba(255,255,255,.55); }
+  .tabs button.on { --f1: #ffffff; --p1: #ffe2c9; --p2: #FFB780; --p3: #f2954d; --p4: #fba665; --txt: #4a2406; filter: drop-shadow(0 0 8px rgba(255,183,128,.7)); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; text-align: left; }
+  .item { padding: 14px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+  .item.done { border-color: rgba(156,243,255,.65); } .item.sel { box-shadow: 0 0 0 2px #FFB780, 0 0 18px rgba(255,183,128,.5); } .item[data-pick] { cursor: pointer; }
+  .shopwrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; text-align: left; }
+  .shopwrap .grid { grid-template-columns: 1fr; }
+  .prev { position: sticky; top: 8px; padding: 12px; text-align: center; background: radial-gradient(ellipse at 50% 35%, rgba(128,172,255,.42), rgba(14,22,74,.88)); }
+  #shView { width: 100%; max-width: 296px; aspect-ratio: 1; display: block; margin: 0 auto 6px; } .prev b { font-size: 18px; }
+  @media (max-width: 760px) { .shopwrap { grid-template-columns: 1fr; } .prev { position: static; order: -1; } #shView { max-width: 220px; } }
+  .item .ih { display: flex; align-items: center; gap: 10px; }
+  .item .ico { width: 48px; height: 48px; display: grid; place-items: center; flex: none; } .item .ico:empty { display: none; }
+  .tl { font-size: 12px; font-weight: 900; letter-spacing: .14em; opacity: .85; }
+  .item b { font-size: 18px; } .item .lv { font-size: 12px; opacity: .7; letter-spacing: .1em; font-weight: 800; }
+  .item p { margin: 0; font-size: 14px; opacity: .88; line-height: 1.35; }
+  .item .now { font-size: 13px; opacity: .65; }
+  .item .buy { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .price { font-weight: 900; font-size: 20px; color: var(--y); } .price.no { color: #ff9a9a; }
+  .price:before { content: "$"; margin-right: 2px; opacity: .8; }
+  .pill { font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px; letter-spacing: .06em; }
+  .pill.max { background: #9CF3FF; color: #0e3550; }
+
+  /* ---------- fish-dex ---------- */
+  .dex { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .fcard { padding: 10px 12px 12px; text-align: center; border-radius: 16px; position: relative; border-width: 2px; }
+  .fcard .fi { height: 88px; display: grid; place-items: center; }
+  .fcard .fi img { max-width: 100%; max-height: 88px; image-rendering: auto; }
+  .fcard.lock .fi img { filter: brightness(0) opacity(.8); }
+  .fcard b { display: block; font-size: 15px; margin-top: 4px; min-height: 20px; }
+  .fcard .rar { font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+  .fcard small { display: block; opacity: .75; font-size: 12px; margin-top: 3px; line-height: 1.3; min-height: 32px; }
+  .fcard .val { color: var(--y); font-weight: 900; font-size: 14px; }
+  .fcard .n { position: absolute; top: 8px; right: 10px; font-size: 12px; font-weight: 900; background: rgba(255,255,255,.14); padding: 2px 8px; border-radius: 999px; }
+  .fcard.sp:after { content: "SPEAR ONLY"; position: absolute; top: 8px; left: 8px; font-size: 9px; font-weight: 900; letter-spacing: .08em; background: #ff8a2a; color: #2a1000; padding: 2px 6px; border-radius: 6px; }
+  .bar { height: 12px; border-radius: 8px; background: rgba(255,255,255,.14); overflow: hidden; margin: 6px 0 14px; } .bar i { display: block; height: 100%; background: linear-gradient(90deg, #9CF3FF, #80ACFF); border-radius: 8px; }
+
+  /* ---------- sell ---------- */
+  .sl { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.07); margin: 6px 0; text-align: left; }
+  .sl img { width: 64px; height: 44px; object-fit: contain; flex: none; }
+  .sl b { flex: 1; font-size: 16px; } .sl small { display: block; opacity: .7; font-weight: 700; font-size: 12px; }
+  .sl .v { color: var(--y); font-weight: 900; min-width: 70px; text-align: right; }
+
+  /* ---------- HUD ---------- */
+  .hud { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+  .hud > * { position: absolute; }
+  .hp { background: rgba(10,14,40,.55); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+  #airBox { top: 36px; left: 14px; padding: 7px 12px 8px; width: 230px; }
+  #airBox .lab { display: flex; justify-content: space-between; font-weight: 900; letter-spacing: .12em; font-size: 12px; opacity: .9; }
+  #airBar { height: 18px; border-radius: 9px; background: rgba(0,0,0,.45); overflow: hidden; margin-top: 4px; border: 2px solid rgba(255,255,255,.25); }
+  #airFill { height: 100%; width: 100%; background: linear-gradient(180deg, #8af4ff, #20b8e8); border-radius: 7px; transition: width .15s linear; }
+  #airBox.mid #airFill { background: linear-gradient(180deg, #ffe680, #ffb21a); }
+  #airBox.low #airFill { background: linear-gradient(180deg, #ff9a9a, #e0405a); }
+  #airBox.low { animation: flashbox .5s steps(2) infinite; border-color: #ff5a5a; }
+  @keyframes flashbox { 50% { background: rgba(160,10,30,.7); } }
+  #depthBox { top: 10px; left: 50%; transform: translateX(-50%); text-align: center; padding: 4px 22px 6px; min-width: 190px; }
+  #depthTxt { font-size: 34px; font-weight: 900; line-height: 1; color: var(--y); } #depthTxt small { font-size: 16px; opacity: .8; }
+  #zoneTxt { font-size: 12px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; opacity: .9; margin-top: 2px; }
+  #sharkIcon { top: 88px; left: 50%; transform: translateX(-50%); padding: 5px 16px; font-weight: 900; letter-spacing: .12em; font-size: 15px; color: #fff; background: rgba(120,10,20,.8); border-color: #ff5a5a; animation: flashbox .45s steps(2) infinite; }
+  #sharkIcon.near { background: rgba(120,90,10,.8); border-color: #ffd34e; animation: none; }
+  #hideIcon { top: 88px; left: 50%; transform: translateX(-50%); padding: 5px 16px; font-weight: 900; letter-spacing: .12em; font-size: 14px; color: #8affb0; border-color: #5dff9a; }
+  #statBox { top: 10px; right: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  #statBox .hp { padding: 5px 14px; font-weight: 900; font-size: 18px; display: flex; gap: 8px; align-items: center; }
+  #coinTxt { color: var(--g); } #bagTxt.full { color: var(--r); }
+  #muteBtn { pointer-events: auto; padding: 4px 10px; font-size: 14px; }
+  #toolBar { bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+  .tool { min-width: 84px; padding: 6px 10px 7px; text-align: center; font-weight: 900; font-size: 15px; opacity: .88; }
+  .tool small { display: block; font-size: 11px; opacity: .75; letter-spacing: .1em; font-weight: 800; }
+  .tool.on { border-color: var(--y); box-shadow: 0 0 14px rgba(255,183,128,.6); opacity: 1; background: rgba(110,60,20,.55); }
+  .tool.dim { opacity: .4; }
+  #cross { left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid rgba(255,255,255,.75); border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,.6); transition: transform .1s, border-color .1s; }
+  #cross:after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: #fff; border-radius: 50%; }
+  #cross.hot { border-color: #5dff9a; transform: scale(1.35); } #cross.hot:after { background: #5dff9a; }
+  #cross.spear { border-radius: 0; border-width: 0; } #cross.spear:before { content: ""; position: absolute; inset: 0; background: linear-gradient(#fff,#fff) center/2px 100% no-repeat, linear-gradient(#fff,#fff) center/100% 2px no-repeat; opacity: .9; }
+  #boatPtr { bottom: 76px; right: 18px; text-align: center; padding: 6px 12px; font-weight: 800; font-size: 13px; }
+  #boatArrow { width: 36px; height: 36px; margin: 0 auto 2px; display: block; }
+  #msgs { left: 50%; bottom: 96px; transform: translateX(-50%); display: flex; flex-direction: column-reverse; align-items: center; gap: 6px; width: min(560px, 90vw); }
+  .msg { padding: 7px 16px; border-radius: 12px; background: rgba(10,14,40,.68); border: 2px solid rgba(255,255,255,.2); font-weight: 800; font-size: 16px; text-shadow: 0 2px 0 rgba(0,0,0,.5); animation: msgA 2.8s ease-out forwards; text-align: center; }
+  @keyframes msgA { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 8% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
+  #prompt { left: 50%; top: 62%; transform: translateX(-50%); padding: 8px 20px; font-weight: 900; font-size: 20px; background: rgba(10,14,40,.7); border: 2px solid var(--y); border-radius: 14px; color: #fff; }
+  #prompt b { color: var(--y); }
+  #banner { left: 50%; top: 24%; transform: translateX(-50%); text-align: center; font-size: 52px; font-weight: 900; letter-spacing: .06em; color: #ff5a5a; text-shadow: 0 5px 0 rgba(0,0,0,.6), 0 0 30px rgba(255,60,60,.6); opacity: 0; white-space: nowrap; }
+  #banner.on { animation: bannerA 2.2s ease-out forwards; } #banner small { display: block; font-size: 18px; letter-spacing: .1em; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.7); }
+  @keyframes bannerA { 0% { opacity: 0; transform: translateX(-50%) scale(1.6); } 12% { opacity: 1; transform: translateX(-50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+  #discover { left: 50%; top: 16%; transform: translateX(-50%) scale(.6); opacity: 0; text-align: center; padding: 10px 28px 14px; border: 3px solid var(--y); background: rgba(20,16,60,.88); box-shadow: 0 0 36px rgba(255,211,78,.5); min-width: 300px; }
+  #discover.on { animation: discA 4.2s ease-out forwards; }
+  @keyframes discA { 0% { opacity: 0; transform: translateX(-50%) scale(.5); } 8% { opacity: 1; transform: translateX(-50%) scale(1.08); } 14% { transform: translateX(-50%) scale(1); } 86% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(1); } }
+  #discover .t { font-size: 24px; font-weight: 900; letter-spacing: .08em; color: var(--y); text-shadow: 0 3px 0 rgba(0,0,0,.5); }
+  #discover img { height: 90px; display: block; margin: 4px auto; }
+  #discover .n { font-size: 22px; font-weight: 900; } #discover .r { font-size: 12px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; } #discover .v { color: var(--g); font-weight: 900; }
+  .vig { position: fixed; inset: 0; pointer-events: none; z-index: 3; opacity: 0; }
+  #vigShark { background: radial-gradient(ellipse at center, rgba(255,0,0,0) 40%, rgba(220,0,20,.75) 100%); }
+  #vigCold { background: radial-gradient(ellipse at center, rgba(160,230,255,0) 35%, rgba(150,225,255,.7) 100%); }
+  #flash { background: #ff2a2a; z-index: 6; } #black { background: #000; z-index: 9; transition: opacity .7s; }
+  #lockhint { left: 50%; top: 52%; transform: translateX(-50%); padding: 14px 26px; border: 2px solid var(--y); border-radius: 16px; background: rgba(10,14,40,.82); font-weight: 900; font-size: 20px; text-align: center; line-height: 1.5; }
+  #lockhint small { font-size: 13px; font-weight: 700; opacity: .85; }
+  #fade { position: fixed; inset: 0; background: #04122a; z-index: 11; opacity: 0; pointer-events: none; transition: opacity .35s; }
+
+  @media (max-height: 780px) {
+    #boatMenu h1 { font-size: clamp(30px, 7.5vh, 58px); } #boatMenu .logo { display: none; } #bmTag { margin: 4px 0 8px; font-size: 14px; }
+    #boatMenu .col { gap: 8px; margin-top: 10px !important; } #boatMenu .col button { padding: 9px 22px 9px 30px; font-size: 15px; } #boatMenu .col button.big { font-size: 21px; padding: 12px 22px 12px 30px; }
+    #boatMenu .fine { display: none; } #boatMenu .coins { font-size: 17px; }
+  }
+  @media (max-width: 760px), (max-height: 520px) {
+    #airBox { width: 170px; top: 30px; padding: 4px 8px 5px; } #depthTxt { font-size: 24px; } #depthBox { min-width: 130px; padding: 2px 12px 4px; }
+    #statBox .hp { font-size: 14px; padding: 3px 10px; } .tool { min-width: 64px; font-size: 13px; padding: 4px 6px; } #banner { font-size: 34px; }
+    .screen { padding: 12px; } .screen.side { padding-left: 14px; } .grid { grid-template-columns: 1fr; } .dex { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    button.big { font-size: 20px; padding: 10px 26px; } #msgs { bottom: 70px; } .msg { font-size: 14px; }
+  }
+  html.touch #toolBar { bottom: auto; top: 76px; left: auto; right: 14px; transform: none; flex-direction: column; gap: 5px; } html.touch #boatPtr { bottom: 14px; right: auto; left: 14px; }
+  html.touch #msgs { bottom: 30px; } html.touch #prompt { top: 70%; } html.touch #cross { margin-top: -11px; } html.touch #lockhint { display: none !important; }
+</style>
+<link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#04122a">
+<meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
+<meta property="og:title" content="Deep Sea Dive - free browser game">
+<meta property="og:description" content="Dive from your boat, catch colorful fish with a net and spear gun, sell them, upgrade your gear and swim down to the deepest, darkest parts of the ocean. A free 3D underwater game that runs in your browser.">
+<meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/deep-sea-dive/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/deep-sea-dive.jpg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<canvas id="view" tabindex="0"></canvas>
+<a class="back" href="../../">&larr; All games</a>
+
+<!-- ============================================================ HUD (while diving) -->
+<div class="hud hide" id="hud">
+  <div class="hp" id="airBox"><div class="lab"><span>AIR</span><span id="airTxt">100</span></div><div id="airBar"><div id="airFill"></div></div></div>
+  <div class="hp" id="depthBox"><div id="depthTxt">0<small> m</small></div><div id="zoneTxt">Sunlit Reef</div></div>
+  <div class="hp hide" id="sharkIcon"><i data-ic="shark" data-s="26"></i><span id="sharkTxt">SHARK NEARBY!</span></div>
+  <div class="hp hide" id="hideIcon"><span id="hideIc"></span><span id="hideTxt">HIDDEN</span></div>
+  <div id="statBox">
+    <div class="hp"><i data-ic="fish" data-s="26"></i><span id="bagTxt">0 / 5</span></div>
+    <div class="hp"><span class="money" style="color:var(--g)">$</span><span id="coinTxt">0</span></div>
+    <button id="muteBtn" class="small ghost" type="button" title="Sound on/off (M)"><span id="muteIc"></span></button>
+  </div>
+  <div id="cross"></div>
+  <div class="hp hide" id="boatPtr"><svg id="boatArrow" viewBox="0 0 40 40"><g id="arrowG"><path d="M20 4 L32 30 L20 24 L8 30 Z" fill="#ffd34e" stroke="#000" stroke-opacity=".5" stroke-width="2"/></g></svg><i data-ic="anchor" data-s="22"></i> <span id="boatDist">0 m</span></div>
+  <div id="msgs"></div>
+  <div class="hide" id="prompt">Press <b>E</b> to climb aboard</div>
+  <div id="banner"></div>
+  <div class="hp" id="discover"><div class="t">NEW FISH DISCOVERED!</div><img id="dcIcon" alt=""><div class="n" id="dcName"></div><div class="r" id="dcRar"></div><div class="v" id="dcVal"></div></div>
+  <div id="toolBar">
+    <div class="hp tool" id="toolNet">NET<small>key 1 or E</small></div>
+    <div class="hp tool hide" id="toolSpear">SPEAR<small>key 2 · <span id="spearN">0</span> left</small></div>
+    <div class="hp tool hide" id="toolLight">LIGHT<small>key F</small></div>
+    <div class="hp tool hide" id="toolRepel">REPEL<small>key R · <span id="repelN">0</span> left</small></div>
+  </div>
+</div>
+<div class="vig" id="vigShark"></div><div class="vig" id="vigCold"></div><div class="vig" id="flash"></div><div class="vig" id="black"></div>
+<div class="hp hide" id="lockhint">Click the game to start swimming<br><small>Esc to pause</small></div>
+
+<!-- ============================================================ the boat menu (home) -->
+<div class="screen side" id="boatMenu">
+  <div class="box">
+    <img class="logo" src="../../assets/logo.svg" alt="">
+    <h1>DEEP SEA<br>DIVE</h1>
+    <div id="bmTag">Your boat is ready. Where to today?</div>
+    <div class="coins" id="bmCoins">0</div>
+    <div class="col" style="margin-top:16px">
+      <button class="big go" id="bmDive" type="button"><i data-ic="dive" data-s="32"></i> DIVE!<span class="sm" id="bmDiveInfo"></span></button>
+      <button class="alt" id="bmSell" type="button"><i data-ic="sell" data-s="28"></i> Sell fish<span class="sm" id="bmSellInfo"></span></button>
+      <button class="alt" id="bmShop" type="button"><i data-ic="shop" data-s="28"></i> Shop<span class="sm" id="bmShopInfo"></span></button>
+      <button class="alt" id="bmDex" type="button"><i data-ic="dex" data-s="28"></i> Fish-dex<span class="sm" id="bmDexInfo"></span></button>
+      <button class="ghost" id="bmSet" type="button"><i data-ic="settings" data-s="26"></i> Settings</button>
+    </div>
+    <p class="fine" style="margin-top:14px">Drag to turn the camera. Your progress saves by itself in this browser.</p>
+  </div>
+</div>
+
+<!-- ============================================================ dive plan -->
+<div class="screen hide" id="plan">
+  <div class="box" style="max-width:720px">
+    <h2>Dive plan</h2>
+    <div class="sub">Swim down as deep as your gear allows. Go back up to the boat before your air runs out!</div>
+    <div id="planZones"></div>
+    <div class="panel" style="padding:12px 16px;margin:12px 0;text-align:left" id="planGear"></div>
+    <div class="row c"><button class="ghost" id="planBack" type="button">Back</button><button class="big go" id="planGo" type="button">Jump in!</button></div>
+  </div>
+</div>
+
+<!-- ============================================================ shop -->
+<div class="screen hide" id="shop">
+  <div class="box">
+    <div class="row c" style="justify-content:space-between"><h2 style="margin:0"><i data-ic="shop" data-s="40"></i> Dive Shop</h2><div class="coins" id="shCoins">0</div><button class="ghost" id="shBack" type="button">Back to boat</button></div>
+    <div class="tabs" id="shTabs"></div>
+    <div class="shopwrap">
+      <div class="grid" id="shGrid"></div>
+      <div class="panel prev"><canvas id="shView" width="300" height="300"></canvas><b id="pvName"></b><div id="pvText" class="fine"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ fish-dex -->
+<div class="screen hide" id="dex">
+  <div class="box">
+    <div class="row c" style="justify-content:space-between"><h2 style="margin:0"><i data-ic="dex" data-s="40"></i> Fish-dex</h2><button class="ghost" id="dxBack" type="button">Back to boat</button></div>
+    <div class="sub" id="dxCount" style="margin-bottom:0"></div>
+    <div class="bar"><i id="dxBar" style="width:0"></i></div>
+    <div class="tabs" id="dxTabs"></div>
+    <div class="grid dex" id="dxGrid"></div>
+  </div>
+</div>
+
+<!-- ============================================================ sell -->
+<div class="screen hide" id="sell">
+  <div class="box" style="max-width:640px">
+    <h2><i data-ic="sell" data-s="40"></i> Sell fish</h2>
+    <div class="coins" id="slCoins" style="margin-bottom:10px">0</div>
+    <div id="slList"></div>
+    <div class="row c" style="margin-top:14px"><button class="ghost" id="slBack" type="button">Back to boat</button><button class="big gold" id="slAll" type="button">Sell all</button></div>
+  </div>
+</div>
+
+<!-- ============================================================ dive summary -->
+<div class="screen hide" id="summary">
+  <div class="box" style="max-width:560px">
+    <h2 id="smTitle">Dive complete!</h2>
+    <div class="sub" id="smSub"></div>
+    <div id="smList"></div>
+    <div class="row c" style="margin-top:14px"><button class="big go" id="smOk" type="button">Back on the boat</button></div>
+  </div>
+</div>
+
+<!-- ============================================================ settings -->
+<div class="screen hide" id="settings">
+  <div class="box" style="max-width:560px">
+    <h2><i data-ic="settings" data-s="40"></i> Settings</h2>
+    <div class="setrow">Sound volume <input type="range" id="stVol" min="0" max="100"></div>
+    <div class="setrow">Mouse / look speed <input type="range" id="stSens" min="30" max="300"></div>
+    <div class="setrow">Camera distance <span><button class="small ghost" id="stCam" type="button">Medium</button></span></div>
+    <div class="setrow">Lite graphics (for Chromebooks) <span><button class="small ghost" id="stLite" type="button">Off</button></span></div>
+    <div class="setrow">Mute <span><button class="small ghost" id="stMute" type="button">Off</button></span></div>
+    <div class="setrow">Erase all progress <span><button class="small warn" id="stReset" type="button">Erase…</button></span></div>
+    <p class="fine">Lite graphics and camera changes take effect the next time you load the page.</p>
+    <div class="row c"><button class="go" id="stBack" type="button">Done</button></div>
+  </div>
+</div>
+
+<!-- ============================================================ pause -->
+<div class="screen hide" id="pause" style="place-items:center">
+  <div class="box" style="max-width:520px">
+    <h2>Paused</h2>
+    <div class="keys" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;text-align:left;font-size:14px;margin:12px 0 18px">
+      <div><b style="color:var(--y)">W A S D</b> swim</div><div><b style="color:var(--y)">Mouse</b> look around</div>
+      <div><b style="color:var(--y)">Space</b> swim up</div><div><b style="color:var(--y)">Shift</b> swim down</div>
+      <div><b style="color:var(--y)">Click / E</b> use net or spear</div><div><b style="color:var(--y)">1 / 2 / Q</b> switch tool</div>
+      <div><b style="color:var(--y)">F</b> flashlight</div><div><b style="color:var(--y)">R</b> shark repellent</div>
+      <div><b style="color:var(--y)">C</b> camera view</div><div><b style="color:var(--y)">M</b> mute</div>
+    </div>
+    <div class="row c"><button class="big go" id="psResume" type="button">Resume</button><button class="ghost" id="psQuit" type="button">Give up dive</button></div>
+  </div>
+</div>
+
+<!-- ============================================================ title -->
+<div class="screen" id="title" style="z-index:10;background:radial-gradient(ellipse at 50% 35%, rgba(20,100,170,.55), rgba(2,10,30,.92));place-items:center">
+  <div class="box" style="max-width:640px">
+    <img class="logo" src="../../assets/logo.svg" alt="" style="width:72px;height:72px">
+    <h1>DEEP SEA<br>DIVE</h1>
+    <p class="sub" style="font-size:19px">Catch fish. Sell them. Dive deeper. Find the legendary giants of the Abyss.</p>
+    <button class="big go" id="ttPlay" type="button">PLAY</button>
+    <p class="fine" style="margin-top:18px" id="ttNote">Works with a keyboard and mouse. Phones and tablets get touch buttons.</p>
+  </div>
+</div>
+<div id="fade"></div>
+
+<script type="module" src="game.js?v=2"></script>
+</body>
+</html>
