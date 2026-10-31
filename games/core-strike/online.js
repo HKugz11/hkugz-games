@@ -26,10 +26,15 @@ export function createOnline(X) {
   function show(stage) { $('onHome').classList.toggle('hidden', stage !== 'home'); $('onLobby').classList.toggle('hidden', stage !== 'lobby'); }
   function openPanel() { $('onlineP').classList.remove('hidden'); $('onName').value = S.name || ''; show(L ? 'lobby' : 'home'); if (L) renderLobby(); }
   function closePanel() { $('onlineP').classList.add('hidden'); }
-  function cfgFromS() { return { map: S.map, mode: S.mode === 'dm' ? 'dm' : 'comp', length: S.length, diff: S.diff, arsenal: S.arsenal === 'simple' ? 'simple' : 'pro', ranked: S.ranked === 'off' ? 'off' : 'on', bomb: S.bomb === 'player' ? 'player' : 'random' }; }
+  // team sizes (the Raiders' and the Wardens' size, 1 to 10): a team can never be smaller than the real players on it
+  const teamN = (v) => clampN(Math.round(+v) || 5, 1, 10);
+  const humansOn = (sq) => (L ? L.players.filter((p) => p.sq === sq).length : 0);
+  const sizeOf = (sq) => teamN(L && L.cfg ? L.cfg['t' + sq] : 5);
+  const bigEnough = (sq, want) => Math.max(teamN(want), humansOn(sq), 1);
+  function cfgFromS() { return { map: S.map, mode: S.mode === 'dm' ? 'dm' : 'comp', length: S.length, diff: S.diff, arsenal: S.arsenal === 'simple' ? 'simple' : 'pro', ranked: S.ranked === 'off' ? 'off' : 'on', bomb: S.bomb === 'player' ? 'player' : 'random', t0: bigEnough(0, S.tMine), t1: bigEnough(1, S.tFoe) }; }
   function summary(c) {
-    const mp = X.MAP_LIST.find((m) => m.id === c.map);
-    return `${mp ? mp.name : c.map} · ${c.mode === 'dm' ? 'Deathmatch' : 'Competitive'} · ${({ short: 'short', long: 'full', duper: 'duper long (20 rounds)' })[c.length] || 'full'} match · bots: ${({ easy: 'Chill', normal: 'Normal', hard: 'Sweaty', insane: 'Pro' })[c.diff] || c.diff} · ${c.arsenal === 'simple' ? 'simple guns' : 'all guns'}${c.mode === 'dm' ? '' : (c.ranked === 'off' ? ' · unranked' : ' · ranked') + (c.bomb === 'player' ? ' · a real player always carries the bomb' : '')}`;
+    const mp = X.MAP_LIST.find((m) => m.id === c.map), t0 = teamN(c.t0), t1 = teamN(c.t1);
+    return `${mp ? mp.name : c.map} · ${c.mode === 'dm' ? 'Deathmatch' : 'Competitive'} · ${({ short: 'short', long: 'full', duper: 'duper long (20 rounds)' })[c.length] || 'full'} match · ${t0} v ${t1} · bots: ${({ easy: 'Chill', normal: 'Normal', hard: 'Sweaty', insane: 'Pro' })[c.diff] || c.diff} · ${c.arsenal === 'simple' ? 'simple guns' : 'all guns'}${c.mode === 'dm' ? '' : (c.ranked === 'off' ? ' · unranked' : ' · ranked') + (c.bomb === 'player' ? ' · a real player always carries the bomb' : '')}`;
   }
   // the line under the teams: does this match change your rank, and what is your rank now
   function rankNote() {
@@ -37,7 +42,8 @@ export function createOnline(X) {
     const c = L.cfg, n = L.players.length;
     const why = c.mode === 'dm' ? 'Deathmatch never counts for rank.'
       : c.ranked === 'off' ? 'Unranked: this match will not change anyone\'s rank.'
-        : n < 2 ? 'Ranked matches with friends need 2 or more real players. Share the room code first.'
+        : teamN(c.t0) !== 5 || teamN(c.t1) !== 5 ? 'Only 5 v 5 matches count for rank. Set both teams to 5 to play ranked.'
+          : n < 2 ? 'Ranked matches with friends need 2 or more real players. Share the room code first.'
           : `This match counts for everyone's rank (${n} real players, bots fill the rest). Leaving early counts as a loss.`;
     return `<div id="onRankBadge">${X.rankBadgeHTML()}</div><div>${why}</div>`;
   }
@@ -48,7 +54,7 @@ export function createOnline(X) {
     for (const sq of [0, 1]) {
       const ps = L.players.filter((p) => p.sq === sq);
       $('teamL' + sq).innerHTML = ps.map((p) => `<div class="pl${p.pid === myPid ? ' me' : ''}">${p.name}${p.pid === 0 ? ' <small>(host)</small>' : ''}${p.pid === myPid ? ' <small>(you)</small>' : ''}</div>`).join('') +
-        `<div class="pl bots">+ ${5 - ps.length} bot${5 - ps.length === 1 ? '' : 's'}</div>`;
+        `<div class="pl bots">+ ${sizeOf(sq) - ps.length} bot${sizeOf(sq) - ps.length === 1 ? '' : 's'}</div>`;
     }
     $('onCfg').classList.toggle('hidden', !host);
     $('onSummary').classList.toggle('hidden', host);
@@ -118,12 +124,12 @@ export function createOnline(X) {
   function lobbyMsg(pid, d) {
     if (d.t === 'hello') {
       if (L.players.some((p) => p.pid === pid)) return;
-      const sq = teamCount(0) <= teamCount(1) ? 0 : 1;
-      if (teamCount(sq) >= 5) { net.hostSend(pid, { t: 'full' }); return; }
-      L.players.push({ pid, name: cleanName(d.name), sq }); broadcastLobby();
+      const open = [0, 1].filter((q) => teamCount(q) < sizeOf(q)).sort((x, y) => teamCount(x) - teamCount(y) || x - y);   // a team with a free place, the emptier one first
+      if (!open.length) { net.hostSend(pid, { t: 'full' }); return; }
+      L.players.push({ pid, name: cleanName(d.name), sq: open[0] }); broadcastLobby();
     } else if (d.t === 'team') {
       const p = L.players.find((q) => q.pid === pid); const sq = d.sq === 1 ? 1 : 0;
-      if (p && p.sq !== sq && teamCount(sq) < 5) { p.sq = sq; broadcastLobby(); }
+      if (p && p.sq !== sq && teamCount(sq) < sizeOf(sq)) { p.sq = sq; broadcastLobby(); }
     }
   }
   function hostLeave(pid) {
@@ -207,7 +213,7 @@ export function createOnline(X) {
     const used = new Set(L.players.map((p) => p.name.toLowerCase()));
     const botNames = X.shuffle(X.NAMES.filter((n) => !used.has(n.toLowerCase())));
     const slots = L.players.map((p) => ({ n: p.name, sq: p.sq, pid: p.pid }));
-    for (const sq of [0, 1]) { const need = 5 - L.players.filter((p) => p.sq === sq).length; for (let i = 0; i < need; i++) slots.push({ n: botNames.pop() || 'Bot' + i, sq, bot: true }); }
+    for (const sq of [0, 1]) { const need = sizeOf(sq) - L.players.filter((p) => p.sq === sq).length; for (let i = 0; i < need; i++) slots.push({ n: botNames.pop() || 'Bot' + i, sq, bot: true }); }
     const cfg = { ...L.cfg, slots };
     for (const p of L.players) if (p.pid !== 0) net.hostSend(p.pid, { t: 'start', cfg, idx: slots.findIndex((s) => s.pid === p.pid) });
     closePanel();
@@ -230,14 +236,14 @@ export function createOnline(X) {
   function sendSnapshot() {
     const c = GS.core;
     const A = GS.actors.map((a) => [r2(a.pos.x), r2(a.pos.y), r2(a.pos.z), r2(a.yaw), r2(a.pitch), Math.round(a.hp), Math.round(a.armor),
-      (a.alive ? 1 : 0) | (a.crouch ? 2 : 0) | (a.sprint ? 4 : 0) | (a.helmet ? 8 : 0) | (a.kit ? 16 : 0) | (a.onGround ? 32 : 0) | (a.act && a.act.type === 'plant' ? 64 : 0) | (a.act && a.act.type === 'defuse' ? 128 : 0) | (((a.scoped || 0) & 3) << 8),
+      (a.alive ? 1 : 0) | (a.crouch ? 2 : 0) | (a.sprint ? 4 : 0) | (a.helmet ? 8 : 0) | (a.kit ? 16 : 0) | (a.onGround ? 32 : 0) | (a.act && a.act.type === 'plant' ? 64 : 0) | (a.act && a.act.type === 'defuse' ? 128 : 0) | (((a.scoped || 0) & 3) << 8) | (a.shield ? 1024 : 0),
       Math.max(0, SL.indexOf(a.slot)), a.prim ? wi(a.prim.id) : -1, a.sec ? wi(a.sec.id) : -1, Math.max(0, NS.indexOf(a.nadeSel)), a.kills, a.deaths, Math.round(a.dmg), a.hs, a.money, a.side]);
     net.hostBroadcast({ t: 's', st: STATES.indexOf(GS.state), pt: r2(GS.phaseT), rt: r2(GS.roundT), bl: r2(GS.buyLeft), r: GS.round, sc: GS.score, ls: GS.loss, ex: GS.execute ? 1 : 0, pl: GS.plan,
       c: [CST.indexOf(c.state), c.carrier ? c.carrier.idx : -1, r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r2(c.timer), c.site || ''], a: A });
   }
   function loadoutMsg(a) {
     return { t: 'load', p: a.prim ? [wi(a.prim.id), a.prim.mag, a.prim.res] : null, s: a.sec ? [wi(a.sec.id), a.sec.mag, a.sec.res] : null,
-      n: [a.nades.he, a.nades.flash, a.nades.smoke, a.nades.molly], ar: Math.round(a.armor), hl: a.helmet ? 1 : 0, kt: a.kit ? 1 : 0, sl: Math.max(0, SL.indexOf(a.slot)), ns: Math.max(0, NS.indexOf(a.nadeSel)), mo: a.money };
+      n: [a.nades.he, a.nades.flash, a.nades.smoke, a.nades.molly], ar: Math.round(a.armor), hl: a.helmet ? 1 : 0, kt: a.kit ? 1 : 0, sh: a.shield ? 1 : 0, sl: Math.max(0, SL.indexOf(a.slot)), ns: Math.max(0, NS.indexOf(a.nadeSel)), mo: a.money };
   }
   function sendLoadout(a) { if (net && a.remote) net.hostSend(a.pid, loadoutMsg(a)); }
   // pings go to the pinger's own teammates only (enemies must not see where your team is looking)
@@ -305,7 +311,7 @@ export function createOnline(X) {
     P.sec = d.s ? { id: WID[d.s[0]], mag: d.s[1] | 0, res: d.s[2] | 0 } : null;
     if (P.prim && !WD[P.prim.id]) P.prim = null; if (P.sec && !WD[P.sec.id]) P.sec = null;
     P.nades = { he: d.n[0] | 0, flash: d.n[1] | 0, smoke: d.n[2] | 0, molly: d.n[3] | 0 };
-    P.armor = num(d.ar); P.helmet = !!d.hl; P.kit = !!d.kt; P.money = num(d.mo, P.money); P.nadeSel = NS[d.ns | 0] || 'he';
+    P.armor = num(d.ar); P.helmet = !!d.hl; P.kit = !!d.kt; P.shield = !!d.sh; P.money = num(d.mo, P.money); P.nadeSel = NS[d.ns | 0] || 'he';
     let sl = SL[d.sl | 0] || 'sec'; if (!X.slotOK(P, sl)) sl = P.prim ? 'prim' : P.sec ? 'sec' : 'knife';
     if (P.slot !== sl) { P.slot = sl; P.switchT = 0.35; }
     P.reloadT = 0; X.vmRefresh();
@@ -334,7 +340,7 @@ export function createOnline(X) {
       const a = GS.actors[i], t = m.a[i], f = t[7] | 0, alive = !!(f & 1);
       if (a.side !== (t[17] | 0)) { a.side = t[17] | 0; X.makeSoldier(a); if (a === P) X.sleeveTint(); }
       a.kills = t[12]; a.deaths = t[13]; a.dmg = t[14]; a.hs = t[15]; a.money = t[16];
-      a.armor = t[6]; a.helmet = !!(f & 8); a.kit = !!(f & 16);
+      a.armor = t[6]; a.helmet = !!(f & 8); a.kit = !!(f & 16); a.shield = !!(f & 1024);
       if (a === P) {
         P.hp = t[5];
         if (!alive && P.alive && GS.time > graceUntil) { P.alive = false; X.killFx(P, GS.killer || null, 'p9', false, true); }
@@ -384,7 +390,7 @@ export function createOnline(X) {
   function clientNade(a, type, x, y, z, vx, vy, vz) { const id = (myPid + 1) * 100000 + (++nidCounter); if (net) net.clientSend({ t: 'nade', id, ty: NS.indexOf(type), p: [r2(x), r2(y), r2(z)], v: [r2(vx), r2(vy), r2(vz)] }); return id; }
   function clientBuy(id) { if (net) net.clientSend({ t: 'buy', id }); }
   function clientUndo() { if (net) net.clientSend({ t: 'undo' }); }
-  function clientTeam(sq) { if (MP.role === 'host') { const p = L.players.find((q) => q.pid === 0); if (p && p.sq !== sq && teamCount(sq) < 5) { p.sq = sq; broadcastLobby(); } } else if (net) net.clientSend({ t: 'team', sq }); }
+  function clientTeam(sq) { if (MP.role === 'host') { const p = L.players.find((q) => q.pid === 0); if (p && p.sq !== sq && teamCount(sq) < sizeOf(sq)) { p.sq = sq; broadcastLobby(); } } else if (net) net.clientSend({ t: 'team', sq }); }
 
   // ======================================================================= wire up the lobby buttons
   $('onName').addEventListener('input', () => { S.name = cleanName($('onName').value); });
@@ -398,7 +404,7 @@ export function createOnline(X) {
   $('onSwitch').onclick = () => { const me = L && L.players.find((p) => p.pid === myPid); if (me) clientTeam(me.sq === 0 ? 1 : 0); };
   $('onStart').onclick = () => startHost();
   $('onCopy').onclick = () => { try { navigator.clipboard.writeText(L.code); $('onCopy').textContent = 'COPIED'; setTimeout(() => ($('onCopy').textContent = 'COPY'), 1200); } catch (e) {} };
-  $('onCfg').addEventListener('click', () => { if (MP.role === 'host' && L) { if (S.mode !== 'dm') S.mode = 'comp'; L.cfg = cfgFromS(); broadcastLobby(); } });
+  $('onCfg').addEventListener('click', () => { if (MP.role === 'host' && L) { if (S.mode !== 'dm') S.mode = 'comp'; L.cfg = cfgFromS(); S.tMine = L.cfg.t0; S.tFoe = L.cfg.t1; X.saveS(); X.syncSeg(); broadcastLobby(); } });   // (a team can not shrink below the real players on it, so the steppers show the clamped size)
   $('playOnline').onclick = () => { X.initAudio(S.vol); openPanel(); };
   $('toLobby').onclick = () => backToLobby();
 

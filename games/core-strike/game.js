@@ -1,9 +1,10 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=114';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=114';
-import { createOnline } from './online.js?v=114';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=114';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=119';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=119';
+import { createOnline } from './online.js?v=119';
+import { TOUCH, initTouch } from './touch.js?v=1';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=119';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -18,13 +19,17 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Mat
 const V = () => new THREE.Vector3();
 
 // ---------------- settings ----------------
-const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', ranked: 'on', bomb: 'random', name: '' };
+const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', ranked: 'on', bomb: 'random', tMine: 5, tFoe: 5, name: '' };
 const S = { ...DEFAULTS };
 try { Object.assign(S, JSON.parse(localStorage.getItem('cs.settings') || localStorage.getItem('coreStrike') || '{}')); } catch { }
+// team sizes (you count as one of your team): 1 to 10 each, so 10 v 2 or 1 v 5 are possible. Only a 5 v 5 match counts for rank.
+const TEAM_MAX = 10, teamN = (v) => Math.max(1, Math.min(TEAM_MAX, Math.round(+v) || 5));
+S.tMine = teamN(S.tMine); S.tFoe = teamN(S.tFoe);
+const evenTeams = (a, b) => teamN(a) === 5 && teamN(b) === 5;
 const saveS = () => { try { localStorage.setItem('cs.settings', JSON.stringify(S)); } catch { } };
 // graphics: 'lite' (super minimized, for Chromebooks), 'low' (Fast) or 'high' (Pretty). A Chromebook starts in Lite until the player picks something.
 // ?lite / ?pretty in the address forces one.
-if (QS.has('lite')) { S.gfx = 'lite'; S.gfxSet = true; saveS(); } else if (QS.has('pretty')) { S.gfx = 'high'; S.gfxSet = true; saveS(); } else if (IS_CROS && !S.gfxSet) S.gfx = 'lite';
+if (QS.has('lite')) { S.gfx = 'lite'; S.gfxSet = true; saveS(); } else if (QS.has('pretty')) { S.gfx = 'high'; S.gfxSet = true; saveS(); } else if ((IS_CROS || TOUCH) && !S.gfxSet) S.gfx = 'lite';
 let STATS = { wins: 0, losses: 0, range: 0 };
 try { Object.assign(STATS, JSON.parse(localStorage.getItem('cs.stats') || localStorage.getItem('coreStrikeStats') || '{}')); } catch { }
 const saveStats = () => { try { localStorage.setItem('cs.stats', JSON.stringify(STATS)); } catch { } };
@@ -93,7 +98,7 @@ function rankEndHTML(r) {
     <div class="rkd" style="color:${r.delta >= 0 ? '#7dff9a' : '#ff8a7a'}">${sign}${r.delta} RP <small>(${RANK.rp} total)</small></div><div class="rkbar"><i style="width:${Math.round(b.pct * 100)}%;background:${b.col}"></i></div>${cap}${friends}</div>`;
 }
 // why a Competitive match did not count (shown on the end screen)
-const unrankedHTML = (why) => `<div class="rk"><div class="rkt">${why === 'solo' ? 'NOT RANKED' : 'UNRANKED MATCH'}</div><div class="rkn">${why === 'solo' ? 'Friend matches need 2 or more real players to count for rank' : 'No rank points were won or lost'}</div></div>`;
+const unrankedHTML = (why) => `<div class="rk"><div class="rkt">${why === 'solo' ? 'NOT RANKED' : 'UNRANKED MATCH'}</div><div class="rkn">${why === 'solo' ? 'Friend matches need 2 or more real players to count for rank' : why === 'sizes' ? 'Only 5 v 5 matches count for rank' : 'No rank points were won or lost'}</div></div>`;
 // the RANK UP screen: old rank -> new rank with a shield, rays and confetti, and a Continue button (also shown for the reveal after the 3 placement matches)
 function showRankUp(r) {
   const a = rankInfo(r.before), b = rankInfo(r.after), reveal = r.m === 3, league = !reveal && b.li > a.li;
@@ -118,6 +123,8 @@ const GFX_AT_LOAD = S.gfx;   // what this page started with: a different choice 
 document.body.classList.toggle('lite', LITE); document.body.classList.toggle('low', LOW);
 // online play: role is 'none' (single player), 'host' (runs the match) or 'client' (draws what the host sends)
 const MP = { on: false, role: 'none', idx: -1, pid: 0, cfg: null, nid: 0 };
+const MARKS = [];   // your own markers on the M map (world x / z); cleared every round
+let mapOpen = false;
 const PINGS = { list: [], life: 6, cd: 0.9 };   // Z pings (see "pings" further down); declared here because clearWorld() can run very early
 let MPH = null;
 const mySq = () => (GS.player ? GS.player.squad : 0);
@@ -350,7 +357,14 @@ const GEAR = {
   kevlar: { name: 'Kevlar Vest', price: 650, desc: '100 armor: soaks about a third of body damage' },
   helm: { name: 'Vest + Helmet', price: 1000, desc: 'Armor + a helmet: most headshots no longer kill in one hit (Raptor, Hammer, Viper and snipers still do)' },
   kit: { name: 'Defuse Kit', price: 400, desc: 'Defuse in 5 s (Wardens only)' },
+  shield: { name: 'Ballistic Shield', price: 1800, desc: 'Hold a pistol or knife (keys 2 / 3) and the shield stops every bullet from the front. Slower. A rifle (key 1) lowers it.' },
 };
+// the ballistic shield works while the holder has a pistol or the knife out; it stops bullets and stabs that come from inside a 120 degree cone in front
+const shieldUp = (v) => !!v.shield && v.alive && (v.slot === 'sec' || v.slot === 'knife');
+function shieldFaces(v, from) {
+  const dx = from.x - v.pos.x, dz = from.z - v.pos.z, d = Math.hypot(dx, dz); if (d < 0.05) return true;
+  return (dx * -Math.sin(v.yaw) + dz * -Math.cos(v.yaw)) / d > 0.5;
+}
 const KNIFE = { id: 'knife' };
 const NADEW = { he: { id: 'he' }, flash: { id: 'flash' }, smoke: { id: 'smoke' }, molly: { id: 'molly' } };
 const newGun = (id) => ({ id, mag: WD[id].mag, res: WD[id].res });
@@ -381,6 +395,15 @@ function nameTag(a, g) {
 const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade' };
 // A soldier is a few merged meshes: 2 legs (+2 shins in Pretty/Fast), body, head (Pretty/Fast) and ONE arms+gun mesh whose shape changes with the gun in hand.
 // Lite uses straight legs and a body that already includes the head; the knees are empty groups there.
+const shieldMats = { body: new THREE.MeshLambertMaterial({ color: 0x2c3a52, flatShading: true }), rim: new THREE.MeshLambertMaterial({ color: 0x14181f, flatShading: true }), glass: new THREE.MeshBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.75 }) };
+function shieldModel() {   // a tall riot shield: dark plate, black frame, a little see-through window near the top
+  const g = new THREE.Group(), part = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(geoBox, m); b.scale.set(w, h, d); b.position.set(x, y, z); g.add(b); };
+  part(0.78, 1.15, 0.05, 0, 0, 0, shieldMats.body);
+  part(0.84, 0.05, 0.08, 0, 0.6, 0, shieldMats.rim); part(0.84, 0.05, 0.08, 0, -0.6, 0, shieldMats.rim);
+  part(0.05, 1.25, 0.08, -0.4, 0, 0, shieldMats.rim); part(0.05, 1.25, 0.08, 0.4, 0, 0, shieldMats.rim);
+  part(0.34, 0.12, 0.06, 0, 0.36, 0, shieldMats.glass);
+  return g;
+}
 function makeSoldier(a) {
   const lite = LITE, SP = lite ? soldierPartsLite(a.side) : soldierParts(a.side), g = new THREE.Group();
   const mk = (geo, parent) => { const m = new THREE.Mesh(geo, charMat); if (!lite) { m.castShadow = true; m.receiveShadow = true; } parent.add(m); return m; };
@@ -391,14 +414,16 @@ function makeSoldier(a) {
   const arms = new THREE.Group(); arms.position.set(0, 1.3, 0); up.add(arms); const armsMesh = mk(tpArms(a.side, 'rifle', lite), arms);
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   flash.scale.setScalar(0.5); flash.visible = false; arms.add(flash);
+  const sh = shieldModel(); sh.position.set(0, 1.0, -0.5); sh.visible = false; up.add(sh);   // the ballistic shield, held out in front
   if (GS.player && a.squad === GS.player.squad && !a.isPlayer && (!lite || a.human)) nameTag(a, g);   // Lite only labels real players
   if (a.mesh) scene.remove(a.mesh.g);
-  a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, flash, phase: 0, flashT: 0, lite, armsMesh, armsKey: '' };
+  a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, flash, phase: 0, flashT: 0, lite, armsMesh, armsKey: '', sh };
   g.visible = a.alive && !a.isPlayer;
   scene.add(g);
 }
 
-const NAMES = ['Pixel', 'Noodle', 'Turbo', 'Waffles', 'Gizmo', 'Biscuit', 'Sprocket', 'Mango', 'Rocket', 'Pickles', 'Nugget', 'Zappy', 'Bolt', 'Taco', 'Nova', 'Scooter'];
+const NAMES = ['Pixel', 'Noodle', 'Turbo', 'Waffles', 'Gizmo', 'Biscuit', 'Sprocket', 'Mango', 'Rocket', 'Pickles', 'Nugget', 'Zappy', 'Bolt', 'Taco', 'Nova', 'Scooter',
+  'Muffin', 'Zigzag', 'Pepper', 'Cosmo', 'Doodle', 'Fizz', 'Giga', 'Jelly', 'Kiwi', 'Lemon', 'Marble', 'Ninja', 'Orbit', 'Peanut', 'Quark', 'Ripple', 'Sunny', 'Tater', 'Ziggy', 'Bean'];   // (a 10 v 10 match needs 19 bot names)
 let aidN = 0;
 class Actor {
   constructor(name, squad, isPlayer) {
@@ -480,6 +505,7 @@ const enemies = (a) => GS.actors.filter((e) => e.alive && e.side !== a.side);
 const BOMB = buildBomb(), bombMesh = BOMB.group;
 const bombLight = new THREE.PointLight(0xff3a2a, 0, 8); bombLight.position.y = 0.5; bombMesh.add(bombLight);
 bombMesh.visible = false; scene.add(bombMesh);
+const vmShield = shieldModel(); vmShield.scale.setScalar(0.22); vmShield.position.set(-0.36, -0.13, -0.62); vmShield.rotation.set(0, 0.4, 0.06); vmShield.visible = false; vmCam.add(vmShield);   // your own shield, low on the left of the screen
 const vmBomb = buildBomb(), vmHand = new THREE.Group();   // the bomb in your hands while you plant or defuse (first person)
 {
   const glove = new THREE.MeshLambertMaterial({ color: 0x1d1a17, flatShading: true });
@@ -649,6 +675,10 @@ function damage(v, amt, att, part, wid, dir) {
   }
   if (!v.alive || v.protT > 0) return;
   if (att && att !== v && att.side === v.side && GS.mode !== 'range') return;
+  if (att && att !== v && wid !== 'bomb' && wid !== 'he' && wid !== 'molly' && shieldUp(v) && shieldFaces(v, att.pos)) {   // the ballistic shield catches it
+    if (v.isPlayer || att.isPlayer) SFX.armorHit();
+    v.tagT = Math.max(v.tagT, 0.1); return;
+  }
   if (att && att !== v && GS.mode === 'comp' && GS.state === 'live' && wid !== 'bomb' && wid !== 'he' && wid !== 'molly') {   // no shooting out of your own spawn room
     const z = zoneAt(att.pos.x, att.pos.z);
     if (z === (att.side === 0 ? 'T' : 'D') && zoneAt(v.pos.x, v.pos.z) !== z) { if (att.isPlayer && GS.time - (GS.spawnMsgT || -9) > 4) { GS.spawnMsgT = GS.time; toast('Move out of your spawn to fight'); } return; }
@@ -919,7 +949,7 @@ function clearWorld() {
   for (const n of GS.nades) scene.remove(n.m);
   for (const s of GS.smokes) for (const sp of s.sprites) scene.remove(sp);
   for (const f of GS.fires) scene.remove(f.disc); GS.nades = []; GS.smokes = []; GS.fires = []; clearDrops(); parts.length = 0;
-  decals.count = 0; dI = 0; clearPings();
+  decals.count = 0; dI = 0; clearPings(); MARKS.length = 0;
   for (const b of booms) { if (b.m) { scene.remove(b.m); b.m.geometry.dispose(); b.m.material.dispose(); } if (b.l) b.l.intensity = 0; } booms.length = 0;   // leftover explosion spheres (the render loop normally removes them; a headless simulation never runs it)
 }
 function startMatch() {
@@ -933,12 +963,12 @@ function startMatch() {
   const names = shuffle(NAMES.slice());
   const P = new Actor('You', 0, true); P.side = pSide; GS.player = P; GS.actors.push(P);
   if (GS.mode !== 'range') {
-    for (let i = 0; i < 4; i++) { const a = new Actor(names.pop(), 0, false); a.side = pSide; a.brain = newBrain(a, i); GS.actors.push(a); }
-    for (let i = 0; i < 5; i++) { const a = new Actor(names.pop(), 1, false); a.side = 1 - pSide; a.brain = newBrain(a, i); GS.actors.push(a); }
+    for (let i = 0; i < S.tMine - 1; i++) { const a = new Actor(names.pop(), 0, false); a.side = pSide; a.brain = newBrain(a, i); GS.actors.push(a); }
+    for (let i = 0; i < S.tFoe; i++) { const a = new Actor(names.pop(), 1, false); a.side = 1 - pSide; a.brain = newBrain(a, i); GS.actors.push(a); }
   }
   for (const a of GS.actors) { makeSoldier(a); a.money = 800; }
   $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('playing');
-  GS.paused = false; resetCore(null); GS.rankWhy = GS.mode === 'comp' && S.ranked === 'off' ? 'off' : ''; GS.rankDone = GS.mode !== 'comp' || !!GS.rankWhy; GS.rankMates = 0; GS.menuMsg = '';   // an Unranked match never changes your rank
+  GS.paused = false; resetCore(null); GS.rankWhy = GS.mode !== 'comp' ? '' : S.ranked === 'off' ? 'off' : !evenTeams(S.tMine, S.tFoe) ? 'sizes' : ''; GS.rankDone = GS.mode !== 'comp' || !!GS.rankWhy; GS.rankMates = 0; GS.menuMsg = '';   // an Unranked match never changes your rank
   if (GS.mode === 'comp') startRound();
   else if (GS.mode === 'dm') { GS.state = 'live'; GS.roundT = lenOf(S.length).dmTime; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
   else startRange();
@@ -946,9 +976,10 @@ function startMatch() {
 }
 function spawnAt(a, cells, used) {
   let c = null;
-  for (let k = 0; k < 40; k++) {
+  for (let k = 0; k < 120 && !c; k++) {
+    const gap = k < 40 ? 2.4 : k < 80 ? 1.6 : 1.0;   // a big team squeezes closer together once the spawn room fills up
     const t = pick(cells), x = cellX(t) + rand(-0.4, 0.4), z = cellZ(t) + rand(-0.4, 0.4);
-    if (used.every((u) => Math.hypot(u[0] - x, u[1] - z) > 2.4)) { c = [x, z]; break; }
+    if (used.every((u) => Math.hypot(u[0] - x, u[1] - z) > gap)) c = [x, z];
   }
   if (!c) { const t = pick(cells); c = [cellX(t), cellZ(t)]; }
   used.push(c);
@@ -957,7 +988,7 @@ function spawnAt(a, cells, used) {
 }
 function resetActorForRound(a) {
   if (a.fullReset || !a.alive) {
-    a.prim = null; a.sec = newGun('p9'); a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.armor = 0; a.helmet = false; a.kit = false;
+    a.prim = null; a.sec = newGun('p9'); a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.armor = 0; a.helmet = false; a.kit = false; a.shield = false;
   } else if (a.prim) { /* survivors keep gear */ }
   a.fullReset = false; a.buyLog = [];
   a.hp = 100; a.alive = true; a.act = null; a.blindT = 0; a.reloadT = 0; a.switchT = 0; a.rc = 0; a.scoped = 0; a.rescope = 0; a.roundKills = 0; a.crouch = false; a.crouchAmt = 0; a.tagT = 0;
@@ -1067,7 +1098,7 @@ function updateRound(dt) {
 function endMatch() {
   if (GS.state === 'over' && !$('end').classList.contains('hidden')) return;
   $('endRank').innerHTML = '';
-  GS.state = 'over'; document.exitPointerLock && document.exitPointerLock();
+  GS.state = 'over'; document.exitPointerLock && document.exitPointerLock(); mapOpen = false; $('bigMap').classList.add('hidden');
   if (MP.role === 'host') MPH.matchEnd();
   const P = GS.player, hsP = P.kills ? Math.round(P.hs / P.kills * 100) : 0;
   let title, sc;
@@ -1110,7 +1141,7 @@ function dmSpawn(a) {
     if (s > bestS) { bestS = s; bestC = c; }
   }
   a.pos.set(cellX(bestC), 0, cellZ(bestC)); a.vel.set(0, 0, 0); a.yaw = Math.random() * 6.28; a.pitch = 0;
-  a.hp = 100; a.armor = 100; a.helmet = true; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
+  a.hp = 100; a.armor = 100; a.helmet = true; a.shield = false; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
   a.sec = newGun('p9');
   a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow', 'brute', 'ghost', 'breaker'].filter(gunOK)));
   a.nades = { he: 1, flash: 1, smoke: 0, molly: 0 };
@@ -1158,6 +1189,7 @@ function canBuy(a, id) {
   if (!a.alive || !gunOK(id)) return false;
   const p = priceOf(a, id); if (a.money < p) return false;
   if (WD[id] && WD[id].nade) { const tot = a.nades.he + a.nades.flash + a.nades.smoke + a.nades.molly; return a.nades[id] < WD[id].max && tot < 4; }
+  if (id === 'shield') return !a.shield;
   if (id === 'kevlar') return a.armor < 100;
   if (id === 'helm') return !(a.armor >= 100 && a.helmet);
   if (id === 'kit') return a.side === 1 && !a.kit && GS.mode === 'comp';
@@ -1166,13 +1198,14 @@ function canBuy(a, id) {
 }
 function buy(a, id) {
   if (!canBuy(a, id)) return false;
-  const snap = { money: a.money, armor: a.armor, helmet: a.helmet, kit: a.kit, nades: { ...a.nades }, prim: a.prim, sec: a.sec, slot: a.slot };   // so the purchase can be undone
+  const snap = { money: a.money, armor: a.armor, helmet: a.helmet, kit: a.kit, shield: !!a.shield, nades: { ...a.nades }, prim: a.prim, sec: a.sec, slot: a.slot };   // so the purchase can be undone
   let dropped = null;
   a.money -= priceOf(a, id);
   if (WD[id] && WD[id].nade) a.nades[id]++;
   else if (id === 'kevlar') a.armor = 100;
   else if (id === 'helm') { a.armor = 100; a.helmet = true; }
   else if (id === 'kit') a.kit = true;
+  else if (id === 'shield') a.shield = true;   // (it comes up as soon as a pistol or the knife is out)
   else {
     const def = WD[id];
     if (a[def.slot] && a[def.slot].id !== id && GS.mode === 'comp') dropped = addDrop(a[def.slot], a.pos);
@@ -1191,7 +1224,7 @@ function undoBuy(a) {
   if (!a.alive || !log || !log.length || GS.mode !== 'comp' || !inBuyZone(a)) return false;
   const { snap, dropped, spent } = log.pop();
   if (dropped) { const i = GS.drops.indexOf(dropped); if (i >= 0) { scene.remove(dropped.g); GS.drops.splice(i, 1); } }
-  a.money += spent; a.armor = snap.armor; a.helmet = snap.helmet; a.kit = snap.kit; a.nades = snap.nades; a.prim = snap.prim; a.sec = snap.sec; a.slot = snap.slot; a.switchT = 0.3;
+  a.money += spent; a.armor = snap.armor; a.helmet = snap.helmet; a.kit = snap.kit; a.shield = snap.shield; a.nades = snap.nades; a.prim = snap.prim; a.sec = snap.sec; a.slot = snap.slot; a.switchT = 0.3;
   if (a.isPlayer) { vmSet(); } else if (a.remote && MPH) MPH.sendLoadout(a);
   return true;
 }
@@ -2101,7 +2134,7 @@ function lock() {
     if (p && p.catch) p.catch((err) => { if (err && err.name === 'NotSupportedError') plain(); });
   } catch { plain(); }
 }
-const uiOpen = () => !$('buy').classList.contains('hidden') || !$('end').classList.contains('hidden') || GS.state === 'menu' || GS.state === 'over';
+const uiOpen = () => mapOpen || !$('buy').classList.contains('hidden') || !$('end').classList.contains('hidden') || GS.state === 'menu' || GS.state === 'over';
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   if (locked) { softLock = false; ignoreMouseUntil = GS.time + 0.08; lastMag = 0; }
@@ -2147,7 +2180,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Escape') { const sp = ['setP', 'keysP'].find((id) => !$(id).classList.contains('hidden')); if (sp) { $(sp).classList.add('hidden'); e.preventDefault(); return; } }   // Esc closes Settings / Controls first
   if (GS.state === 'menu') return;
   if (e.code === 'KeyU' && !$('buy').classList.contains('hidden')) { e.preventDefault(); undoClick(); return; }   // U undoes the last buy while the buy menu is open
-  if (e.code === 'KeyB' || (e.code === 'Escape' && !$('buy').classList.contains('hidden'))) { e.preventDefault(); toggleBuy(); return; }
+  if (e.code === 'KeyB' || (e.code === 'Escape' && !$('buy').classList.contains('hidden'))) { e.preventDefault(); if (mapOpen) toggleMap(); toggleBuy(); return; }
+  if (e.code === 'KeyM' || (e.code === 'Escape' && mapOpen)) { e.preventDefault(); toggleMap(); return; }   // M = the big map: click it to put a marker your team can see
   if (e.code === 'Escape' && softLock && GS.state !== 'over') { if (GS.paused) { GS.paused = false; $('pause').classList.add('hidden'); } else pauseGame(); return; }
   if (e.repeat) return;
   keys[e.code] = true; pressed.add(e.code);
@@ -2156,6 +2190,36 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; if (e.code === 'Backquote') $('board').classList.add('hidden'); });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.fill(false); $('board').classList.add('hidden'); });
+
+// ---------------- touch controls (tablets / phones): a stick, a look pad and buttons that send the same keys and mouse clicks
+if (TOUCH) {
+  softLock = true;   // a tablet has no pointer lock: the look pad turns the view directly
+  addEventListener('mousedown', (e) => { if (e.isTrusted) return; padMode = false; if (GS.state === 'menu' || GS.state === 'over') return; mouse[e.button] = true; pressed.add('M' + e.button); });   // the on-screen FIRE / AIM buttons
+  const done = document.createElement('button'); done.className = 'btn'; done.textContent = 'DONE'; done.style.cssText = 'padding:5px 14px;font-size:13px;margin-right:10px'; done.onclick = () => toggleBuy(); $('buyUndo').before(done);   // closes the buy menu (B / Esc on a keyboard)
+  const tb = (label, key, o) => Object.assign({ label, key, type: 'tap', s: 54, cls: 'small', fs: 10 }, o);
+  const slotW = (label, code, i) => tb(label, code, { s: 50, fs: 9, l: Math.round(innerWidth / 2 - 105 + i * 54), b: 8 });
+  initTouch({
+    visible: () => GS.state !== 'menu' && GS.state !== 'over' && !GS.paused && ['buy', 'end', 'keysP', 'setP', 'onlineP', 'rankUp'].every((id) => $(id).classList.contains('hidden')),
+    pause: () => { if (!GS.paused) padPause(); }, lookScale: 2.0,
+    stick: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', sprintKey: 'ShiftLeft', sprintAt: .92 },
+    css: 'html.touch #inv{right:14px;bottom:auto;top:96px} html.touch #br{right:14px;bottom:auto;top:12px}',   /* the gun list and ammo move up, out from under the buttons */
+    buttons: [
+      { label: 'FIRE', cls: 'fire', mouse: 0, look: true, minHold: 90, s: 92, r: 24, b: 64 },
+      tb('AIM', 'KeyV', { mouseTap: 2, s: 58, r: 40, b: 168, fs: 11 }),
+      { label: 'JUMP', key: 'Space', s: 64, r: 128, b: 22, cls: 'small', fs: 11 },
+      tb('RELOAD', 'KeyR', { s: 58, r: 132, b: 100 }),
+      { label: 'USE', key: 'KeyE', s: 58, r: 206, b: 60, cls: 'small', fs: 11, glow: () => useHere },
+      tb('BUY', 'KeyB', { s: 52, r: 206, b: 130, fs: 11 }),
+      { label: 'CROUCH', type: 'toggle', key: 'KeyC', s: 52, r: 270, b: 22, cls: 'small', fs: 9 },
+      slotW('GUN', 'Digit1', 0), slotW('PISTOL', 'Digit2', 1), slotW('KNIFE', 'Digit3', 2), slotW('NADE', 'Digit4', 3),
+      tb('DROP', 'KeyG', { s: 44, r: 270, b: 84, fs: 9 }),
+      tb('PING', 'KeyZ', { s: 44, r: 270, b: 134, fs: 9 }),
+      { label: 'SCORE', type: 'toggle', key: 'Backquote', s: 40, l: 228, t: 8, cls: 'small', fs: 8 },
+      { label: 'II', s: 40, l: 274, t: 8, cls: 'small', type: 'tap', action: () => padPause(), fs: 14 },
+    ],
+  });
+}
+
 
 // ---------------- controller (gamepad) support ----------------
 // Left stick: move (a light push walks silently, click it to sprint) · right stick: look · RT: shoot · LT: aim / scope · A: jump · B: crouch (+ slide)
@@ -2337,7 +2401,7 @@ function updatePlayer(dt) {
   }
   if (P.slideT > 0) { P.slideT -= dt; P.crouch = true; P.sprint = false; }
   // edge turning when the browser won't capture the mouse
-  if (document.pointerLockElement !== canvas && !DEBUG && !uiOpen()) {
+  if (document.pointerLockElement !== canvas && !DEBUG && !TOUCH && !uiOpen()) {
     const ex = mouseXY[0] / innerWidth, ey = mouseXY[1] / innerHeight, zone = 0.16, k = S.sens * 3.4 * dt * (camera.fov / S.fov);
     if (ex < zone) P.yaw += k * (zone - ex) / zone; else if (ex > 1 - zone) P.yaw -= k * (ex - 1 + zone) / zone;
     if (ey < zone) P.pitch = clamp(P.pitch + k * 0.6 * (zone - ey) / zone, -1.52, 1.52); else if (ey > 1 - zone) P.pitch = clamp(P.pitch - k * 0.6 * (ey - 1 + zone) / zone, -1.52, 1.52);
@@ -2371,7 +2435,7 @@ function updatePlayer(dt) {
     }
   }
   useHere = !!hint || !!P.act;
-  if (!hint && document.pointerLockElement !== canvas && !DEBUG && !padMode && GS.time % 8 < 4) hint = 'Mouse not captured: click the game (best in Chrome) · or push the cursor to the screen edge to keep turning';
+  if (!hint && document.pointerLockElement !== canvas && !DEBUG && !padMode && !TOUCH && GS.time % 8 < 4) hint = 'Mouse not captured: click the game (best in Chrome) · or push the cursor to the screen edge to keep turning';
   setHint(P.act ? '' : padMode ? hint.replace(/\bE\b/, 'X') : hint);
   // movement
   let fx = 0, fz = 0;
@@ -2380,7 +2444,7 @@ function updatePlayer(dt) {
     fx = -Math.sin(P.yaw) * f + Math.cos(P.yaw) * r; fz = -Math.cos(P.yaw) * f - Math.sin(P.yaw) * r;
     const l = Math.hypot(fx, fz); if (l > 0) { fx /= l; fz /= l; }
   }
-  let maxSpd = def.speed * (P.sprint ? 1.32 : 1) * (P.walk ? 0.52 : 1) * (P.crouch ? 0.34 : 1) * (P.scoped || P.ads ? 0.62 : 1) * (P.tagT > 0 ? 0.55 : 1);
+  let maxSpd = def.speed * (P.sprint ? 1.32 : 1) * (P.walk ? 0.52 : 1) * (P.crouch ? 0.34 : 1) * (P.scoped || P.ads ? 0.62 : 1) * (P.tagT > 0 ? 0.55 : 1) * (shieldUp(P) ? 0.85 : 1);
   if (P.slideT > 0 && !frozen) { fx = P.slideDir[0]; fz = P.slideDir[1]; maxSpd = P.slideV * (0.35 + 0.65 * P.slideT / 0.85); }
   physics(P, dt, fx, fz, maxSpd, keys.Space && !frozen && !P.act);
   if (!P.walk) footsteps(P, dt);
@@ -2611,7 +2675,7 @@ function updateHUD() {
   let sv = 0; const cp = camera.position;
   for (const s of GS.smokes) { const d = Math.hypot(cp.x - s.x, (cp.y - s.y) * 1.2, cp.z - s.z); if (d < s.r) sv = Math.max(sv, clamp((s.r - d) / 1.2, 0, 1) * clamp(s.t / 2, 0, 1)); }
   $('smokeV').style.opacity = sv * 0.95;
-  drawRadar(viewA);
+  drawRadar(viewA); if (mapOpen) drawBigMap(viewA);
 }
 function drawRadar(viewA) {
   const P = GS.player, s = 2.3;
@@ -2626,6 +2690,7 @@ function drawRadar(viewA) {
     else if (GS.time - a.spotT < 0.6 || a.dummy) dot(a.pos.x, a.pos.z, '#ff3b3b');
   }
   for (const s2 of GS.smokes) { rc.fillStyle = 'rgba(220,220,225,.6)'; rc.beginPath(); rc.arc(s2.x, s2.z, s2.r, 0, 7); rc.fill(); }
+  for (const m of MARKS) dot(m.x, m.z, '#ffb13d', 2.4);
   const c = GS.core;
   if (c && GS.mode === 'comp' && (P.side === 0 || c.state === 'planted')) {
     const cp = c.state === 'carried' && c.carrier ? c.carrier.pos : c.pos;
@@ -2651,13 +2716,13 @@ function updateBoard() {
   const P = GS.player;
   const rows = (sq) => GS.actors.filter((a) => a.squad === sq).sort((a, b) => b.kills - a.kills).map((a) =>
     `<tr class="${a.isPlayer ? 'me' : ''} ${a.alive ? '' : 'dead'}"><td>${a.isPlayer ? 'You' : a.name}${GS.core && GS.core.carrier === a && sq === mySq() ? ' ◆' : ''}</td><td>${a.kills}</td><td>${a.deaths}</td><td>${a.kills ? Math.round(a.hs / a.kills * 100) : 0}%</td><td>${Math.round(a.dmg)}</td><td>${sq === mySq() && GS.mode === 'comp' ? '$' + a.money : ''}</td></tr>`).join('');
-  const head = '<tr><th>NAME</th><th>K</th><th>D</th><th>HS</th><th>DMG</th><th></th></tr>';
-  setHTML('boardCard', `<div class="tn" style="color:${SIDE[P.side].css}">YOUR SQUAD · ${SIDE[P.side].name} · ${GS.score[mySq()]}</div><table>${head}${rows(mySq())}</table>` +
-    (GS.mode !== 'range' ? `<div class="tn" style="color:${SIDE[1 - P.side].css}">ENEMY · ${SIDE[1 - P.side].name} · ${GS.score[1 - mySq()]}</div><table>${head}${rows(1 - mySq())}</table>` : ''));
+  const head = '<tr><th>NAME</th><th>K</th><th>D</th><th>HS</th><th>DMG</th><th></th></tr>', tight = GS.actors.length > 12 ? ' class="tight"' : '';
+  setHTML('boardCard', `<div class="tn" style="color:${SIDE[P.side].css}">YOUR SQUAD · ${SIDE[P.side].name} · ${GS.score[mySq()]}</div><table${tight}>${head}${rows(mySq())}</table>` +
+    (GS.mode !== 'range' ? `<div class="tn" style="color:${SIDE[1 - P.side].css}">ENEMY · ${SIDE[1 - P.side].name} · ${GS.score[1 - mySq()]}</div><table${tight}>${head}${rows(1 - mySq())}</table>` : ''));
 }
 
 // buy menu
-const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
+const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit', 'shield']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
 function renderBuy() {
   const P = GS.player;
   $('buyMoney').textContent = GS.mode === 'comp' ? `$${P.money}` : 'FREE';
@@ -2666,7 +2731,7 @@ function renderBuy() {
   $('buyTime').textContent = GS.mode === 'comp' ? (GS.state === 'freeze' ? `buy time ${Math.ceil(GS.phaseT + 20)}s` : `buy time ${Math.max(0, Math.ceil(GS.buyLeft))}s`) : '';
   $('buyGrid').innerHTML = BUY.map(([cat, ids]) => `<div class="cat"><h3>${cat}</h3>${ids.filter(gunOK).map((id) => {
     const d = WD[id] || GEAR[id];
-    const own = (WD[id] && !d.nade && P[d.slot] && P[d.slot].id === id) || (id === 'kit' && P.kit) || (id === 'helm' && P.helmet) || (id === 'kevlar' && P.armor >= 100);
+    const own = (WD[id] && !d.nade && P[d.slot] && P[d.slot].id === id) || (id === 'kit' && P.kit) || (id === 'shield' && P.shield) || (id === 'helm' && P.helmet) || (id === 'kevlar' && P.armor >= 100);
     const bar = (l, v) => `<span>${l}</span><i style="width:${Math.max(6, Math.min(100, v))}%"></i>`;
     const bars = WD[id] && d.dmg ? `<div class="bars">${bar('Damage', d.dmg * (d.pellets || 1) / 1.6)}${bar('Fire rate', d.rpm / 9)}${bar('Control', 100 - d.recoil * 14)}${bar('Range', (d.range - 0.5) / 0.5 * 100)}${bar('Mobility', (d.speed - 4.6) / 2.4 * 100)}</div>` : '';
     const mode = WD[id] && d.mag ? `<b class="mode">${fireMode(d)}</b> ` : '';
@@ -2693,6 +2758,63 @@ function toggleBuy() {
     renderBuy(); el.classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock();
   } else { el.classList.add('hidden'); lock(); setTimeout(() => { if (!locked && !DEBUG && !softLock && GS.state !== 'menu') $('clickLock').classList.remove('hidden'); }, 300); }
 }
+
+// ---------------- big map (M) ----------------
+// The whole map. Click an open spot to put a marker there: it stays on your map and radar for the round, and your team gets a ping on it (like Z).
+// Click a marker to take it away again. The match keeps running while the map is open, like the buy menu.
+const mapC = $('mapC'), mc = mapC.getContext('2d');
+function mapScale() { return Math.max(0.5, Math.min((innerWidth * 0.9) / (W * CS), (innerHeight * 0.66) / (H * CS))); }
+function toggleMap() {
+  const el = $('bigMap'), P = GS.player;
+  if (el.classList.contains('hidden')) {
+    if (!P || GS.state === 'menu' || GS.state === 'over' || GS.mode === 'range' || GS.paused) return;
+    if (!$('buy').classList.contains('hidden')) toggleBuy();
+    mapOpen = true; el.classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock();
+  } else { mapOpen = false; el.classList.add('hidden'); lock(); setTimeout(() => { if (!locked && !DEBUG && !softLock && GS.state !== 'menu') $('clickLock').classList.remove('hidden'); }, 300); }
+}
+function drawBigMap(viewA) {
+  const P = GS.player, k = mapScale(), w = Math.round(W * CS * k), h = Math.round(H * CS * k);
+  if (mapC.width !== w || mapC.height !== h) { mapC.width = w; mapC.height = h; }
+  mc.clearRect(0, 0, w, h); mc.fillStyle = 'rgba(10,14,20,.92)'; mc.fillRect(0, 0, w, h);
+  mc.globalAlpha = 0.95; mc.drawImage(radarImg, 0, 0, w, h); mc.globalAlpha = 1;
+  const dot = (x, z, col, r) => { mc.fillStyle = col; mc.beginPath(); mc.arc(x * k, z * k, r, 0, 7); mc.fill(); mc.strokeStyle = '#000'; mc.lineWidth = 1.5; mc.stroke(); };
+  for (const s2 of GS.smokes) { mc.fillStyle = 'rgba(220,220,225,.55)'; mc.beginPath(); mc.arc(s2.x * k, s2.z * k, s2.r * k, 0, 7); mc.fill(); }
+  mc.font = 'bold 12px Arial'; mc.textAlign = 'center';
+  for (const a of GS.actors) {
+    if (!a.alive || a === P) continue;
+    if (a.side === P.side) { dot(a.pos.x, a.pos.z, SIDE[a.side].css, 6); mc.fillStyle = '#fff'; mc.fillText(a.name, a.pos.x * k, a.pos.z * k - 10); }
+    else if (GS.time - a.spotT < 0.6 || a.dummy) dot(a.pos.x, a.pos.z, '#ff3b3b', 6);
+  }
+  const c = GS.core;
+  if (c && GS.mode === 'comp' && (P.side === 0 || c.state === 'planted') && c.state !== 'none' && c.state !== 'boom' && c.state !== 'defused') {
+    const cp = c.state === 'carried' && c.carrier ? c.carrier.pos : c.pos, bx = cp.x * k, bz = cp.z * k;
+    mc.fillStyle = c.state === 'planted' ? '#ff3b3b' : '#ff9ccf'; mc.fillRect(bx - 9, bz - 6, 18, 12); mc.fillStyle = '#220'; mc.fillRect(bx - 4, bz - 2, 8, 4);
+  }
+  for (const m of MARKS) {   // markers: orange pins with the distance from you
+    const mx = m.x * k, mz = m.z * k;
+    mc.fillStyle = '#ffb13d'; mc.strokeStyle = '#000'; mc.lineWidth = 2; mc.beginPath(); mc.moveTo(mx, mz); mc.lineTo(mx - 8, mz - 18); mc.lineTo(mx + 8, mz - 18); mc.closePath(); mc.fill(); mc.stroke();
+    mc.beginPath(); mc.arc(mx, mz - 22, 8, 0, 7); mc.fill(); mc.stroke();
+    mc.fillStyle = '#fff'; mc.fillText(Math.round(Math.hypot(m.x - P.pos.x, m.z - P.pos.z)) + 'm', mx, mz + 14);
+  }
+  const px = P.pos.x * k, pz = P.pos.z * k, fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);   // you: a white arrow
+  mc.fillStyle = '#fff'; mc.strokeStyle = '#000'; mc.lineWidth = 2; mc.beginPath();
+  mc.moveTo(px + fx * 11, pz + fz * 11); mc.lineTo(px - fx * 7 - fz * 7, pz - fz * 7 + fx * 7); mc.lineTo(px - fx * 3, pz - fz * 3); mc.lineTo(px - fx * 7 + fz * 7, pz - fz * 7 - fx * 7); mc.closePath(); mc.fill(); mc.stroke();
+}
+mapC.addEventListener('mousedown', (e) => {
+  e.preventDefault(); const P = GS.player; if (!P) return;
+  const r = mapC.getBoundingClientRect(), k = mapScale();
+  const x = (e.clientX - r.left) * (mapC.width / r.width) / k, z = (e.clientY - r.top) * (mapC.height / r.height) / k;
+  const hit = MARKS.findIndex((m) => Math.hypot(m.x - x, m.z - z) * k < 16);
+  if (hit >= 0) { MARKS.splice(hit, 1); SFX.ui(); return; }
+  const cx = Math.floor(x / CS), cz = Math.floor(z / CS);
+  if (cx < 0 || cz < 0 || cx >= W || cz >= H || G[cz * W + cx] === '#') { toast('Pick an open spot on the map'); return; }
+  if (MARKS.length >= 6) MARKS.shift();
+  MARKS.push({ x, z });
+  const pos = V().set(x, hPos(x, z) + 1.4, z);
+  if (P.alive) { P.pingT = GS.time; addPing(P, pos, 'here'); if (MP.role === 'host') MPH.pingOut(P, pos, 'here'); else if (MP.role === 'client') MPH.clientPing(pos, 'here'); }
+});
+$('mapClear').onclick = () => { MARKS.length = 0; SFX.ui(); };
+$('mapClose').onclick = () => toggleMap();
 
 // ---------------- camera + viewmodel animation ----------------
 const _camT = V();
@@ -2785,6 +2907,7 @@ function animateActors(dt) {
     if (m.armsKey !== cls) { m.armsKey = cls; m.armsMesh.geometry = tpArms(a.side, cls, m.lite); m.flash.position.set(...TP_MUZ[cls]); }
     if (m.flashT > 0) { m.flashT -= dt; if (m.flashT <= 0) m.flash.visible = false; }
     if (a.protT > 0) m.up.visible = Math.floor(GS.time * 12) % 2 === 0; else m.up.visible = true;
+    if (m.sh) m.sh.visible = shieldUp(a);
   }
   for (const d of GS.drops) { d.t += dt; d.g.rotation.y += dt * 0.8; }
 }
@@ -2845,12 +2968,14 @@ function frame(now) {
     const t = now / 1000 * 0.06;
     const zoomOut = Math.max(1, Math.max(W, H) / 44); // bigger maps: the spinning camera backs off
     camera.position.set(W + Math.cos(t) * 34 * zoomOut, 30 * zoomOut, H + Math.sin(t) * 30 * zoomOut); camera.lookAt(W, 0, H);
-    camera.fov = 60; camera.updateProjectionMatrix();
+    camera.fov = 60; camera.near = 2; camera.far = 700; camera.updateProjectionMatrix();   // (a far-away camera with a tiny near plane has too little depth precision)
+    scene.fog.near = 150 * zoomOut; scene.fog.far = 520 * zoomOut;   // the spinning camera is far from the map: the in-game fog swallowed the far half (green on Ruins), so the menu fog starts much further out
     if (QL.shadows && (QL.frame++ % 30) === 0) renderer.shadowMap.needsUpdate = true;
     if (WORLD.sky) WORLD.sky.position.copy(camera.position);
     renderer.clear(); renderer.render(scene, camera);
     return;
   }
+  if (camera.near !== 0.05) { camera.near = 0.05; camera.far = LITE ? 125 : 700; scene.fog.near = LITE ? 22 : 28; scene.fog.far = LITE ? 105 : 175; camera.updateProjectionMatrix(); }   // back to the in-game view after the menu
   if ((!GS.paused || MP.on) && GS.state !== 'over') {
     const n = dt > 0.025 ? 2 : 1;
     for (let i = 0; i < n; i++) step(dt / n);
@@ -2870,6 +2995,7 @@ function frame(now) {
   }
   if (WORLD.sky) WORLD.sky.position.copy(camera.position);
   renderer.clear(); renderer.render(scene, camera);
+  vmShield.visible = GS.player.alive && shieldUp(GS.player);
   if ((vmRoot.visible || vmBomb.group.visible) && GS.player.alive) { renderer.clearDepth(); renderer.render(vmScene, vmCam); }
 }
 requestAnimationFrame(frame);
@@ -2897,7 +3023,7 @@ function startMatchMP(cfg, myIdx, role) {
   GS.paused = false; resetCore(null); GS.menuMsg = '';
   {   // does this online match count for rank? Competitive only, not set to Unranked by the host, and at least 2 real players (a lone host is just a solo match)
     const humans = cfg.slots.filter((s) => !s.bot), mine = cfg.slots[myIdx];
-    GS.rankWhy = cfg.mode !== 'comp' ? '' : cfg.ranked === 'off' ? 'off' : humans.length < 2 ? 'solo' : '';
+    GS.rankWhy = cfg.mode !== 'comp' ? '' : cfg.ranked === 'off' ? 'off' : !evenTeams(cfg.t0, cfg.t1) ? 'sizes' : humans.length < 2 ? 'solo' : '';
     GS.rankDone = cfg.mode !== 'comp' || !!GS.rankWhy; GS.rankMates = mine ? humans.filter((s) => s.sq === mine.sq).length - 1 : 0;
   }
   const P = GS.player; P.alive = false; vmRoot.visible = false;
@@ -3004,6 +3130,21 @@ function updatePings(dt) {
 
 // ---------------- menus ----------------
 $('mapSeg').innerHTML = $('onMapSeg').innerHTML = MAP_LIST.map((m) => `<button data-v="${m.id}">${m.name}<small>${m.blurb}</small></button>`).join('');
+// team sizes: the Play menu and the online lobby both edit S.tMine / S.tFoe (the lobby calls them the Raiders' and the Wardens' size)
+const TEAM_PRESETS = [[5, 5], [3, 3], [1, 1], [10, 2], [2, 10], [10, 10]];
+function teamBoxHTML(l1, l2) {
+  const tz = (k, l) => `<div class="tz"><span>${l}</span><button data-t="${k}" data-d="-1" aria-label="${l} smaller">-</button><b data-v="${k}">5</b><button data-t="${k}" data-d="1" aria-label="${l} bigger">+</button></div>`;
+  return `<label>TEAM SIZES <small>(you count as one of your team)</small></label><div class="tzs">${tz('tMine', l1)}${tz('tFoe', l2)}</div>` +
+    `<div class="tpre">${TEAM_PRESETS.map(([a, b]) => `<button data-a="${a}" data-b="${b}">${a} v ${b}</button>`).join('')}</div><div class="trk fine"></div>`;
+}
+$('optTeams').innerHTML = teamBoxHTML('YOUR TEAM', 'ENEMY TEAM'); $('onTeamsOpt').innerHTML = teamBoxHTML('RAIDERS', 'WARDENS');
+for (const box of [$('optTeams'), $('onTeamsOpt')]) box.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.dataset.t) S[b.dataset.t] = teamN(S[b.dataset.t] + +b.dataset.d);
+  else if (b.dataset.a) { S.tMine = +b.dataset.a; S.tFoe = +b.dataset.b; }
+  else return;
+  saveS(); syncSeg(); SFX.ui();
+});
 function syncSeg() {
   document.querySelectorAll('.seg').forEach((seg) => {
     const k = seg.dataset.k; seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(S[k]) === b.dataset.v));
@@ -3012,6 +3153,13 @@ function syncSeg() {
   $('optSide').style.display = comp ? '' : 'none'; $('optRank').style.display = comp ? '' : 'none'; $('onRankOpt').style.display = comp ? '' : 'none'; $('optBomb').style.display = $('onBombOpt').style.display = comp ? '' : 'none';
   $('optDiff').style.display = S.mode === 'range' ? 'none' : '';
   $('optLen').style.display = S.mode === 'range' ? 'none' : '';
+  $('optTeams').style.display = S.mode === 'range' ? 'none' : '';
+  for (const box of [$('optTeams'), $('onTeamsOpt')]) {
+    box.querySelectorAll('[data-v]').forEach((b) => (b.textContent = S[b.dataset.v]));
+    box.querySelectorAll('.tpre button').forEach((b) => b.classList.toggle('on', +b.dataset.a === S.tMine && +b.dataset.b === S.tFoe));
+    box.querySelectorAll('.tz button').forEach((b) => (b.disabled = S[b.dataset.t] + +b.dataset.d < 1 || S[b.dataset.t] + +b.dataset.d > TEAM_MAX));
+  }
+  document.querySelectorAll('.trk').forEach((el) => (el.textContent = evenTeams(S.tMine, S.tFoe) ? '' : 'Only 5 v 5 matches count for rank.'));
   const lsm = $('optLen').querySelectorAll('small'), dm = S.mode === 'dm';
   lsm[0].textContent = dm ? 'first to 40' : 'first to 5'; lsm[1].textContent = dm ? 'first to 75' : 'first to 9'; lsm[2].textContent = dm ? 'first to 120' : 'first to 11 · 20 rounds';
   renderRank();
@@ -3054,7 +3202,7 @@ function resetToMenu() {
   GS.state = 'menu'; GS.paused = false;
   for (const a of GS.actors) if (a.mesh) scene.remove(a.mesh.g);
   GS.actors = []; clearWorld(); bombMesh.visible = false; vmBomb.group.visible = false;
-  ['hud', 'pause', 'end', 'buy', 'board', 'clickLock'].forEach((id) => $(id).classList.add('hidden'));
+  ['hud', 'pause', 'end', 'buy', 'board', 'clickLock', 'bigMap'].forEach((id) => $(id).classList.add('hidden')); mapOpen = false;
   $('scope').classList.add('hidden'); $('flash').style.opacity = 0; $('smokeV').style.opacity = 0;
   $('menu').classList.remove('hidden'); syncSeg(); document.body.classList.remove('playing'); $('again').classList.remove('hidden'); $('toLobby').classList.add('hidden');
   document.exitPointerLock && document.exitPointerLock();
@@ -3063,7 +3211,7 @@ $('quit').onclick = toMenu; $('toMenu').onclick = toMenu;
 syncSeg();
 $('loading').remove();
 
-if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, showRankUp, saveRank, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
+if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, showRankUp, saveRank, toggleMap, MARKS, shieldUp, buy, damage, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
 
 MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { return W * CS; }, get worldH() { return H * CS; }, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
   makeSoldier, botTakeover, shotDamage, undoBuy, plantSite, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,

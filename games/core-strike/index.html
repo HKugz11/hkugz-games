@@ -106,7 +106,7 @@ button{font:inherit;cursor:pointer}
 
 /* ---------- panels ---------- */
 .panel{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,8,12,.55);backdrop-filter:blur(3px)}
-#board{z-index:6}#buy{z-index:8}#pause,#end{z-index:10}#onlineP{z-index:12}#keysP,#setP{z-index:20}   /* Settings and Controls always on top, also over the pause menu */
+#board{z-index:6}#buy,#bigMap{z-index:8}.mapcard{width:auto;max-width:96vw;text-align:center}.mapcard h2 small{display:block;font-size:12px;font-weight:500;letter-spacing:0;opacity:.75;margin-top:4px}#mapC{display:block;margin:8px auto;border:2px solid rgba(255,255,255,.2);border-radius:10px;cursor:crosshair;max-width:100%}#pause,#end{z-index:10}#onlineP{z-index:12}#keysP,#setP{z-index:20}   /* Settings and Controls always on top, also over the pause menu */
 body.low .sq,body.low #timer,body.low .stat,body.low #ammo,body.low .panel{backdrop-filter:none}
 body.low #dmgDir i{filter:none}
 body.lite #feed div{animation:none}
@@ -130,6 +130,18 @@ h2{font-size:22px;letter-spacing:.12em;margin-bottom:12px}
 .seg button{flex:1;background:rgba(38,43,58,.85);border:1px solid var(--line);color:var(--ink);padding:9px 8px;border-radius:9px;font-weight:600;font-size:14px;min-width:80px}
 .seg button.on{background:#7a3bff;color:#fff;border-color:#a77bff}
 .seg button small{display:block;font-size:11px;opacity:.75;font-weight:500}
+.opt label small{letter-spacing:0;font-size:11px;opacity:.85}
+/* team sizes: a - / + stepper for each team, and quick presets (5 v 5, 10 v 2 ...) */
+.tzs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.tz{flex:1;min-width:190px;display:flex;align-items:center;gap:8px;background:rgba(38,43,58,.85);border:1px solid var(--line);border-radius:9px;padding:5px 8px}
+.tz span{flex:1;font-size:12px;letter-spacing:.12em;opacity:.8}
+.tz b{min-width:26px;text-align:center;font-size:20px}
+.tz button{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid var(--line);color:var(--ink);font-size:20px;font-weight:700;line-height:1;padding:0}
+.tz button:disabled{opacity:.3}
+.tpre{display:flex;gap:6px;flex-wrap:wrap}
+.tpre button{flex:1;background:rgba(38,43,58,.85);border:1px solid var(--line);color:var(--ink);padding:6px 6px;border-radius:9px;font-weight:600;font-size:13px;min-width:56px}
+.tpre button.on{background:#7a3bff;color:#fff;border-color:#a77bff}
+.trk{margin-top:4px;min-height:0}.trk:empty{display:none}
 .row{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
 .keys{font-size:13px;line-height:1.75;opacity:.9;columns:2;column-gap:24px}
 .keys b{display:inline-block;min-width:58px;color:var(--acc)}
@@ -211,7 +223,8 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 #buyFoot{margin-top:10px;font-size:13px;opacity:.7}
 
 /* scoreboard */
-#board .card{width:min(760px,94vw)}
+#board .card{width:min(760px,94vw);max-height:94vh;overflow-y:auto}
+#board table.tight{font-size:13px;margin-bottom:8px}#board table.tight td{padding:2px 8px}#board table.tight th{padding:2px 8px}   /* big teams (up to 10 a side) still fit on a screen */
 #board table{width:100%;border-collapse:collapse;font-size:15px;margin-bottom:12px}
 #board th{font-size:11px;letter-spacing:.14em;opacity:.6;text-align:left;padding:4px 8px}
 #board td{padding:6px 8px;border-top:1px solid var(--line)}
@@ -310,6 +323,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
       <button data-v="long">Full<small>first to 9</small></button>
       <button data-v="duper">Duper long<small>first to 11 · 20 rounds</small></button>
     </div></div>
+    <div class="opt" id="optTeams"></div>
     <div class="row">
       <button class="btn go" id="play">PLAY</button>
       <button class="btn" id="playOnline">PLAY ONLINE</button>
@@ -328,7 +342,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
     <div><b>Space</b> jump</div><div><b>C</b> or <b>Tab</b> crouch (more accurate)</div><div><b>Shift</b> sprint</div><div><b>Sprint + C</b> slide</div><div><b>X</b> walk (silent)</div><div><b>Hold R-click</b> aim (tighter crosshair)</div>
     <div><b>R</b> reload</div><div><b>1 2 3 4</b> rifle · pistol · knife · grenades</div><div><b>Q</b> last weapon</div>
     <div><b>Wheel</b> switch weapon</div><div><b>B</b> buy menu (in spawn)</div><div><b>E</b> plant / defuse / pick up</div>
-    <div><b>Z</b> ping (your team sees it)</div><div><b>V</b> aim on / off (trackpads)</div><div><b>G</b> drop weapon</div><div><b>F</b> inspect weapon</div><div><b>`</b> (backtick) scoreboard</div><div><b>Esc</b> pause</div>
+    <div><b>Z</b> ping (your team sees it)</div><div><b>M</b> big map · click it to put a marker</div><div><b>V</b> aim on / off (trackpads)</div><div><b>G</b> drop weapon</div><div><b>F</b> inspect weapon</div><div><b>`</b> (backtick) scoreboard</div><div><b>Esc</b> pause</div>
   </div>
   <h3 style="margin:14px 0 6px;font-size:14px;letter-spacing:.12em;opacity:.8">CONTROLLER (Xbox / PlayStation style, plug in and press a button)</h3>
   <div class="keys">
@@ -428,6 +442,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
       <div class="opt"><label>BOT SKILL</label><div class="seg" data-k="diff"><button data-v="easy">Chill</button><button data-v="normal">Normal</button><button data-v="hard">Sweaty</button><button data-v="insane">Pro</button></div></div>
       <div class="opt"><label>GUNS</label><div class="seg" data-k="arsenal"><button data-v="simple">Simple</button><button data-v="pro">Pro</button></div></div>
       <div class="opt"><label>MATCH LENGTH</label><div class="seg" data-k="length"><button data-v="short">Short</button><button data-v="long">Full</button><button data-v="duper">Duper long</button></div></div>
+      <div class="opt" id="onTeamsOpt"></div>
     </div>
     <div id="onSummary" class="fine hidden"></div>
     <div id="onRank" class="fine"></div>
@@ -436,9 +451,14 @@ body.lite #ruRays,body.lite #ruConf{display:none}
   </div>
 </div></div>
 
+<div id="bigMap" class="panel hidden"><div class="card mapcard">
+  <h2>MAP <small>click an open spot to put a marker (your team sees it) · click a marker to remove it</small></h2>
+  <canvas id="mapC" width="600" height="400"></canvas>
+  <div class="row" style="justify-content:center"><button class="btn" id="mapClear">CLEAR MARKERS</button><button class="btn go" id="mapClose">CLOSE (M)</button></div>
+</div></div>
 <div id="pings"></div>
 <div id="clickLock" class="hidden">Click to play</div>
 
-<script type="module" src="game.js?v=114"></script>
+<script type="module" src="game.js?v=119"></script>
 </body>
 </html>

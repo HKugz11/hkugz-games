@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=114';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=119';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -276,8 +276,9 @@ export function buildWorld(root) {
     addMesh(scene, mergeParts(roofs), lam({ map: TEX.plain, vertexColors: true }), false, false);
     addMesh(scene, mergeParts(palms), lam({ map: TEX.plain, vertexColors: true }), false, false);
   }
-  const sand = addMesh(scene, new THREE.PlaneGeometry(1400, 1400), lam({ color: TH.ground }), false, false);
-  sand.rotation.x = -Math.PI / 2; sand.position.set(W, -0.03, H);
+  // (the outside ground sits well below the floor tiles and is pushed back in depth: the 3 cm gap it used to have made it flash through the floor, green on Ruins, when the menu camera looks down from high up)
+  const sand = addMesh(scene, new THREE.PlaneGeometry(1400, 1400), lam({ color: TH.ground, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), false, false);
+  sand.rotation.x = -Math.PI / 2; sand.position.set(W, -0.4, H);
 
   // signs
   const sign = (cx, cz, dx, dz, text, bg) => {
