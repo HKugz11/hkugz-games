@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Cube Flap</title>
 <script src="../../assets/playtimer.js"></script>
+<script src="../../assets/hksettings.js"></script>
 <meta name="description" content="Flap a pink cube through the gaps between towers and grab the coins. Free in your browser.">
 <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#0b0720">
@@ -18,7 +19,9 @@
 <div class="credit">An original one-button game. Flap through the gaps between the towers and grab the gold coins.</div>
 <script>
 (() => {
-  const c = document.getElementById('c'), g = c.getContext('2d'), W = c.width, H = c.height, KEY = 'hkugz.cubeflap.best', GAP = 170, SKY = [['#5ad8ff', '#bff3ff'], ['#ffb36b', '#ffe3a8'], ['#3b2f6b', '#7a58b8']];
+  const O = (window.HKSET && window.HKSET['cube-flap']) || {};
+  const K = O.speed || 1;
+  const c = document.getElementById('c'), g = c.getContext('2d'), W = c.width, H = c.height, KEY = 'hkugz.cubeflap.best', GAP = O.gap || 170, SKY = [['#5ad8ff', '#bff3ff'], ['#ffb36b', '#ffe3a8'], ['#3b2f6b', '#7a58b8']];
   let cube, pipes, coins, score, gold, best = +(localStorage.getItem(KEY) || 0), state = 'ready', t = 0, parts = [], shake = 0, bgx = 0, spawnT = 0;
   const fit = () => { let h = Math.min(innerHeight - 120, 780), w = h * W / H; if (w > innerWidth - 24) { w = innerWidth - 24; h = w * H / W; } c.style.width = w + 'px'; c.style.height = h + 'px'; }; addEventListener('resize', fit); fit();
   function reset() { cube = { x: 120, y: H / 2, vy: 0, rot: 0 }; pipes = []; coins = []; score = 0; gold = 0; state = 'ready'; spawnT = 0; parts = []; }
@@ -29,9 +32,9 @@
     t++; bgx = (bgx + (state === 'play' ? 1.4 : .5)) % 1000;
     if (state === 'ready') { cube.y = H / 2 + Math.sin(t / 15) * 10; cube.rot = 0; }
     if (state === 'play') {
-      cube.vy += .42; cube.y += cube.vy; cube.rot = Math.max(-.5, Math.min(1.1, cube.vy / 11)); spawnT++; if (spawnT > 92) { spawnT = 0; addPipe(); }
-      for (const p of pipes) { p.x -= 3.1; if (!p.passed && p.x + p.w < cube.x - 14) { p.passed = true; score++; } if (cube.x + 14 > p.x && cube.x - 14 < p.x + p.w && (cube.y - 14 < p.gapY || cube.y + 14 > p.gapY + GAP)) die(); }
-      for (const q of coins) { q.x -= 3.1; if (!q.got && Math.hypot(q.x - cube.x, q.y - cube.y) < 24) { q.got = true; gold++; score++; for (let i = 0; i < 8; i++) parts.push({ x: q.x, y: q.y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5, l: 20, gold: true }); } }
+      cube.vy += .42 * (O.grav || 1); cube.y += cube.vy; cube.rot = Math.max(-.5, Math.min(1.1, cube.vy / 11)); spawnT++; if (spawnT > 92 / K) { spawnT = 0; addPipe(); }
+      for (const p of pipes) { p.x -= 3.1 * K; if (!p.passed && p.x + p.w < cube.x - 14) { p.passed = true; score++; } if (cube.x + 14 > p.x && cube.x - 14 < p.x + p.w && (cube.y - 14 < p.gapY || cube.y + 14 > p.gapY + GAP)) die(); }
+      for (const q of coins) { q.x -= 3.1 * K; if (!q.got && Math.hypot(q.x - cube.x, q.y - cube.y) < 24) { q.got = true; gold++; score++; for (let i = 0; i < 8; i++) parts.push({ x: q.x, y: q.y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5, l: 20, gold: true }); } }
       pipes = pipes.filter(p => p.x > -90); coins = coins.filter(q => q.x > -30 && !q.got); if (cube.y > H - 40 || cube.y < -40) die();
     }
     if (state === 'over') { cube.vy += .5; cube.y = Math.min(H - 40, cube.y + cube.vy); cube.rot += .12; }

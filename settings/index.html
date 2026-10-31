@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings - HKugz Games</title>
+<script src="../assets/playtimer.js"></script>
+<script src="../assets/hksettings.js"></script>
+<meta name="description" content="Fine tune HKugz Games: volume, brightness and controls for every game, or the settings of one game.">
+<link rel="icon" type="image/svg+xml" href="../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../assets/logo.png"><link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#42d7f1">
+<link rel="stylesheet" href="../assets/site.css?v=4">
+<style>
+  main { padding: 30px 0 60px; }
+  h1 { margin: 0 0 6px; font-size: clamp(32px, 5vw, 46px); letter-spacing: -.02em; }
+  .sub { margin: 0 0 24px; font-size: 17px; color: var(--ink2); }
+  .picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  .pick { display: block; padding: 0; border: 0; border-radius: 16px; overflow: hidden; background: #fff; color: var(--ink); font: inherit; font-weight: 800; font-size: 15px; text-align: left; cursor: pointer; box-shadow: 0 2px 4px rgba(8, 60, 80, .08), 0 8px 18px rgba(8, 60, 80, .12); }
+  .pick:hover { transform: translateY(-3px); }
+  .pick:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; }
+  .pick img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #101018; }
+  .pick span { display: block; padding: 10px 12px; }
+  .pick.all { grid-column: span 2; background: var(--ink); color: #fff; }
+  .pick.all img { aspect-ratio: 32 / 10; }
+  .head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .head h1 { flex: 1; min-width: 200px; margin: 0; }
+  .sbtn { font: inherit; font-weight: 800; font-size: 15px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; background: #fff; color: var(--ink); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; box-shadow: 0 3px 0 rgba(11, 42, 51, .22); }
+  .sbtn.go { background: var(--accent); color: #4a0f2e; box-shadow: 0 3px 0 #d4659d; }
+  .sbtn:focus-visible, .seg button:focus-visible, .step:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; }
+  .panel { max-width: 720px; background: #fff; border-radius: 18px; padding: 8px 22px 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(8, 60, 80, .08), 0 8px 18px rgba(8, 60, 80, .12); }
+  .panel h2 { margin: 14px 0 4px; font-size: 14px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink2); }
+  .row { display: grid; grid-template-columns: 190px 1fr; gap: 6px 16px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+  .panel h2 + .row { border-top: 0; }
+  .row label, .row .lab { font-weight: 700; font-size: 15px; }
+  .row small { display: block; font-weight: 500; font-size: 12.5px; color: var(--ink2); margin-top: 2px; }
+  .ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .ctl input[type=range] { flex: 1; min-width: 90px; accent-color: var(--accent2); height: 28px; }
+  .step { width: 36px; height: 36px; flex: none; border: 2px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: 800 18px/1 system-ui, sans-serif; cursor: pointer; }
+  .val { width: 58px; flex: none; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button { font: inherit; font-size: 14px; font-weight: 700; min-height: 38px; padding: 0 13px; border: 2px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); cursor: pointer; }
+  .seg button[aria-pressed=true] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .sw { width: 36px; height: 36px; padding: 0 !important; border-radius: 50% !important; }
+  .sw[aria-pressed=true] { box-shadow: 0 0 0 3px #fff inset; }
+  .note { max-width: 720px; font-size: 14px; line-height: 1.5; color: var(--ink2); margin: 0 0 16px; }
+  .saved { font-size: 13px; font-weight: 800; color: #0b6a3a; min-width: 50px; }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } .pick.all { grid-column: 1 / -1; } .picks { grid-template-columns: repeat(2, 1fr); } }
+  @media (prefers-reduced-motion: no-preference) { .pick { transition: transform .12s ease; } }
+</style>
+</head>
+<body class="has-nav">
+<header class="topnav">
+  <div class="topnav-in">
+    <a class="brand" href="../"><img src="../assets/logo.svg" alt="" width="36" height="36"><span>HKugz <b>Games</b></span></a>
+    <nav class="navlinks" id="navlinks" aria-label="Main menu">
+      <a href="../#games">Games</a>
+      <a href="./" aria-current="page">Settings</a>
+      <a href="../save/">Save codes</a>
+      <a href="../timer/">For parents</a>
+    </nav>
+    <div class="navright"><button class="burger" id="burger" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="navlinks"><span></span><span></span><span></span></button></div>
+  </div>
+</header>
+<main class="wrap" id="app"></main>
+
+<script>
+(function () {
+  var burger = document.getElementById("burger"), links = document.getElementById("navlinks");
+  function set(open) { links.classList.toggle("open", open); burger.setAttribute("aria-expanded", open ? "true" : "false"); burger.setAttribute("aria-label", open ? "Close the menu" : "Open the menu"); }
+  burger.addEventListener("click", function () { set(!links.classList.contains("open")); });
+  links.addEventListener("click", function (e) { if (e.target.closest("a")) set(false); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") set(false); });
+})();
+
+(function () {
+  // ---- where a setting lives. A game's own keys are edited directly, so its in-game menu shows the same values.
+  function getJ(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function putJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var eachKey = function (pre) { return { get: function (k) { return getJ(pre + k); }, set: function (k, v) { putJ(pre + k, v); }, del: function (k) { localStorage.removeItem(pre + k); } }; };
+  var inObject = function (key, old) { return {
+    read: function () { return getJ(key) || (old && getJ(old)) || {}; },
+    get: function (k) { var v = this.read()[k]; return v === undefined ? null : v; },
+    set: function (k, v) { var o = this.read(); o[k] = v; if (k === "gfx") o.gfxSet = true; putJ(key, o); },
+    del: function (k) { var o = this.read(); delete o[k]; if (k === "gfx") delete o.gfxSet; putJ(key, o); } }; };
+  var inHkset = function (id) { return {
+    get: function (k) { var o = (getJ("hkset") || {})[id]; return o && o[k] !== undefined ? o[k] : null; },
+    set: function (k, v) { var a = getJ("hkset") || {}; (a[id] = a[id] || {})[k] = v; putJ("hkset", a); },
+    del: function (k) { var a = getJ("hkset") || {}; if (a[id]) { delete a[id][k]; putJ("hkset", a); } } }; };
+  var ALL = { get: function (k) { var v = (getJ("hkset") || {})[k]; return v === undefined ? null : v; },
+    set: function (k, v) { var a = getJ("hkset") || {}; a[k] = v; putJ("hkset", a); if (window.HKSETapply) HKSETapply(); },
+    del: function (k) { var a = getJ("hkset") || {}; delete a[k]; putJ("hkset", a); if (window.HKSETapply) HKSETapply(); } };
+
+  // ---- field builders
+  var pct = function (v) { return Math.round(v * 100) + "%"; }, times = function (v) { return (+v).toFixed(2) + "x"; }, deg = function (v) { return v + "°"; }, plain = function (v) { return "" + v; };
+  var R = function (k, label, min, max, step, def, fmt, hint) { return { type: "range", k: k, label: label, min: min, max: max, step: step, def: def, fmt: fmt || plain, hint: hint }; };
+  var C = function (k, label, def, opts, hint) { return { type: "seg", k: k, label: label, def: def, opts: opts, hint: hint }; };
+  var SW = function (k, label, def, cols) { return { type: "swatch", k: k, label: label, def: def, cols: cols }; };
+  var sens = function (d, max) { var f = R("sens", "Mouse sensitivity", max === 4 ? .1 : .3, max || 2.5, .05, d, times); f.tag = "sens"; return f; };
+  var fov = function (d, a, b) { var f = R("fov", "Field of view", a, b, 1, d, deg, "How wide you can see"); f.tag = "fov"; return f; };
+  var vol = function (k, d) { return R(k || "vol", "Game sound", 0, 1, .05, d === undefined ? .7 : d, pct); };
+  var gfx = function () { var f = C("gfx", "Graphics", "auto", [["auto", "Auto"], ["low", "Low"], ["med", "Medium"], ["high", "High"]], "Low is best for Chromebooks"); f.tag = "gfx"; return f; };
+  var diff3 = function (d, l) { return C("diff", "Bot difficulty", "normal", l || [["easy", "Easy"], ["normal", "Normal"], ["hard", "Hard"]]); };
+  var hexes = function (a) { return a.map(function (c) { return { v: c, css: "#" + ("000000" + c.toString(16)).slice(-6) }; }); };
+  var cols = [0xff4fa8, 0x2ee6ff, 0xffd31a, 0x8aff3a, 0xb06bff, 0xff7a1a, 0xffffff, 0x4a6aff];
+  var slow = /CrOS/.test(navigator.userAgent) || navigator.maxTouchPoints > 0;
+
+  var GAMES = [
+    { id: "core-strike", name: "Core Strike", thumb: "core-strike.jpg", store: inObject("cs.settings", "coreStrike"), groups: [
+      ["Aim", [sens(1, 4), fov(85, 65, 110), C("ads", "Aiming", /CrOS/.test(navigator.userAgent) ? "toggle" : "hold", [["hold", "Hold right-click"], ["toggle", "Click to toggle"]]), C("aimStyle", "Aim style", "cross", [["cross", "Tighten crosshair"], ["iron", "Iron sights"]])]],
+      ["Crosshair", [SW("xhColor", "Color", "#4dff7a", ["#4dff7a", "#3df2ff", "#ffe03d", "#ffffff", "#ff5ad1", "#ff4d4d"].map(function (c) { return { v: c, css: c }; })), R("xhSize", "Size", 2, 16, 1, 6), R("xhGap", "Gap", 0, 12, 1, 4), C("xhDot", "Center dot", "0", [["0", "Off"], ["1", "On"]])]],
+      ["Match", [C("diff", "Bot difficulty", "normal", [["easy", "Chill"], ["normal", "Normal"], ["hard", "Sweaty"], ["insane", "Pro"]]), C("length", "Match length", "short", [["short", "Short"], ["long", "Full"], ["duper", "Duper long"]]), C("arsenal", "Gun set", "pro", [["simple", "Simple"], ["pro", "Pro"]]), C("ranked", "Ranked", "on", [["on", "Ranked"], ["off", "Just for fun"]])]],
+      ["Sound and graphics", [vol(), (function () { var f = C("gfx", "Graphics", slow ? "lite" : "high", [["lite", "Lite"], ["low", "Fast"], ["high", "Pretty"]]); f.tag = "gfx"; f.map = { auto: null, low: "lite", med: "low", high: "high" }; return f; })()]]] },
+    { id: "blaster-arena", name: "Blaster Arena", thumb: "blaster-arena.png", store: eachKey("ba."), groups: [
+      ["Aim", [sens(1), fov(85, 70, 105)]],
+      ["Match", [diff3(0, [["easy", "Chill"], ["normal", "Normal"], ["hard", "Sweaty"]]), R("jump", "Jump height", 1, 12, .5, 1, function (v) { return v + "x"; }), R("smoke", "Smoke lasts", 5, 600, 5, 180, function (v) { return v + "s"; })]],
+      ["Sound and graphics", [vol(), gfx()]]] },
+    { id: "fort-fight", name: "Fort Fight", thumb: "fort-fight.png", store: eachKey("ff."), groups: [
+      ["Aim", [sens(1), fov(90, 70, 110), C("view", "Camera", "fp", [["fp", "First person"], ["tp", "Third person"]])]],
+      ["Match", [diff3(0, [["chill", "Chill"], ["normal", "Normal"], ["sweaty", "Sweaty"]])]],
+      ["Sound and graphics", [vol(), gfx()]]] },
+    { id: "liftoff-labs", name: "Liftoff Labs", thumb: "liftoff-labs.png", store: inObject("ll.settings"), groups: [
+      ["Game", [C("mode", "Mode", "career", [["career", "Career (earn money)"], ["sandbox", "Sandbox (all parts free)"]]), C("easy", "Easy mode", false, [[false, "Off"], [true, "On"]], "Stronger steering, tougher parts, gentler air")]],
+      ["Sound and graphics", [vol(), (function () { var f = C("quality", "Graphics", null, [[null, "Auto"], ["low", "Low"], ["high", "High"]]); f.tag = "gfx"; f.map = { auto: null, low: "low", med: "high", high: "high" }; return f; })()]]] },
+    { id: "tower-of-destiny", name: "Tower of Destiny", thumb: "tower.png", groups: [], note: "This game has no settings of its own, but the volume and brightness in All games work on it." },
+    { id: "sky-tower", name: "Sky Tower", thumb: "sky-tower.png", store: eachKey("st."), groups: [
+      ["Controls", [sens(1), fov(78, 60, 110)]],
+      ["Look", [SW("color", "Your color", 0x2ee6ff, hexes([0x2ee6ff, 0xff4fa8, 0xffd31a, 0x8aff3a, 0xb06bff, 0xff7a1a, 0xffffff, 0x4a6aff]))]],
+      ["Sound and graphics", [vol(), gfx()]]] },
+    { id: "kart-rush", name: "Kart Rush", thumb: "kart-rush.png", store: eachKey("kr."), groups: [
+      ["Camera", [fov(80, 60, 110)]],
+      ["Race", [diff3(), C("cc", "Speed", 1, [[1, "100cc"], [1.12, "150cc"], [1.25, "200cc"]]), C("laps", "Laps", 3, [[1, "1"], [3, "3"], [5, "5"]]), C("mirror", "Mirror tracks", false, [[false, "Off"], [true, "On"]])]],
+      ["Sound and graphics", [vol(), R("music", "Music", 0, 1, .05, .55, pct), gfx()]]] },
+    { id: "wobble-dash", name: "Wobble Dash", thumb: "wobble-dash.png", store: eachKey("wd."), groups: [
+      ["Controls", [sens(1), fov(78, 60, 110)]],
+      ["Race", [diff3(), SW("color", "Your color", 0xff4fa8, hexes([0xff4fa8, 0x2ee6ff, 0xffd31a, 0x8aff3a, 0xb06bff, 0xff7a1a, 0xffffff, 0x4a6aff, 0xff4a4a, 0x40e0b0]))]],
+      ["Sound and graphics", [vol(), gfx()]]] },
+    { id: "gadget-guard", name: "Gadget Guard", thumb: "gadget-guard.png", store: eachKey("gg."), groups: [
+      ["Game", [C("diff", "Difficulty", "normal", [["easy", "Easy"], ["normal", "Normal"], ["hard", "Hard"]]), C("mode", "Mode", "waves", [["waves", "30 waves"], ["endless", "Endless"]]), C("auto", "Auto-start waves", false, [[false, "Off"], [true, "On"]])]],
+      ["Sound and graphics", [vol(), gfx()]]] },
+    { id: "escape-da-traz", name: "Escape Da Traz", thumb: "escape-da-traz.png", store: eachKey("edt."), groups: [["Sound and graphics", [vol(), gfx()]]] },
+    { id: "putt-party", name: "Putt Party", thumb: "putt-party.png", store: eachKey("pp."), groups: [
+      ["Round", [C("holes", "Holes", 9, [[3, "3"], [6, "6"], [9, "9"]]), C("bots", "Computer golfers", 3, [[0, "Solo"], [1, "1"], [2, "2"], [3, "3"]]), diff3(), SW("color", "Your ball", 0xff4fa8, hexes(cols))]],
+      ["Sound and graphics", [vol(), gfx()]]] },
+    { id: "block-stack", name: "Block Stack", thumb: "block-stack.png", store: inHkset("block-stack"), groups: [["Game", [R("speed", "Block speed", .5, 2, .05, 1, times), R("width", "Starting width", 100, 300, 10, 200)]]] },
+    { id: "cube-flap", name: "Cube Flap", thumb: "cube-flap.png", store: inHkset("cube-flap"), groups: [["Game", [R("gap", "Gap size", 130, 260, 5, 170), R("speed", "Tower speed", .6, 1.6, .05, 1, times), R("grav", "Gravity", .6, 1.4, .05, 1, times)]]] },
+    { id: "snake", name: "Snake", thumb: "snake.png", store: inHkset("snake"), groups: [["Game", [R("speed", "Starting speed", 70, 220, 10, 130, function (v) { return v + "ms"; }, "Time per step: lower is faster"), C("wrap", "Walls", false, [[false, "Solid"], [true, "Go through"]])]]] },
+    { id: "breakout", name: "Breakout", thumb: "breakout.png", store: inHkset("breakout"), groups: [["Game", [R("paddle", "Paddle size", 50, 220, 10, 100), R("ball", "Ball speed", .6, 1.6, .05, 1, times), R("lives", "Lives", 1, 9, 1, 3)]]] }
+  ];
+
+  var GLOBAL = [
+    ["Sound", [R("vol", "Master volume", 0, 1, .05, 1, pct, "On top of each game's own sound"), C("mute", "Mute everything", false, [[false, "Off"], [true, "On"]])]],
+    ["Screen", [R("bright", "Brightness", .5, 1.5, .05, 1, pct), R("contrast", "Contrast", .5, 1.5, .05, 1, pct), R("sat", "Color", 0, 2, .05, 1, pct, "0% is black and white"), C("fps", "Show FPS", false, [[false, "Off"], [true, "On"]])]],
+    ["Controls", [C("touch", "Touch controls", "auto", [["auto", "Auto"], ["on", "Always on"], ["off", "Always off"]], "Always on turns off mouse look")]]
+  ];
+  // these three write into every game that has them, so one game can still be tuned differently afterward
+  var SETALL = [R("allSens", "Mouse sensitivity", .3, 2.5, .05, 1, times), R("allFov", "Field of view", 70, 105, 1, 85, deg), C("allGfx", "Graphics", "auto", [["auto", "Auto"], ["low", "Low"], ["med", "Medium"], ["high", "High"]])];
+
+  function setEverywhere(tag, v) {
+    GAMES.forEach(function (g) { g.groups.forEach(function (gr) { gr[1].forEach(function (f) {
+      if (f.tag !== tag) return;
+      if (tag === "gfx" && f.map) { var m = f.map[v]; if (m === null) g.store.del(f.k); else g.store.set(f.k, m); }
+      else g.store.set(f.k, v);
+    }); }); });
+  }
+
+  // ---- drawing
+  var app = document.getElementById("app");
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  var flashT = 0, savedEl = null;
+  function saved() { if (!savedEl) return; savedEl.textContent = "Saved"; clearTimeout(flashT); flashT = setTimeout(function () { savedEl.textContent = ""; }, 1200); }
+  var uid = 0;
+
+  function row(f, store, onSet) {
+    var r = el("div", "row"), id = "f" + (++uid), lab = el(f.type === "range" ? "label" : "div", f.type === "range" ? "" : "lab", f.label), c = el("div", "ctl");
+    if (f.type === "range") lab.htmlFor = id;
+    if (f.hint) lab.appendChild(el("small", "", f.hint));
+    var cur = store.get(f.k); if (cur === null) cur = f.def;
+    function commit(v) { store.set(f.k, v); if (onSet) onSet(v); saved(); }
+    if (f.type === "range") {
+      var s = el("input"), val = el("span", "val"), minus = el("button", "step", "−"), plus = el("button", "step", "+");
+      s.type = "range"; s.id = id; s.min = f.min; s.max = f.max; s.step = f.step; s.value = cur;
+      minus.type = plus.type = "button"; minus.setAttribute("aria-label", f.label + " down"); plus.setAttribute("aria-label", f.label + " up");
+      var show = function () { val.textContent = f.fmt(+s.value); };
+      var nudge = function (d) { s.value = Math.max(f.min, Math.min(f.max, +(+s.value + d * f.step).toFixed(3))); show(); commit(+s.value); };
+      s.oninput = function () { show(); commit(+s.value); };
+      minus.onclick = function () { nudge(-1); }; plus.onclick = function () { nudge(1); };
+      show(); c.appendChild(minus); c.appendChild(s); c.appendChild(plus); c.appendChild(val);
+    } else {
+      var box = el("div", "seg"); box.setAttribute("role", "group"); box.setAttribute("aria-label", f.label);
+      var items = f.type === "swatch" ? f.cols.map(function (x) { return [x.v, "", x.css]; }) : f.opts;
+      var btns = items.map(function (o) {
+        var b = el("button", o[2] ? "sw" : "", o[1]); b.type = "button"; b._v = o[0];
+        if (o[2]) { b.style.background = o[2]; b.setAttribute("aria-label", "Color " + o[2]); }
+        b.setAttribute("aria-pressed", o[0] === cur ? "true" : "false");
+        b.onclick = function () { btns.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); commit(o[0]); };
+        box.appendChild(b); return b;
+      });
+      c.appendChild(box);
+    }
+    r.appendChild(lab); r.appendChild(c); return r;
+  }
+  function panel(title, fields, store, hook) { var p = el("section", "panel"); p.appendChild(el("h2", "", title)); fields.forEach(function (f) { p.appendChild(row(f, store, hook && hook(f))); }); return p; }
+  function header(title, extra) {
+    var h = el("div", "head"), back = el("a", "sbtn", "← Back"); back.href = "#"; h.appendChild(back); h.appendChild(el("h1", "", title));
+    savedEl = el("span", "saved"); savedEl.setAttribute("role", "status"); h.appendChild(savedEl);
+    if (extra) h.appendChild(extra); return h;
+  }
+  function resetBtn(label, ask, fn) { var b = el("button", "sbtn", label); b.type = "button"; b.onclick = function () { if (confirm(ask)) { fn(); draw(); } }; return b; }
+
+  function drawPick() {
+    savedEl = null;
+    app.appendChild(el("h1", "", "Settings"));
+    app.appendChild(el("p", "sub", "Pick a game to fine tune it, or change things for all of them."));
+    var box = el("div", "picks");
+    var mk = function (hash, name, src, cls) { var a = el("a", "pick" + (cls || "")); a.href = "#" + hash; a.style.textDecoration = "none"; var i = el("img"); i.src = src; i.alt = ""; a.appendChild(i); a.appendChild(el("span", "", name)); box.appendChild(a); };
+    mk("all", "All games", "../assets/thumbs/settings.svg", " all");
+    GAMES.forEach(function (g) { mk(g.id, g.name, "../assets/thumbs/" + g.thumb); });
+    app.appendChild(box);
+  }
+  function drawAll() {
+    app.appendChild(header("All games", resetBtn("Reset", "Put volume, screen and touch settings back to normal? Your games' own settings stay.", function () { GLOBAL.forEach(function (g) { g[1].forEach(function (f) { ALL.del(f.k); }); }); SETALL.forEach(function (f) { ALL.del(f.k); }); })));
+    GLOBAL.forEach(function (g) { app.appendChild(panel(g[0], g[1], ALL)); });
+    var tags = { allSens: "sens", allFov: "fov", allGfx: "gfx" };
+    app.appendChild(panel("Set in every game", SETALL, ALL, function (f) { return function (v) { setEverywhere(tags[f.k], v); }; }));
+    app.appendChild(el("p", "note", "Moving one of these changes it in every game right away. You can still tune one game differently afterward."));
+    var w = el("section", "panel"); w.appendChild(el("h2", "", "Start over"));
+    var rr = el("div", "row"), l = el("div", "lab", "Every game's settings"); l.appendChild(el("small", "", "Your scores, unlocks and saved progress stay"));
+    rr.appendChild(l); var cc = el("div", "ctl");
+    cc.appendChild(resetBtn("Reset all games", "Put the settings of every game back to normal? Scores, unlocks and progress stay.", function () { GAMES.forEach(resetGame); })); rr.appendChild(cc); w.appendChild(rr); app.appendChild(w);
+  }
+  function resetGame(g) { g.groups.forEach(function (gr) { gr[1].forEach(function (f) { g.store.del(f.k); }); }); }
+  function drawGame(g) {
+    var extra = el("span"); extra.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+    if (g.groups.length) extra.appendChild(resetBtn("Reset", "Put " + g.name + "'s settings back to normal? Scores and progress stay.", function () { resetGame(g); }));
+    var play = el("a", "sbtn go", "Play"); play.href = "../games/" + g.id + "/"; extra.appendChild(play);
+    app.appendChild(header(g.name, extra));
+    if (g.note) { var n = el("p", "note", g.note + " "); var a = el("a", "", "Open All games"); a.href = "#all"; n.appendChild(a); app.appendChild(n); }
+    g.groups.forEach(function (gr) { app.appendChild(panel(gr[0], gr[1], g.store)); });
+    if (g.groups.length) app.appendChild(el("p", "note", "If this game is already open in another tab, reload it to use these."));
+  }
+  function draw() {
+    app.textContent = "";
+    var h = location.hash.slice(1), g = GAMES.filter(function (x) { return x.id === h; })[0];
+    if (h === "all") drawAll(); else if (g) drawGame(g); else drawPick();
+    scrollTo(0, 0);
+  }
+  addEventListener("hashchange", draw); draw();
+})();
+</script>
+</body>
+</html>
