@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=119';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=127';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -195,7 +195,7 @@ export function buildWorld(root) {
       const t = 0.97 + rnd() * 0.05, T = pal.map((v) => v * t);
       if (f) { wb.add(x0, 0, z0, x1, 0.6, z1, { c0: T.map((v) => v * 0.72), c1: T, faces: f }); wb.add(x0, 0.6, z0, x1, h, z1, { c0: T, faces: f }); }
 
-      if (f) tops.add(x0, h - 0.01, z0, x1, h, z1, { faces: 'y', c0: T });   // wall tops are never seen from the ground, so solid rock deep inside gets none (big maps are mostly rock)
+      tops.add(x0, h - 0.01, z0, x1, h, z1, { faces: 'y', c0: T });   // deep rock gets a flat top too (just 2 triangles): the menu camera looks down from above and used to see straight through it to the ground
       if (f) { const o = 0.1; trim.add(x0 - (f.includes('x') ? o : 0), h - 0.25, z0 - (f.includes('z') ? o : 0), x1 + (f.includes('X') ? o : 0), h + 0.1, z1 + (f.includes('Z') ? o : 0), { c0: T.map((v) => v * 0.85), faces: f }); }   // the ledge only needs the sides that face open ground
     } else if (ch === 'C') {
       crates.add(x0 + 0.02, 0, z0 + 0.02, x1 - 0.02, 1.96, z1 - 0.02, TH.crates ? { uvMode: 'face', c0: TH.crates[(Math.floor(x / 3) * 7 + z * 13) % TH.crates.length] } : { uvMode: 'face' });   // maps with shipping containers colour them in runs of 3
@@ -702,17 +702,18 @@ export function buildGun(id, acc) {
   const armBox = (from, dir, w, len) => {
     const d = dir.clone().normalize();
     const s2 = pt.seg(from, from.clone().addScaledVector(d, len), w, w, 0), sm = new THREE.Mesh(GEO.box, sleeveMat);
-    sm.matrixAutoUpdate = false; sm.matrix.copy(s2[1]); g.add(sm);
+    sm.matrixAutoUpdate = false; sm.matrix.copy(s2[1]); g.add(sm); return sm;
   };
+  let lArm = null;   // the off hand's arm: game.js hides it while the ballistic shield is up (that hand is holding the shield)
   const noHands = ['he', 'flash', 'smoke', 'molly'].includes(id);
   if (id === 'knife') armBox(V(0, -0.005, 0.045), V(0.18, -0.5, 0.5), 0.085, 1.2);
   else if (noHands) armBox(V(0, -0.05, -0.02), V(0.18, -0.5, 0.5), 0.09, 1.2);
   else if (spec.pistol) { armBox(V(0.004 * spec.hs, 0.02 * spec.hs, 0.03 * spec.hs), V(0.12, -0.8, 0.5), 0.092 * spec.hs, 1.3)
-    armBox(V(-0.012 * spec.hs, -0.012 * spec.hs, 0.012 * spec.hs), V(-0.32, -0.8, 0.5), 0.09 * spec.hs, 1.3); }
+    lArm = armBox(V(-0.012 * spec.hs, -0.012 * spec.hs, 0.012 * spec.hs), V(-0.32, -0.8, 0.5), 0.09 * spec.hs, 1.3); }
   else {
     const gp = spec.grip || [0, -0.08, 0.065];
     armBox(V(gp[0], gp[1] + 0.02, gp[2]), V(0.15, -0.6, 0.45), 0.1, 1.2);
-    if (spec.fore) armBox(V(spec.fore[0], spec.fore[1] - 0.012, spec.fore[2]), V(-0.2, -0.6, 0.42), 0.1, 1.2);
+    if (spec.fore) lArm = armBox(V(spec.fore[0], spec.fore[1] - 0.012, spec.fore[2]), V(-0.2, -0.6, 0.42), 0.1, 1.2);
   }
 
   g.add(new THREE.Mesh(mergeParts(parts), gunMat));
@@ -720,5 +721,5 @@ export function buildGun(id, acc) {
   const mz = new THREE.Object3D(); mz.position.set(...spec.mz); g.add(mz);
   const k = { raptor: 0.8, sentinel: 0.8, buzz: 0.84, thumper: 0.8, longbow: 0.8, chopper: 0.84, scatter: 0.8, carbine: 0.8, ranger: 0.8, dmr: 0.8, lmg: 0.78, brute: 0.84, ghost: 0.8, breaker: 0.8 }[id] || 1;
   if (k !== 1) { g.scale.setScalar(k); spec.sy *= k; }
-  return { ...spec, g, mz };
+  return { ...spec, g, mz, lArm };
 }

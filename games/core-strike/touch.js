@@ -1,8 +1,7 @@
 // TOUCH CONTROLS - an on-screen joystick, a look pad and buttons for phones and tablets.
 // They send the same keyboard and mouse events the games already listen to, so the games barely need to know about touch.
 const q = new URLSearchParams(location.search);
-const TOUCH_SET = window.HKSET && window.HKSET.touch;
-export const TOUCH = q.has('touch') ? q.get('touch') !== '0' : TOUCH_SET === 'on' ? true : TOUCH_SET === 'off' ? false : (('ontouchstart' in window) || navigator.maxTouchPoints > 0) && (/Android|Silk/i.test(navigator.userAgent) || !matchMedia('(any-pointer:fine)').matches);
+export const TOUCH = q.has('touch') ? q.get('touch') !== '0' : (('ontouchstart' in window) || navigator.maxTouchPoints > 0) && (/Android|Silk/i.test(navigator.userAgent) || !matchMedia('(any-pointer:fine)').matches);
 window.__TOUCH = TOUCH;
 if (TOUCH) document.documentElement.classList.add('touch');
 

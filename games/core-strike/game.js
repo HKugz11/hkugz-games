@@ -1,10 +1,10 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=119';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=119';
-import { createOnline } from './online.js?v=119';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=127';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=127';
+import { createOnline } from './online.js?v=127';
 import { TOUCH, initTouch } from './touch.js?v=1';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=119';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=127';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -357,10 +357,10 @@ const GEAR = {
   kevlar: { name: 'Kevlar Vest', price: 650, desc: '100 armor: soaks about a third of body damage' },
   helm: { name: 'Vest + Helmet', price: 1000, desc: 'Armor + a helmet: most headshots no longer kill in one hit (Raptor, Hammer, Viper and snipers still do)' },
   kit: { name: 'Defuse Kit', price: 400, desc: 'Defuse in 5 s (Wardens only)' },
-  shield: { name: 'Ballistic Shield', price: 1800, desc: 'Hold a pistol or knife (keys 2 / 3) and the shield stops every bullet from the front. Slower. A rifle (key 1) lowers it.' },
+  shield: { name: 'Ballistic Shield', price: 1800, desc: 'Press 5 to carry it on your left arm with a pistol in your right hand (key 2 / 3 keep it up). It stops every bullet from the front, but you move slower. A rifle or grenade lowers it.' },
 };
-// the ballistic shield works while the holder has a pistol or the knife out; it stops bullets and stabs that come from inside a 120 degree cone in front
-const shieldUp = (v) => !!v.shield && v.alive && (v.slot === 'sec' || v.slot === 'knife');
+// the ballistic shield (key 5, Fortnite style) works while it is raised; it stops bullets and stabs that come from inside a 120 degree cone in front
+const shieldUp = (v) => !!v.shield && v.alive && !!v.shieldOn;
 function shieldFaces(v, from) {
   const dx = from.x - v.pos.x, dz = from.z - v.pos.z, d = Math.hypot(dx, dz); if (d < 0.05) return true;
   return (dx * -Math.sin(v.yaw) + dz * -Math.cos(v.yaw)) / d > 0.5;
@@ -395,13 +395,13 @@ function nameTag(a, g) {
 const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade' };
 // A soldier is a few merged meshes: 2 legs (+2 shins in Pretty/Fast), body, head (Pretty/Fast) and ONE arms+gun mesh whose shape changes with the gun in hand.
 // Lite uses straight legs and a body that already includes the head; the knees are empty groups there.
-const shieldMats = { body: new THREE.MeshLambertMaterial({ color: 0x2c3a52, flatShading: true }), rim: new THREE.MeshLambertMaterial({ color: 0x14181f, flatShading: true }), glass: new THREE.MeshBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.75 }) };
+const shieldMats = { body: new THREE.MeshLambertMaterial({ color: 0x2c3a52, flatShading: true }), rim: new THREE.MeshLambertMaterial({ color: 0x14181f, flatShading: true }), glass: new THREE.MeshBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.3 }) };
 function shieldModel() {   // a tall riot shield: dark plate, black frame, a little see-through window near the top
   const g = new THREE.Group(), part = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(geoBox, m); b.scale.set(w, h, d); b.position.set(x, y, z); g.add(b); };
-  part(0.78, 1.15, 0.05, 0, 0, 0, shieldMats.body);
+  part(0.78, 0.86, 0.05, 0, -0.145, 0, shieldMats.body); part(0.78, 0.14, 0.05, 0, 0.505, 0, shieldMats.body); part(0.16, 0.15, 0.05, -0.31, 0.36, 0, shieldMats.body); part(0.16, 0.15, 0.05, 0.31, 0.36, 0, shieldMats.body);   // the plate has a real window cut out (so you can see out of it)
   part(0.84, 0.05, 0.08, 0, 0.6, 0, shieldMats.rim); part(0.84, 0.05, 0.08, 0, -0.6, 0, shieldMats.rim);
   part(0.05, 1.25, 0.08, -0.4, 0, 0, shieldMats.rim); part(0.05, 1.25, 0.08, 0.4, 0, 0, shieldMats.rim);
-  part(0.34, 0.12, 0.06, 0, 0.36, 0, shieldMats.glass);
+  part(0.46, 0.15, 0.02, 0, 0.36, 0, shieldMats.glass); part(0.5, 0.018, 0.07, 0, 0.44, 0, shieldMats.rim); part(0.5, 0.018, 0.07, 0, 0.28, 0, shieldMats.rim);
   return g;
 }
 function makeSoldier(a) {
@@ -446,6 +446,7 @@ const hasNade = (a) => a.nades.he + a.nades.flash + a.nades.smoke + a.nades.moll
 function slotOK(a, s) { return s === 'prim' ? !!a.prim : s === 'sec' ? !!a.sec : s === 'knife' ? true : hasNade(a); }
 function equip(a, s) {
   if (!slotOK(a, s)) return;
+  if (a.shieldOn && s !== 'sec' && s !== 'knife') { a.shieldOn = false; if (a.isPlayer) SFX.swap(); }   // a two-handed gun or a grenade needs both hands: the shield comes down
   if (s === 'nade' && a.slot === 'nade') { cycleNade(a); return; }
   if (a.slot === s) return;
   if (s === 'nade' && !a.nades[a.nadeSel]) cycleNade(a);
@@ -474,7 +475,7 @@ function buildVM(id) {
   return b.g;
 }
 let vmCur = null, vmId = '';
-const VMS = { ads: 0, spr: 0, kick: 0, bob: 0, swayX: 0, swayY: 0, inspect: 0, slash: 0, flashT: 0, land: 0 };
+const VMS = { sh: 0, ads: 0, spr: 0, kick: 0, bob: 0, swayX: 0, swayY: 0, inspect: 0, slash: 0, flashT: 0, land: 0 };
 function vmSet() {
   const P = GS.player; if (!P) return;
   const id = curW(P).id;
@@ -505,7 +506,13 @@ const enemies = (a) => GS.actors.filter((e) => e.alive && e.side !== a.side);
 const BOMB = buildBomb(), bombMesh = BOMB.group;
 const bombLight = new THREE.PointLight(0xff3a2a, 0, 8); bombLight.position.y = 0.5; bombMesh.add(bombLight);
 bombMesh.visible = false; scene.add(bombMesh);
-const vmShield = shieldModel(); vmShield.scale.setScalar(0.22); vmShield.position.set(-0.36, -0.13, -0.62); vmShield.rotation.set(0, 0.4, 0.06); vmShield.visible = false; vmCam.add(vmShield);   // your own shield, low on the left of the screen
+const vmShield = shieldModel(); vmShield.scale.setScalar(0.42); vmShield.position.set(-0.26, -0.04, -0.5); vmShield.rotation.set(0, 0.5, 0.04); vmShield.visible = false; vmCam.add(vmShield);
+{ // your left hand gripping the handle on the back of the shield, with the sleeve coming in from the bottom corner
+  const gl = new THREE.MeshLambertMaterial({ color: 0x1d1a17, flatShading: true });
+  const hand = new THREE.Mesh(geoBox, gl); hand.scale.set(0.2, 0.26, 0.16); hand.position.set(0.0, 0.0, 0.13); vmShield.add(hand);
+  const grip = new THREE.Mesh(geoBox, shieldMats.rim); grip.scale.set(0.06, 0.34, 0.06); grip.position.set(0.0, 0.0, 0.05); vmShield.add(grip);
+  const arm = new THREE.Mesh(geoBox, sleeveMat); arm.scale.set(0.26, 0.26, 1.5); arm.position.set(0.05, -0.3, 0.8); arm.rotation.set(0.45, -0.1, 0); vmShield.add(arm);
+}   // your own shield (key 5): on your left arm while the pistol stays in your right hand
 const vmBomb = buildBomb(), vmHand = new THREE.Group();   // the bomb in your hands while you plant or defuse (first person)
 {
   const glove = new THREE.MeshLambertMaterial({ color: 0x1d1a17, flatShading: true });
@@ -656,7 +663,8 @@ function traceShot(a, o, d, def, wid, showTracer) {
   if (best) {
     const e = best.e, sc = SIDE[e.side];
     const dmg = shotDamage(def, best.part, best.t);
-    burst(end.x, end.y, end.z, best.part === 'head' ? 14 : 7, 4, ['#ffffff', '#' + sc.main.toString(16).padStart(6, '0'), '#ffe27a'], 0.06, 0.35, 10);
+    if (shieldUp(e) && shieldFaces(e, a.pos) && wid !== 'bomb') burst(end.x, end.y, end.z, 5, 3, ['#ffffff', '#ffe27a', '#bcd7ff'], 0.04, 0.25, 10);   // the shield catches it: bright sparks, not the dark team-coloured chips (those looked like black bugs floating in front of the shield)
+    else burst(end.x, end.y, end.z, best.part === 'head' ? 14 : 7, 4, ['#ffffff', '#' + sc.main.toString(16).padStart(6, '0'), '#ffe27a'], 0.06, 0.35, 10);
     damage(e, dmg, a, best.part, wid, d);
     return true;
   }
@@ -988,7 +996,7 @@ function spawnAt(a, cells, used) {
 }
 function resetActorForRound(a) {
   if (a.fullReset || !a.alive) {
-    a.prim = null; a.sec = newGun('p9'); a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.armor = 0; a.helmet = false; a.kit = false; a.shield = false;
+    a.prim = null; a.sec = newGun('p9'); a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.armor = 0; a.helmet = false; a.kit = false; a.shield = false; a.shieldOn = false;
   } else if (a.prim) { /* survivors keep gear */ }
   a.fullReset = false; a.buyLog = [];
   a.hp = 100; a.alive = true; a.act = null; a.blindT = 0; a.reloadT = 0; a.switchT = 0; a.rc = 0; a.scoped = 0; a.rescope = 0; a.roundKills = 0; a.crouch = false; a.crouchAmt = 0; a.tagT = 0;
@@ -1141,7 +1149,7 @@ function dmSpawn(a) {
     if (s > bestS) { bestS = s; bestC = c; }
   }
   a.pos.set(cellX(bestC), 0, cellZ(bestC)); a.vel.set(0, 0, 0); a.yaw = Math.random() * 6.28; a.pitch = 0;
-  a.hp = 100; a.armor = 100; a.helmet = true; a.shield = false; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
+  a.hp = 100; a.armor = 100; a.helmet = true; a.shield = false; a.shieldOn = false; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
   a.sec = newGun('p9');
   a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow', 'brute', 'ghost', 'breaker'].filter(gunOK)));
   a.nades = { he: 1, flash: 1, smoke: 0, molly: 0 };
@@ -2379,6 +2387,7 @@ function updatePlayer(dt) {
   if (pressed.has('Digit2')) equip(P, 'sec');
   if (pressed.has('Digit3')) equip(P, 'knife');
   if (pressed.has('Digit4')) equip(P, 'nade');
+  if (pressed.has('Digit5') && P.shield) { if (P.shieldOn) P.shieldOn = false; else { equip(P, P.sec ? 'sec' : 'knife'); P.shieldOn = true; } SFX.swap(); }   // Fortnite-style: the shield on your left arm and a pistol in your right hand
   if (pressed.has('KeyQ') && slotOK(P, P.lastSlot)) equip(P, P.lastSlot);
   if (pressed.has('KeyR') && def.mag) startReload(P);
   if (pressed.has('KeyG') && GS.mode === 'comp' && !MP.on) { if (GS.core.carrier === P && P.slot === 'knife') dropCore(P); else dropCurrent(P); }
@@ -2444,7 +2453,7 @@ function updatePlayer(dt) {
     fx = -Math.sin(P.yaw) * f + Math.cos(P.yaw) * r; fz = -Math.cos(P.yaw) * f - Math.sin(P.yaw) * r;
     const l = Math.hypot(fx, fz); if (l > 0) { fx /= l; fz /= l; }
   }
-  let maxSpd = def.speed * (P.sprint ? 1.32 : 1) * (P.walk ? 0.52 : 1) * (P.crouch ? 0.34 : 1) * (P.scoped || P.ads ? 0.62 : 1) * (P.tagT > 0 ? 0.55 : 1) * (shieldUp(P) ? 0.85 : 1);
+  let maxSpd = def.speed * (P.sprint ? 1.32 : 1) * (P.walk ? 0.52 : 1) * (P.crouch ? 0.34 : 1) * (P.scoped || P.ads ? 0.62 : 1) * (P.tagT > 0 ? 0.55 : 1) * (shieldUp(P) ? 0.7 : 1);
   if (P.slideT > 0 && !frozen) { fx = P.slideDir[0]; fz = P.slideDir[1]; maxSpd = P.slideV * (0.35 + 0.65 * P.slideT / 0.85); }
   physics(P, dt, fx, fz, maxSpd, keys.Space && !frozen && !P.act);
   if (!P.walk) footsteps(P, dt);
@@ -2849,8 +2858,15 @@ function updateCamera(dt) {
   camera.updateProjectionMatrix();
   setListener(camera.position.x, camera.position.y, camera.position.z, view ? view.yaw : P.yaw);
   // viewmodel
+  VMS.sh += ((P.shieldOn && P.shield ? 1 : 0) - VMS.sh) * Math.min(1, dt * 9);   // 0 = lowered out of sight, 1 = held up in front of you
+  vmShield.visible = P.alive && shieldUp(P) && VMS.sh > 0.02;
   vmRoot.visible = P.alive && !(P.scoped && curDef(P).scope) && !P.act;
+  if (vmShield.visible) {
+    const sp0 = Math.hypot(P.vel.x, P.vel.z) * (P.onGround ? 1 : 0.3);
+    vmShield.position.set(-0.26 + VMS.swayX * 0.5 + Math.sin(VMS.bob) * 0.008 * Math.min(1, sp0 / 6), -0.04 - (1 - VMS.sh) * 0.6 - Math.abs(Math.cos(VMS.bob)) * 0.01 * Math.min(1, sp0 / 6), -0.5);
+  }
   if (!vmCur) return;
+  { const lg = GM[curW(P).id]; if (lg && lg.lArm) lg.lArm.visible = !(P.shieldOn && P.shield); }   // one hand holds the shield, so the pistol is held with the other only
   const sp = Math.hypot(P.vel.x, P.vel.z), def = curDef(P);
   VMS.bob += sp * dt * 1.6;
   const bobA = P.onGround ? Math.min(1, sp / 6) : 0;
@@ -2995,8 +3011,7 @@ function frame(now) {
   }
   if (WORLD.sky) WORLD.sky.position.copy(camera.position);
   renderer.clear(); renderer.render(scene, camera);
-  vmShield.visible = GS.player.alive && shieldUp(GS.player);
-  if ((vmRoot.visible || vmBomb.group.visible) && GS.player.alive) { renderer.clearDepth(); renderer.render(vmScene, vmCam); }
+  if ((vmRoot.visible || vmBomb.group.visible || vmShield.visible) && GS.player.alive) { renderer.clearDepth(); renderer.render(vmScene, vmCam); }
 }
 requestAnimationFrame(frame);
 

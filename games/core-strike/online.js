@@ -150,7 +150,7 @@ export function createOnline(X) {
         if (!a.alive || !Array.isArray(d.p)) return;
         a.pos.set(clampN(num(d.p[0]), -2, X.worldW + 2), clampN(num(d.p[1]), -1, 30), clampN(num(d.p[2]), -2, X.worldH + 2));   // stay inside THIS map (the big maps are well over 100 m wide)
         a.vel.set(num(d.v && d.v[0]), 0, num(d.v && d.v[1])); a.yaw = num(d.y); a.pitch = clampN(num(d.a), -1.6, 1.6);
-        const f = d.f | 0; a.crouch = !!(f & 1); a.sprint = !!(f & 2); a.walk = !!(f & 4); a.onGround = !!(f & 8); a.scoped = (f >> 4) & 3;
+        const f = d.f | 0; a.crouch = !!(f & 1); a.sprint = !!(f & 2); a.walk = !!(f & 4); a.onGround = !!(f & 8); a.scoped = (f >> 4) & 3; a.shieldOn = !!(f & 64) && !!a.shield;
         const sl = SL[d.s | 0]; if (sl && X.slotOK(a, sl)) a.slot = sl;
         const ns = NS[d.n | 0]; if (ns && a.nades[ns] > 0) a.nadeSel = ns;
         break;
@@ -236,7 +236,7 @@ export function createOnline(X) {
   function sendSnapshot() {
     const c = GS.core;
     const A = GS.actors.map((a) => [r2(a.pos.x), r2(a.pos.y), r2(a.pos.z), r2(a.yaw), r2(a.pitch), Math.round(a.hp), Math.round(a.armor),
-      (a.alive ? 1 : 0) | (a.crouch ? 2 : 0) | (a.sprint ? 4 : 0) | (a.helmet ? 8 : 0) | (a.kit ? 16 : 0) | (a.onGround ? 32 : 0) | (a.act && a.act.type === 'plant' ? 64 : 0) | (a.act && a.act.type === 'defuse' ? 128 : 0) | (((a.scoped || 0) & 3) << 8) | (a.shield ? 1024 : 0),
+      (a.alive ? 1 : 0) | (a.crouch ? 2 : 0) | (a.sprint ? 4 : 0) | (a.helmet ? 8 : 0) | (a.kit ? 16 : 0) | (a.onGround ? 32 : 0) | (a.act && a.act.type === 'plant' ? 64 : 0) | (a.act && a.act.type === 'defuse' ? 128 : 0) | (((a.scoped || 0) & 3) << 8) | (a.shield ? 1024 : 0) | (a.shieldOn ? 2048 : 0),
       Math.max(0, SL.indexOf(a.slot)), a.prim ? wi(a.prim.id) : -1, a.sec ? wi(a.sec.id) : -1, Math.max(0, NS.indexOf(a.nadeSel)), a.kills, a.deaths, Math.round(a.dmg), a.hs, a.money, a.side]);
     net.hostBroadcast({ t: 's', st: STATES.indexOf(GS.state), pt: r2(GS.phaseT), rt: r2(GS.roundT), bl: r2(GS.buyLeft), r: GS.round, sc: GS.score, ls: GS.loss, ex: GS.execute ? 1 : 0, pl: GS.plan,
       c: [CST.indexOf(c.state), c.carrier ? c.carrier.idx : -1, r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r2(c.timer), c.site || ''], a: A });
@@ -340,7 +340,7 @@ export function createOnline(X) {
       const a = GS.actors[i], t = m.a[i], f = t[7] | 0, alive = !!(f & 1);
       if (a.side !== (t[17] | 0)) { a.side = t[17] | 0; X.makeSoldier(a); if (a === P) X.sleeveTint(); }
       a.kills = t[12]; a.deaths = t[13]; a.dmg = t[14]; a.hs = t[15]; a.money = t[16];
-      a.armor = t[6]; a.helmet = !!(f & 8); a.kit = !!(f & 16); a.shield = !!(f & 1024);
+      a.armor = t[6]; a.helmet = !!(f & 8); a.kit = !!(f & 16); a.shield = !!(f & 1024); if (a !== P) a.shieldOn = !!(f & 2048);
       if (a === P) {
         P.hp = t[5];
         if (!alive && P.alive && GS.time > graceUntil) { P.alive = false; X.killFx(P, GS.killer || null, 'p9', false, true); }
@@ -376,7 +376,7 @@ export function createOnline(X) {
     if (accMe >= 0.033) {
       accMe = 0;
       net.clientSend({ t: 'me', p: [r2(P.pos.x), r2(P.pos.y), r2(P.pos.z)], v: [r2(P.vel.x), r2(P.vel.z)], y: r2(P.yaw), a: r2(P.pitch),
-        f: (P.crouch ? 1 : 0) | (P.sprint ? 2 : 0) | (P.walk ? 4 : 0) | (P.onGround ? 8 : 0) | (((P.scoped || 0) & 3) << 4), s: Math.max(0, SL.indexOf(P.slot)), n: Math.max(0, NS.indexOf(P.nadeSel)) });
+        f: (P.crouch ? 1 : 0) | (P.sprint ? 2 : 0) | (P.walk ? 4 : 0) | (P.onGround ? 8 : 0) | (P.shieldOn ? 64 : 0) | (((P.scoped || 0) & 3) << 4), s: Math.max(0, SL.indexOf(P.slot)), n: Math.max(0, NS.indexOf(P.nadeSel)) });
     }
     const cur = P.act ? P.act.type : '';
     if (cur !== lastAct) { lastAct = cur; net.clientSend({ t: 'act', on: !!cur, type: cur }); }
