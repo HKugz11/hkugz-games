@@ -1,10 +1,10 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=127';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=127';
-import { createOnline } from './online.js?v=127';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=129';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=129';
+import { createOnline } from './online.js?v=129';
 import { TOUCH, initTouch } from './touch.js?v=1';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=127';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=129';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -414,7 +414,7 @@ function makeSoldier(a) {
   const arms = new THREE.Group(); arms.position.set(0, 1.3, 0); up.add(arms); const armsMesh = mk(tpArms(a.side, 'rifle', lite), arms);
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   flash.scale.setScalar(0.5); flash.visible = false; arms.add(flash);
-  const sh = shieldModel(); sh.position.set(0, 1.0, -0.5); sh.visible = false; up.add(sh);   // the ballistic shield, held out in front
+  const sh = shieldModel(); sh.position.set(-0.3, 0.95, -0.42); sh.rotation.y = -0.4; sh.scale.setScalar(0.82); sh.visible = false; up.add(sh);   // the ballistic shield, carried on the left arm out in front (the head and gun stay visible)
   if (GS.player && a.squad === GS.player.squad && !a.isPlayer && (!lite || a.human)) nameTag(a, g);   // Lite only labels real players
   if (a.mesh) scene.remove(a.mesh.g);
   a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, flash, phase: 0, flashT: 0, lite, armsMesh, armsKey: '', sh };
@@ -506,7 +506,7 @@ const enemies = (a) => GS.actors.filter((e) => e.alive && e.side !== a.side);
 const BOMB = buildBomb(), bombMesh = BOMB.group;
 const bombLight = new THREE.PointLight(0xff3a2a, 0, 8); bombLight.position.y = 0.5; bombMesh.add(bombLight);
 bombMesh.visible = false; scene.add(bombMesh);
-const vmShield = shieldModel(); vmShield.scale.setScalar(0.42); vmShield.position.set(-0.26, -0.04, -0.5); vmShield.rotation.set(0, 0.5, 0.04); vmShield.visible = false; vmCam.add(vmShield);
+const vmShield = shieldModel(); vmShield.scale.setScalar(0.32); vmShield.position.set(-0.13, -0.13, -0.5); vmShield.rotation.set(0, 0.5, 0.04); vmShield.visible = false; vmCam.add(vmShield);
 { // your left hand gripping the handle on the back of the shield, with the sleeve coming in from the bottom corner
   const gl = new THREE.MeshLambertMaterial({ color: 0x1d1a17, flatShading: true });
   const hand = new THREE.Mesh(geoBox, gl); hand.scale.set(0.2, 0.26, 0.16); hand.position.set(0.0, 0.0, 0.13); vmShield.add(hand);
@@ -2863,7 +2863,7 @@ function updateCamera(dt) {
   vmRoot.visible = P.alive && !(P.scoped && curDef(P).scope) && !P.act;
   if (vmShield.visible) {
     const sp0 = Math.hypot(P.vel.x, P.vel.z) * (P.onGround ? 1 : 0.3);
-    vmShield.position.set(-0.26 + VMS.swayX * 0.5 + Math.sin(VMS.bob) * 0.008 * Math.min(1, sp0 / 6), -0.04 - (1 - VMS.sh) * 0.6 - Math.abs(Math.cos(VMS.bob)) * 0.01 * Math.min(1, sp0 / 6), -0.5);
+    vmShield.position.set(-0.13 + VMS.swayX * 0.5 + Math.sin(VMS.bob) * 0.008 * Math.min(1, sp0 / 6), -0.13 - (1 - VMS.sh) * 0.6 - Math.abs(Math.cos(VMS.bob)) * 0.01 * Math.min(1, sp0 / 6), -0.5);
   }
   if (!vmCur) return;
   { const lg = GM[curW(P).id]; if (lg && lg.lArm) lg.lArm.visible = !(P.shieldOn && P.shield); }   // one hand holds the shield, so the pistol is held with the other only
