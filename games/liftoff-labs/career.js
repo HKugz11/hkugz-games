@@ -1,7 +1,7 @@
 // Money, unlocked parts, missions and saved rockets. Everything lives in this browser (localStorage), keys start with "ll.".
-import { PARTS, PART_LIST, MILESTONES, MILESTONE, BODIES } from './data.js?v=1';
-import { V } from './vec.js?v=1';
-import { validDesign } from './design.js?v=1';
+import { PARTS, PART_LIST, MILESTONES, MILESTONE, BODIES } from './data.js?v=2';
+import { V } from './vec.js?v=2';
+import { validDesign } from './design.js?v=2';
 
 const K_CAREER = 'll.career', K_SHIPS = 'll.ships', K_SET = 'll.settings', K_LAST = 'll.last';
 const get = (k) => { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch (e) { return null; } };
@@ -10,7 +10,7 @@ const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return
 export const START_FUNDS = 3000;
 export const fmt$ = (n) => '$' + Math.round(n).toLocaleString('en-US');
 
-export const settings = Object.assign({ quality: null, easy: false, vol: 0.7, mode: 'career' }, get(K_SET) || {});
+export const settings = Object.assign({ quality: null, easy: true, vol: 0.7, mode: 'career' }, get(K_SET) || {});
 export const saveSettings = () => put(K_SET, settings);
 
 class Career {

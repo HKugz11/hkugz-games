@@ -1,5 +1,5 @@
 // Orbit maths (pure, no rendering): Kepler propagation with universal variables, orbital elements, prediction points.
-import { V } from './vec.js?v=1';
+import { V } from './vec.js?v=2';
 
 const TAU = Math.PI * 2;
 

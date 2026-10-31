@@ -1,6 +1,6 @@
 // The launch site: pad, tower, hangar, fuel tanks, trees and rocks. Built in "pad space": y is up, the rocket stands at the origin.
 import * as THREE from './three.module.min.js';
-import { bake, cyl, box, ball, merge, toonMaterial, outlineMaterial } from './meshes.js?v=1';
+import { bake, cyl, box, ball, merge, toonMaterial, outlineMaterial } from './meshes.js?v=2';
 
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 

@@ -1,7 +1,7 @@
 // Little 3D pictures of every part (for the parts lists) and a spinning big preview for the shop.
 import * as THREE from './three.module.min.js';
-import { PARTS } from './data.js?v=1';
-import { makePart } from './meshes.js?v=1';
+import { PARTS } from './data.js?v=2';
+import { makePart } from './meshes.js?v=2';
 
 function lights(scene) {
   scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x6a5a7a, 1.15));
@@ -60,7 +60,7 @@ export class Preview {
   }
   render(dt) {
     if (!this.el || !this.obj) return;
-    const c = this.el; if (!this.cx) { c.width = this.W; c.height = this.H; this.cx = c.getContext('2d'); this.img = this.cx.createImageData(this.W, this.H); }
+    const c = this.el; if (this.lastEl !== c) { this.lastEl = c; c.width = this.W; c.height = this.H; this.cx = c.getContext('2d'); this.img = this.cx.createImageData(this.W, this.H); }
     this.t += dt; this.obj.rotation.y = this.t * 0.8;
     const dist = this.radius / Math.sin((this.cam.fov * Math.PI / 180) / 2) * 1.15;
     this.cam.position.set(0, dist * 0.28, dist * 0.95); this.cam.lookAt(0, 0, 0);

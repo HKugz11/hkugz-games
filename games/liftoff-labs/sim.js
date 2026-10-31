@@ -1,8 +1,8 @@
 // The flight simulation (pure maths, no graphics): rockets as rigid bodies with fuel, engines, air, parachutes, legs and crashes.
-import { V, Q, clamp, lerp } from './vec.js?v=1';
-import { PARTS, BODIES, G0, PAD, beanState, isEngine, isDecoupler, isChute, isLeg } from './data.js?v=1';
-import { layout, segments, stagesOf } from './design.js?v=1';
-import { propagate, elements } from './orbit.js?v=1';
+import { V, Q, clamp, lerp } from './vec.js?v=2';
+import { PARTS, BODIES, G0, PAD, beanState, isEngine, isDecoupler, isChute, isLeg } from './data.js?v=2';
+import { layout, segments, stagesOf } from './design.js?v=2';
+import { propagate, elements } from './orbit.js?v=2';
 
 export const DT = 1 / 120;
 const DEG = Math.PI / 180;
@@ -54,7 +54,7 @@ export function createVessel(design, opts = {}) {
     r: [0, 0, 0], v: [0, 0, 0], q: [0, 0, 0, 1], w: [0, 0, 0],
     ctl: { thr: 0, p: 0, y: 0, r: 0, sas: true, mode: 'hold', target: null, wheel: true, wasInput: false },
     stageIdx: 0, stageList: [], asleep: false, dead: false, met: 0, sleepT: 0, events: [], maxAlt: 0, maxSpeed: 0, touchedDown: false,
-    easy: !!opts.easy, name: design.name,
+    easy: !!opts.easy, name: design.name, segParent: sg.parent,
   };
   v.stageList = [...new Set(v.parts.filter((p) => p.stage >= 0).map((p) => p.stage))].sort((a, b) => a - b);
   rebuild(v);
@@ -70,6 +70,9 @@ export function rebuild(v) {
   v.chutes = alive.filter((p) => p.chute);
   v.legs = alive.filter((p) => p.leg);
   v.nSeg = 1 + Math.max(0, ...alive.map((p) => p.seg));
+  // each part of the rocket can drink from its own tanks first, then from the tanks above it (a pop ring is just a pipe)
+  v.feed = [];
+  for (let sgi = 0; sgi < v.nSeg; sgi++) { const chain = []; for (let q = sgi; q >= 0 && chain.length < 40; q = (v.segParent || [-1])[q] === undefined ? -1 : v.segParent[q]) chain.push(q); v.feed.push(chain); }
   // exposed ends, lateral surfaces, contact points
   let aTop = 0, aBot = 0, aLat = 0;
   const lat = [], contacts = [];
@@ -212,7 +215,7 @@ function splitOff(v, memberIdx) {
   const nv = {
     id: VID++, main: false, body: v.body, parts: v.parts.map((p) => (set.has(p.i) ? Object.assign({}, p, { pos: p.pos.slice(), chute: p.chute && Object.assign({}, p.chute), leg: p.leg && Object.assign({}, p.leg) }) : Object.assign({}, p, { alive: false }))),
     r: [0, 0, 0], v: [0, 0, 0], q: [0, 0, 0, 1], w: [0, 0, 0], ctl: { thr: 0, p: 0, y: 0, r: 0, sas: false, mode: 'hold', target: null, wheel: true },
-    stageIdx: 99, stageList: [], asleep: false, dead: false, met: 0, sleepT: 0, events: [], maxAlt: 0, maxSpeed: 0, debris: true, easy: v.easy, name: 'Spent stage', born: 0,
+    stageIdx: 99, stageList: [], asleep: false, dead: false, met: 0, sleepT: 0, events: [], maxAlt: 0, maxSpeed: 0, debris: true, easy: v.easy, name: 'Spent stage', born: 0, segParent: v.segParent,
   };
   for (const i of memberIdx) v.parts[i].alive = false;
   // the new piece is its own tree: the first member becomes its root (kids of dead parts stay linked by index, which is fine)
@@ -332,16 +335,16 @@ export function stepVessel(v, W, dt) {
   const easy = v.easy;
   const ctl = v.ctl;
 
-  // ---- engines
-  const pool = new Array(v.nSeg).fill(0), need = new Array(v.nSeg).fill(0);
+  // ---- engines: each one drinks from its own tanks first, then from the tanks above it
+  const pool = new Array(v.nSeg).fill(0), pool0 = new Array(v.nSeg).fill(0), drain = new Array(v.nSeg).fill(0);
   for (const p of v.alive) if (p.def.fuel && !p.def.solid) pool[p.seg] += p.fuel;
+  for (let s = 0; s < v.nSeg; s++) pool0[s] = pool[s];
   for (const e of v.engines) {
     e.thrust = 0; e.want = 0;
     if (!e.ign || e.out) continue;
     const d = e.def, thr = d.solid ? 1 : ctl.thr;
     if (thr <= 0) continue;
     e.want = d.F / (d.ispVac * G0) * thr * dt; e.thr = thr;
-    if (!d.solid) need[e.seg] += e.want;
   }
   const Fb = [0, 0, 0], Tb = [0, 0, 0];
   let thrustTot = 0;
@@ -350,7 +353,12 @@ export function stepVessel(v, W, dt) {
     const d = e.def;
     let scale;
     if (d.solid) { scale = Math.min(1, e.fuel / e.want); e.fuel -= e.want * scale; if (e.fuel <= 1e-6) { e.fuel = 0; e.out = true; v.events.push({ t: 'burnout', part: d.name }); } }
-    else { scale = need[e.seg] > 0 ? Math.min(1, pool[e.seg] / need[e.seg]) : 0; if (scale <= 1e-9 && !e.starved) { e.starved = true; v.events.push({ t: 'flameout', part: d.name }); } }
+    else {
+      let left = e.want, got = 0;
+      for (const s of v.feed[e.seg] || [e.seg]) { if (left <= 0) break; const t = Math.min(left, pool[s]); pool[s] -= t; drain[s] += t; left -= t; got += t; if (t > 0 && s !== e.seg && !e.siphon) { e.siphon = true; v.events.push({ t: 'siphon', part: d.name }); } }
+      scale = got / e.want;
+      if (scale <= 1e-9 && !e.starved) { e.starved = true; v.events.push({ t: 'flameout', part: d.name }); }
+    }
     if (scale <= 0) continue;
     const isp = lerp(d.ispVac, d.ispAsl, pFrac);
     const F = e.thr * d.F * (isp / d.ispVac) * scale;
@@ -361,8 +369,8 @@ export function stepVessel(v, W, dt) {
   }
   // take the burned fuel out of the tanks of each segment
   for (let s = 0; s < v.nSeg; s++) {
-    if (need[s] <= 0 || pool[s] <= 0) continue;
-    const burn = Math.min(need[s], pool[s]), ratio = burn / pool[s];
+    if (drain[s] <= 0 || pool0[s] <= 0) continue;
+    const ratio = Math.min(1, drain[s] / pool0[s]);
     for (const p of v.alive) if (p.seg === s && p.def.fuel && !p.def.solid) p.fuel -= p.fuel * ratio;
   }
 
@@ -649,27 +657,31 @@ export function analyze(design) {
     let dvS = 0, twr0 = 0, burn = 0, first = true, m0s = massNow();
     // what the next stage ring will let go of: this stage ends when the engines in it have run dry
     const dropSet = (() => { const ns = stageNums[si + 1]; if (ns === undefined) return null; const set = new Set(); for (const i of alive) { const p = v.parts[i]; if (p.stage === ns && isDecoupler(p.def)) for (const k of p.kids) for (const j of sub(k)) set.add(j); } return [...set].some((j) => isEngine(v.parts[j].def)) ? set : null; })();
-    for (let guard = 0; guard < 40; guard++) {
-      const act = [...ign].filter((i) => alive.has(i) && (v.parts[i].def.solid ? fuel[i] > 1e-6 : true));
+    const DT_A = 0.5, dropSegs = new Set(dropSet ? [...dropSet].map((j) => v.parts[j].seg) : []), dropHasFuel = dropSet ? [...dropSet].some((j) => v.parts[j].def.fuel && !v.parts[j].def.solid) : false;
+    for (let step = 0; step < 40000; step++) {
       const pools = {}; for (const i of alive) { const p = v.parts[i]; if (p.def.fuel && !p.def.solid) pools[p.seg] = (pools[p.seg] || 0) + fuel[i]; }
-      const live = act.filter((i) => v.parts[i].def.solid || (pools[v.parts[i].seg] || 0) > 1e-6);
+      // an engine that the next ring will drop only uses the tanks that drop with it (we assume you let go when they are empty)
+      const chainOf = (i) => { const base = v.feed[v.parts[i].seg] || [v.parts[i].seg]; return dropSet && dropHasFuel && dropSet.has(i) ? base.filter((sg) => dropSegs.has(sg)) : base; };
+      const chainHas = (i) => chainOf(i).some((sg) => (pools[sg] || 0) > 1e-6);
+      const live = [...ign].filter((i) => alive.has(i) && (v.parts[i].def.solid ? fuel[i] > 1e-6 : chainHas(i)));
       if (!live.length) break;
       if (dropSet && !live.some((i) => dropSet.has(i))) break;
-      let Fv = 0, mdot = 0; const segMdot = {};
-      for (const i of live) { const d = v.parts[i].def; const md = d.F / (d.ispVac * G0); Fv += d.F; mdot += md; if (!d.solid) segMdot[v.parts[i].seg] = (segMdot[v.parts[i].seg] || 0) + md; }
-      let dt = Infinity;
-      for (const i of live) { const p = v.parts[i]; const d = p.def; if (d.solid) dt = Math.min(dt, fuel[i] / (d.F / (d.ispVac * G0))); }
-      for (const sg of Object.keys(segMdot)) dt = Math.min(dt, pools[sg] / segMdot[sg]);
-      const m0 = massNow(), dm = mdot * dt, m1 = m0 - dm;
-      if (!(dt > 0) || !isFinite(dt) || m1 <= 0) break;
-      const ispEff = Fv / (mdot * G0);
-      dvS += ispEff * G0 * Math.log(m0 / m1);
-      if (first) {
-        twr0 = live.reduce((x, i) => x + v.parts[i].def.F * v.parts[i].def.ispAsl / v.parts[i].def.ispVac, 0) / (m0 * g0); first = false;
+      const m0 = massNow(), drainA = {}, left = { ...pools };
+      let Fv = 0, gotTot = 0;
+      for (const i of live) {
+        const p = v.parts[i], d = p.def, want = d.F / (d.ispVac * G0) * DT_A;
+        let got = 0;
+        if (d.solid) { got = Math.min(want, fuel[i]); fuel[i] -= got; }
+        else { let l = want; for (const sg of chainOf(i)) { if (l <= 0) break; const t = Math.min(l, left[sg] || 0); left[sg] = (left[sg] || 0) - t; drainA[sg] = (drainA[sg] || 0) + t; l -= t; got += t; } }
+        Fv += d.F * got / want; gotTot += got;
+        if (first && got > 0) twr0 += d.F * (d.ispAsl / d.ispVac) * got / want;
       }
-      burn += dt;
-      for (const i of live) { const p = v.parts[i]; if (p.def.solid) fuel[i] -= (p.def.F / (p.def.ispVac * G0)) * dt; }
-      for (const sg of Object.keys(segMdot)) { const tot = pools[sg], take = segMdot[sg] * dt; for (const i of alive) { const p = v.parts[i]; if (String(p.seg) === sg && p.def.fuel && !p.def.solid) fuel[i] -= fuel[i] * take / tot; } }
+      for (const sg of Object.keys(drainA)) { if (!(drainA[sg] > 0) || !(pools[sg] > 0)) continue; const ratio = Math.min(1, drainA[sg] / pools[sg]); for (const i of alive) { const p = v.parts[i]; if (String(p.seg) === sg && p.def.fuel && !p.def.solid) fuel[i] -= fuel[i] * ratio; } }
+      if (first) { twr0 = twr0 / (m0 * g0); first = false; }
+      const m1 = m0 - gotTot;
+      if (!(gotTot > 0) || m1 <= 0) break;
+      dvS += (Fv / (gotTot / DT_A * G0)) * G0 * Math.log(m0 / m1);
+      burn += DT_A;
     }
     if (dvS > 0.5) out.stages.push({ stage: s, dv: dvS, twr: twr0, burn, mass: m0s });
     total += dvS;

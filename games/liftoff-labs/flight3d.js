@@ -1,11 +1,11 @@
 // The 3D flight view: draws the sky and planets, the launch site, every rocket piece, flames, smoke, parachutes and explosions.
 import * as THREE from './three.module.min.js';
-import { V, Q, clamp } from './vec.js?v=1';
-import { BODIES, SUN_DIR, PAD } from './data.js?v=1';
-import { Sky } from './sky.js?v=1';
-import { makePart, makeCanopy, toonMaterial } from './meshes.js?v=1';
-import { makePad } from './scenery.js?v=1';
-import { localFrame, density, worldPoint } from './sim.js?v=1';
+import { V, Q, clamp } from './vec.js?v=2';
+import { BODIES, SUN_DIR, PAD } from './data.js?v=2';
+import { Sky } from './sky.js?v=2';
+import { makePart, makeCanopy, toonMaterial } from './meshes.js?v=2';
+import { makePad } from './scenery.js?v=2';
+import { localFrame, density, worldPoint } from './sim.js?v=2';
 
 // ------------------------------------------------------------------ particles (smoke, dust, fire, sparks)
 const P_VS = `attribute vec4 aCol; attribute float aSize; varying vec4 vCol; uniform float uScale;
@@ -339,7 +339,7 @@ export class FlightView {
       const alt = V.len(v.r) - body.R, rho = body.atm ? density(body, alt) : 0;
       if (rho < 1e-5) continue;
       const sp = V.len(v.v), flux = 0.5 * rho * sp * sp * sp;
-      if (flux < 2.5e6) continue;
+      if (flux < 2.5e6 || V.dot(v.v, V.norm(v.r)) > -30) continue;           // only things coming DOWN fast glow
       const vb = Q.rotInv(v.q, v.v), lead = vb[1] > 0 ? v.topY : v.botY;
       const n = Math.min(6, Math.ceil(flux / 6e6)), pos = worldPoint(v, [0, lead, 0]);
       for (let k = 0; k < n; k++) {

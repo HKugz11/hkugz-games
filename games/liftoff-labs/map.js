@@ -1,8 +1,8 @@
 // The map view: float out and look at your orbit, the planet and the moon from far away.
 import * as THREE from './three.module.min.js';
-import { V, clamp } from './vec.js?v=1';
-import { BODIES, beanState } from './data.js?v=1';
-import { elements, orbitPoints, positionAtNu, descendingNuAtRadius } from './orbit.js?v=1';
+import { V, clamp } from './vec.js?v=2';
+import { BODIES, beanState } from './data.js?v=2';
+import { elements, orbitPoints, positionAtNu, descendingNuAtRadius } from './orbit.js?v=2';
 
 const N = 240;
 function lineObj(color, segs) {
@@ -73,15 +73,15 @@ export class MapView {
     // where it is highest and lowest
     const labs = []; let li = 0;
     this.sizeDot(this.ship, v.r, cam, 0.011); this.ship.visible = true;
-    labs.push(['Rocket', v.r, '#ffffff']);
+    labs.push(['You', v.r, '#ffffff']);
     if (el.bound && el.e > 0.002) {
       const ap = positionAtNu(el, Math.PI), pe = positionAtNu(el, 0);
       this.sizeDot(this.apM, ap, cam, 0.008); this.sizeDot(this.peM, pe, cam, 0.008); this.apM.visible = this.peM.visible = true;
-      labs.push(['Ap ' + km(el.ra - body.R), ap, '#5df0ff'], ['Pe ' + km(el.rp - body.R), pe, '#ff9a3a']);
+      labs.push(['Highest ' + km(el.ra - body.R), ap, '#5df0ff'], ['Lowest ' + km(el.rp - body.R), pe, '#ff9a3a']);
     } else { this.apM.visible = this.peM.visible = false; }
     // crash site
     const nuI = el.rp < body.R ? descendingNuAtRadius(el, body.R) : null;
-    if (nuI !== null) { const p = positionAtNu(el, nuI); this.sizeDot(this.impact, p, cam, 0.008); this.impact.visible = true; labs.push(['Crash!', p, '#ff6b81']); } else this.impact.visible = false;
+    if (nuI !== null) { const p = positionAtNu(el, nuI); this.sizeDot(this.impact, p, cam, 0.008); this.impact.visible = true; labs.push(['Crash here!', p, '#ff6b81']); } else this.impact.visible = false;
     // the moon, its path and its zone of pull
     const bs = beanState(W.ut), cob = BODIES.cobble, bean = BODIES.bean;
     if (v.body === 'cobble') {
@@ -101,14 +101,14 @@ export class MapView {
       const pts = orbitPoints(nb.el, N, Math.min(maxR, body.soi || maxR), nb.el.nu);
       this.polyline(this.nodeLine, pts, cam, { c: center, R: body.R });
       this.sizeDot(this.nodeDot, nb.pos, cam, 0.009); this.nodeDot.visible = true;
-      labs.push(['Burn ' + Math.round(nb.mag) + ' m/s', nb.pos, '#ff9bf6']);
+      labs.push(['Boost ' + Math.round(nb.mag) + ' m/s', nb.pos, '#ff9bf6']);
     }
     if (enc && v.body === 'cobble') {
       const bp = enc.beanPos, ptsB = orbitPoints(enc.el, N, bean.soi * 1.02, enc.el.nu).map((p) => V.add(p, bp));
       this.polyline(this.future, ptsB, cam, null);
       const e1 = V.norm(V.cross(bp, [0, 1, 0])), ring2 = []; for (let i = 0; i <= 90; i++) { const a = i / 90 * Math.PI * 2; ring2.push(V.add(bp, V.add(V.mul(V.norm(bp), Math.cos(a) * bean.soi), V.mul([0, 1, 0], Math.sin(a) * bean.soi)))); } void e1;
       this.polyline(this.soi2, ring2, cam, null);
-      labs.push(['Bean encounter', V.add(bp, enc.rel), '#5df0ff'], ['Bean low point ' + km(enc.el.rp - bean.R), V.add(bp, positionAtNu(enc.el, 0)), '#5df0ff']);
+      labs.push(['You reach Bean here', V.add(bp, enc.rel), '#5df0ff'], ['Closest to Bean ' + km(enc.el.rp - bean.R), V.add(bp, positionAtNu(enc.el, 0)), '#5df0ff']);
     }
     // draw
     const r = view.renderer;

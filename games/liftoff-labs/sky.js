@@ -1,7 +1,7 @@
 // The background pass: stars, the sun, the home planet with its sky, and the moon. Shared by the flight view and the map view.
 import * as THREE from './three.module.min.js';
-import { QUAD_VERT, makeStarMaterial, makeBodyMaterial, setBodyUniforms } from './shaders.js?v=1';
-import { BODIES, SUN_DIR, beanState } from './data.js?v=1';
+import { QUAD_VERT, makeStarMaterial, makeBodyMaterial, setBodyUniforms } from './shaders.js?v=2';
+import { BODIES, SUN_DIR, beanState } from './data.js?v=2';
 
 export class Sky {
   constructor() {
