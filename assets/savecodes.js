@@ -1,7 +1,7 @@
 // Save codes: move your progress between devices with no account and no password.
 // Everything the games save lives in this browser (localStorage). A save code is that data packed into a short piece of text.
 (function () {
-  var GAMES = [['ba.', 'Blaster Arena'], ['cs.', 'Core Strike'], ['ff.', 'Fort Fight'], ['st.', 'Sky Tower'], ['kr.', 'Kart Rush'], ['gg.', 'Gadget Guard'], ['wd.', 'Wobble Dash'], ['pp.', 'Putt Party'],
+  var GAMES = [['ba.', 'Blaster Arena'], ['cs.', 'Core Strike'], ['ff.', 'Fort Fight'], ['st.', 'Sky Tower'], ['kr.', 'Kart Rush'], ['gg.', 'Gadget Guard'], ['wd.', 'Wobble Dash'], ['pp.', 'Putt Party'], ['ll.', 'Liftoff Labs'],
     ['hkugz.snake.', 'Snake'], ['hkugz.breakout.', 'Breakout'], ['hkugz.cubeflap.', 'Cube Flap'], ['hkugz.blockstack.', 'Block Stack']];
   var OTHER = 'Other (Tower of Destiny and more)';
   var SKIP = [/^peerjs/i, /^hksave\./i, /^hktimer$/i];                       // network helper data and this page's own notes are never packed
