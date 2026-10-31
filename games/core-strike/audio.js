@@ -134,5 +134,6 @@ export const SFX = {
     notes.forEach((f, i) => { tone(b, t + i * 0.13, f, f, 0.32, 'triangle', 0.45); tone(b, t + i * 0.13, f / 2, f / 2, 0.32, 'sine', 0.3); });
   },
   countdown(last) { if (!ok()) return; const b = bus(null, 0.3); const f = last ? 1320 : 880; tone(b, AC.currentTime, f, f, 0.12, 'sine', 0.5); },
+  ping(enemy) { if (!ok()) return; const b = bus(null, 0.35); const t = AC.currentTime; if (enemy) { tone(b, t, 880, 880, 0.08, 'triangle', 0.35); tone(b, t + 0.09, 660, 660, 0.14, 'triangle', 0.35); } else { tone(b, t, 1244, 1244, 0.07, 'sine', 0.35); tone(b, t + 0.08, 1760, 1760, 0.14, 'sine', 0.35); } },
   streak() { if (!ok()) return; const b = bus(null, 0.45); const t = AC.currentTime; [784, 988, 1175, 1568].forEach((f, i) => tone(b, t + i * 0.06, f, f, 0.14, 'square', 0.18)); },
 };

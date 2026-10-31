@@ -1,9 +1,9 @@
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
 import * as THREE from './three.module.min.js';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=110';
-import { initAudio, setVolume, setListener, SFX } from './audio.js?v=110';
-import { createOnline } from './online.js?v=110';
-import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=110';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=114';
+import { initAudio, setVolume, setListener, SFX } from './audio.js?v=114';
+import { createOnline } from './online.js?v=114';
+import { buildWorld, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=114';
 
 const $ = (id) => document.getElementById(id);
 const QS = new URLSearchParams(location.search);
@@ -18,7 +18,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Mat
 const V = () => new THREE.Vector3();
 
 // ---------------- settings ----------------
-const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', ranked: 'on', name: '' };
+const DEFAULTS = { sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', ranked: 'on', bomb: 'random', name: '' };
 const S = { ...DEFAULTS };
 try { Object.assign(S, JSON.parse(localStorage.getItem('cs.settings') || localStorage.getItem('coreStrike') || '{}')); } catch { }
 const saveS = () => { try { localStorage.setItem('cs.settings', JSON.stringify(S)); } catch { } };
@@ -43,17 +43,19 @@ function rankInfo(rp) {
   const di = Math.min(2, Math.floor((rp - li * 300) / 100)), lo = li * 300 + di * 100;
   return { li, step: li * 3 + di, name: L[0] + ' ' + DIVS[di], col: L[1], div: di, lo, pct: (rp - lo) / 100 };
 }
+const rankCfg = () => (MP.on && MP.cfg ? MP.cfg : S);   // an online match counts with the HOST's bot skill and match length, not the guest's own menu
 function rankDelta(res, margin, mvp) {
-  const W = { easy: 12, normal: 20, hard: 28, insane: 36 }[S.diff] || 20, Lz = { easy: 20, normal: 14, hard: 10, insane: 8 }[S.diff] || 14;
+  const rc = rankCfg(), W = { easy: 12, normal: 20, hard: 28, insane: 36 }[rc.diff] || 20, Lz = { easy: 20, normal: 14, hard: 10, insane: 8 }[rc.diff] || 14;
   let d = res === 'win' ? W + Math.min(5, margin) * 2 + (mvp ? 4 : 0) : res === 'loss' ? -(Lz + (margin >= 4 ? 4 : 0)) : 0;
   if (RANK.m < 3) d = d > 0 ? d * 2 : d * 0.5;   // placement matches: wins count double, losses half
-  return Math.round(d * (S.length === 'duper' ? 1.5 : S.length === 'long' ? 1.25 : 1));
+  if (d > 0 && GS.rankMates > 0) d *= 0.8;   // friends on your own team make winning easier, so a win is worth a bit less
+  return Math.round(d * (rc.length === 'duper' ? 1.5 : rc.length === 'long' ? 1.25 : 1));
 }
 function settleRank(res, margin, mvp) {
-  const before = RANK.rp, d = rankDelta(res, margin, mvp), cap = RANK_CAP[S.diff] ?? 999999;
+  const before = RANK.rp, d = rankDelta(res, margin, mvp), cap = RANK_CAP[rankCfg().diff] ?? 999999;
   let after = before + d; if (d > 0) after = Math.min(after, Math.max(before, cap)); after = Math.max(0, after);
   RANK.rp = after; RANK.m++; if (res === 'win') RANK.w++; else if (res === 'loss') RANK.l++; else RANK.d++; RANK.peak = Math.max(RANK.peak, after);
-  const out = { delta: after - before, before, after, capped: d > 0 && after < before + d, res, diff: S.diff, m: RANK.m };
+  const out = { delta: after - before, before, after, capped: d > 0 && after < before + d, res, diff: rankCfg().diff, m: RANK.m, online: MP.on };
   RANK.last = out; saveRank(); return out;
 }
 const rankPlacing = () => RANK.m < 3;
@@ -77,7 +79,7 @@ function rankListHTML() {
     const L = LEAGUES[li], here = !placing && me.li === li, lo = li * 300;
     rows += `<div class="rl ${here ? 'here' : ''}" style="--rc:${L[1]}">${rankShield({ col: L[1] }, li === 6 ? 'E' : 'I')}<b>${L[0]}</b><span>${li === 6 ? '1800+ RP' : DIVS.map((d, i) => `${d} ${lo + i * 100}`).join(' · ')}</span>${here ? `<em>${me.name} · ${RANK.rp} RP</em>` : ''}</div>`;
   }
-  return rows + `<p class="fine">Win Competitive matches against bots to earn rank points (RP); lose and you drop a little. Your first 3 ranked matches are placement matches (wins count double). Chill bots can only take you up to Silver I, Normal up to Platinum I, Sweaty up to Master I, and Pro bots all the way to Elite. Leaving a match early counts as a loss. Pick Unranked in the menu for matches that do not count. Online matches with friends are not ranked.</p>
+  return rows + `<p class="fine">Win Competitive matches against bots to earn rank points (RP); lose and you drop a little. Your first 3 ranked matches are placement matches (wins count double). Chill bots can only take you up to Silver I, Normal up to Platinum I, Sweaty up to Master I, and Pro bots all the way to Elite. Leaving a match early counts as a loss. Pick Unranked in the menu for matches that do not count. Competitive matches online with friends count too when 2 or more real players are in the room (bots fill the rest): the host's bot skill and match length decide the points, and a win is worth a little less when friends play on your team. Deathmatch never counts.</p>
   <p class="fine">Your record: ${RANK.w} wins · ${RANK.l} losses · ${RANK.d} draws · best ${rankInfo(RANK.peak).name} (${RANK.peak} RP)</p>`;
 }
 function rankEndHTML(r) {
@@ -86,8 +88,29 @@ function rankEndHTML(r) {
   const up = b.step > a.step, down = b.step < a.step, reveal = RANK.m === 3;
   const title = reveal ? 'YOUR RANK' : up ? 'RANK UP!' : down ? 'RANK DOWN' : 'RANK';
   const cap = r.capped ? `<div class="rkn">${({ easy: 'Chill bots only take you up to Silver I', normal: 'Normal bots only take you up to Platinum I', hard: 'Sweaty bots only take you up to Master I' })[r.diff] || ''}: pick a harder bot skill to keep climbing</div>` : '';
+  const friends = r.online ? '<div class="rkn">Friend match: it counted toward your rank</div>' : '';
   return `<div class="rk"><div class="rkt" style="color:${up || reveal ? '#ffd04a' : down ? '#ff8a7a' : '#fff'}">${title}</div><div class="rkr">${rankShield(b, b.div < 0 ? 'E' : DIVS[b.div])}<b style="color:${b.col}">${b.name.toUpperCase()}</b></div>
-    <div class="rkd" style="color:${r.delta >= 0 ? '#7dff9a' : '#ff8a7a'}">${sign}${r.delta} RP <small>(${RANK.rp} total)</small></div><div class="rkbar"><i style="width:${Math.round(b.pct * 100)}%;background:${b.col}"></i></div>${cap}</div>`;
+    <div class="rkd" style="color:${r.delta >= 0 ? '#7dff9a' : '#ff8a7a'}">${sign}${r.delta} RP <small>(${RANK.rp} total)</small></div><div class="rkbar"><i style="width:${Math.round(b.pct * 100)}%;background:${b.col}"></i></div>${cap}${friends}</div>`;
+}
+// why a Competitive match did not count (shown on the end screen)
+const unrankedHTML = (why) => `<div class="rk"><div class="rkt">${why === 'solo' ? 'NOT RANKED' : 'UNRANKED MATCH'}</div><div class="rkn">${why === 'solo' ? 'Friend matches need 2 or more real players to count for rank' : 'No rank points were won or lost'}</div></div>`;
+// the RANK UP screen: old rank -> new rank with a shield, rays and confetti, and a Continue button (also shown for the reveal after the 3 placement matches)
+function showRankUp(r) {
+  const a = rankInfo(r.before), b = rankInfo(r.after), reveal = r.m === 3, league = !reveal && b.li > a.li;
+  const sh = (i) => rankShield(i, i.div < 0 ? 'E' : DIVS[i.div]);
+  const ru = $('rankUp'); ru.style.setProperty('--rc', b.col);
+  $('ruTitle').textContent = reveal ? 'YOUR RANK' : league ? 'PROMOTED!' : 'RANK UP!';
+  $('ruSub').textContent = reveal ? 'Your 3 placement matches are done' : league ? `Welcome to ${LEAGUES[b.li][0]}` : 'You moved up a division';
+  $('ruOld').innerHTML = reveal ? '<span class="shield" style="--rc:#8a90a0">?</span><small>UNRANKED</small>' : `${sh(a)}<small>${a.name.toUpperCase()}</small>`;
+  $('ruNew').innerHTML = `${sh(b)}<b style="color:${b.col}">${b.name.toUpperCase()}</b>`;
+  $('ruRP').innerHTML = `${r.delta > 0 ? '+' : ''}${r.delta} RP <small>(${RANK.rp} total)</small>`;
+  const bar = $('ruBar'); bar.style.background = b.col; bar.style.width = (reveal || league || b.step > a.step ? 0 : Math.round(b.pct * 100)) + '%';
+  const cf = $('ruConf'), n = LITE ? 0 : LOW ? 14 : 36, cols = [b.col, '#ffd04a', '#ffffff', b.col];
+  cf.innerHTML = Array.from({ length: n }, (_, i) => `<i style="left:${Math.round(Math.random() * 100)}%;background:${cols[i % 4]};animation-duration:${(2.2 + Math.random() * 2.2).toFixed(2)}s;animation-delay:${(Math.random() * 1.4).toFixed(2)}s;--sw:${Math.round(Math.random() * 120 - 60)}px"></i>`).join('');
+  ru.classList.remove('hidden'); ru.classList.remove('go'); void ru.offsetWidth; ru.classList.add('go');
+  setTimeout(() => { bar.style.width = Math.round(b.pct * 100) + '%'; }, 450);
+  SFX.streak(); setTimeout(() => SFX.fanfare(true), 350);
+  if (padMode) padFocus($('ruGo'));
 }
 const LITE = S.gfx === 'lite', LOW = S.gfx !== 'high';
 GFX.lite = LITE;
@@ -95,6 +118,7 @@ const GFX_AT_LOAD = S.gfx;   // what this page started with: a different choice 
 document.body.classList.toggle('lite', LITE); document.body.classList.toggle('low', LOW);
 // online play: role is 'none' (single player), 'host' (runs the match) or 'client' (draws what the host sends)
 const MP = { on: false, role: 'none', idx: -1, pid: 0, cfg: null, nid: 0 };
+const PINGS = { list: [], life: 6, cd: 0.9 };   // Z pings (see "pings" further down); declared here because clearWorld() can run very early
 let MPH = null;
 const mySq = () => (GS.player ? GS.player.squad : 0);
 
@@ -895,7 +919,7 @@ function clearWorld() {
   for (const n of GS.nades) scene.remove(n.m);
   for (const s of GS.smokes) for (const sp of s.sprites) scene.remove(sp);
   for (const f of GS.fires) scene.remove(f.disc); GS.nades = []; GS.smokes = []; GS.fires = []; clearDrops(); parts.length = 0;
-  decals.count = 0; dI = 0;
+  decals.count = 0; dI = 0; clearPings();
   for (const b of booms) { if (b.m) { scene.remove(b.m); b.m.geometry.dispose(); b.m.material.dispose(); } if (b.l) b.l.intensity = 0; } booms.length = 0;   // leftover explosion spheres (the render loop normally removes them; a headless simulation never runs it)
 }
 function startMatch() {
@@ -914,7 +938,7 @@ function startMatch() {
   }
   for (const a of GS.actors) { makeSoldier(a); a.money = 800; }
   $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('playing');
-  GS.paused = false; resetCore(null); GS.rankDone = GS.mode !== 'comp' || S.ranked === 'off'; GS.menuMsg = '';   // an Unranked match never changes your rank
+  GS.paused = false; resetCore(null); GS.rankWhy = GS.mode === 'comp' && S.ranked === 'off' ? 'off' : ''; GS.rankDone = GS.mode !== 'comp' || !!GS.rankWhy; GS.rankMates = 0; GS.menuMsg = '';   // an Unranked match never changes your rank
   if (GS.mode === 'comp') startRound();
   else if (GS.mode === 'dm') { GS.state = 'live'; GS.roundT = lenOf(S.length).dmTime; for (const a of GS.actors) dmSpawn(a); banner('DEATHMATCH', `First squad to ${GS.target} eliminations · B = free guns for 10 s after spawn`); }
   else startRange();
@@ -956,7 +980,8 @@ function startRound() {
   for (const a of GS.actors) { resetActorForRound(a); spawnAt(a, a.side === 0 ? SPAWN.T : SPAWN.D, used[a.side]); a.mesh.g.visible = !a.isPlayer; }
   { let pl = Math.random() < 0.5 ? 'a' : 'b'; if (pl === GS.lastPlan && Math.random() < 0.6) pl = pl === 'a' ? 'b' : 'a'; GS.plan = GS.lastPlan = pl; }
   const atk = alive(0);
-  resetCore(pick(atk));
+  const humanAtk = atk.filter((a) => a.human), mustHuman = (MP.on && MP.cfg ? MP.cfg.bomb : S.bomb) === 'player';   // setting: a real player (you or a friend) always gets the bomb
+  resetCore(pick(mustHuman && humanAtk.length ? humanAtk : atk));
   if (NB) setupBrains2(); else setupBrains();
   GS.buyMode = [teamBuyMode(0), teamBuyMode(1)];
   for (const a of GS.actors) if (a.brain) botBuy(a);
@@ -1061,10 +1086,11 @@ function endMatch() {
     $('endStats').innerHTML = stat(P.kills, 'ELIMS') + stat(P.deaths, 'DEATHS') + stat(hsP + '%', 'HEADSHOT %') + stat(Math.round(P.dmg), 'DAMAGE');
     const mvp = GS.actors.slice().sort((a, b) => b.kills * 100 + b.dmg / 10 - (a.kills * 100 + a.dmg / 10))[0];
     $('endMvp').textContent = `MVP: ${mvp.name} (${mvp.kills} elims)`;
-    if (GS.mode === 'comp' && !MP.on && S.ranked === 'off') $('endRank').innerHTML = '<div class="rk"><div class="rkt">UNRANKED MATCH</div><div class="rkn">No rank points were won or lost</div></div>';
-    if (GS.mode === 'comp' && !MP.on && !GS.rankDone) {   // a ranked match: rank points up or down
+    if (GS.mode === 'comp' && GS.rankWhy) $('endRank').innerHTML = unrankedHTML(GS.rankWhy);
+    if (GS.mode === 'comp' && !GS.rankDone) {   // a ranked match (solo, or online with friends): every player settles their OWN rank in their own browser
       GS.rankDone = true; const r = settleRank(draw ? 'draw' : win ? 'win' : 'loss', Math.abs(GS.score[ms] - GS.score[1 - ms]), mvp === P);
-      $('endRank').innerHTML = rankEndHTML(r); if (!draw && win) { const a0 = rankInfo(r.before), b0 = rankInfo(r.after); if (b0.step > a0.step) SFX.streak(); }
+      $('endRank').innerHTML = rankEndHTML(r);
+      if (r.m === 3 || (r.m > 3 && rankInfo(r.after).step > rankInfo(r.before).step)) setTimeout(() => showRankUp(r), 900);   // moved up (or just finished the placements): the RANK UP screen
     }
     SFX.fanfare(win);
   }
@@ -2151,7 +2177,7 @@ function padRelease() {
   if (pad.board) { $('board').classList.add('hidden'); pad.board = false; }
   pad.sprint = false;
 }
-const PAD_LAYERS = ['keysP', 'setP', 'onlineP', 'buy', 'pause', 'end'];
+const PAD_LAYERS = ['keysP', 'setP', 'rankUp', 'onlineP', 'buy', 'pause', 'end'];
 const padShown = (el) => !!el && el.getClientRects().length > 0;
 function padLayer() {
   for (const id of PAD_LAYERS) if (!$(id).classList.contains('hidden')) return $(id);
@@ -2164,7 +2190,7 @@ function padFocus(el) {
   if (el) { el.classList.add('padf'); try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch { } }
 }
 function padDefault(root, items) {
-  for (const id of { menu: ['play'], pause: ['resume'], end: ['again', 'toLobby', 'toMenu'], onlineP: ['onHost', 'onStart'] }[root.id] || []) if (items.includes($(id))) return $(id);
+  for (const id of { menu: ['play'], pause: ['resume'], end: ['again', 'toLobby', 'toMenu'], rankUp: ['ruGo'], onlineP: ['onHost', 'onStart'] }[root.id] || []) if (items.includes($(id))) return $(id);
   return items.find((el) => el.matches('.item:not([disabled])')) || items[0] || null;
 }
 function padNav(items, dx, dy) {   // move the highlight to the nearest button in that direction
@@ -2199,6 +2225,7 @@ function padBack(layer) {
   else if (id === 'buy') toggleBuy();
   else if (id === 'pause') padPause();
   else if (id === 'end') $('toMenu').click();
+  else if (id === 'rankUp') $('ruGo').click();
 }
 function padClick(el) { if (!document.pointerLockElement) softLock = true; el.click(); }
 function padStep(now) {
@@ -2294,10 +2321,11 @@ function updatePlayer(dt) {
   if (pressed.has('KeyF')) VMS.inspect = 1.6;
   const wasSprint = P.sprint;
   P.crouch = !!(keys.KeyC || keys.Tab); P.walk = !!keys.KeyX;   // C or Tab
-  // aim down sights: hold right-click, or press Z / (in Toggle mode, for trackpads) click right once to switch it on and off
+  // aim down sights: hold right-click, or press V / (in Toggle mode, for trackpads) click right once to switch it on and off
   const canAds = !!def.mag && !def.scope && P.reloadT <= 0 && P.switchT <= 0 && !frozen;
   if (S.ads === 'toggle' && pressed.has('M2')) adsLatch = !adsLatch;
-  if (pressed.has('KeyZ')) adsLatch = !adsLatch;
+  if (pressed.has('KeyV')) adsLatch = !adsLatch;
+  if (pressed.has('KeyZ')) sendPing(P);   // Z = ping the spot you are looking at (your team sees it)
   if (!canAds || ((keys.ShiftLeft || keys.ShiftRight) && keys.KeyW)) adsLatch = false;
   P.ads = canAds && (S.ads === 'toggle' ? adsLatch : (!!mouse[2] || adsLatch));
   P.sprint = !!(keys.ShiftLeft || keys.ShiftRight) && !!keys.KeyW && !P.crouch && !P.ads && !mouse[0] && !P.act;
@@ -2830,7 +2858,7 @@ function frame(now) {
   updateParts(dt); updateBooms(dt);
   for (const t of tracers) if (t.t > 0) { t.t -= dt; if (t.t <= 0) t.m.visible = false; }
   animateActors(dt);
-  updateCamera(dt);
+  updateCamera(dt); updatePings(dt);
   if (!LITE || (hudTick++ % 3) === 0) updateHUD(); // Lite: the HUD and radar redraw 20 times a second
   updateBoard();
   if (!$('buy').classList.contains('hidden') && Math.random() < 0.1) $('buyTime').textContent = GS.mode === 'comp' ? `buy time ${Math.max(0, Math.ceil((GS.state === 'freeze' ? GS.phaseT : 0) + GS.buyLeft))}s` : '';
@@ -2866,7 +2894,12 @@ function startMatchMP(cfg, myIdx, role) {
   for (const a of GS.actors) { makeSoldier(a); a.money = 800; }
   $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('playing');
   $('again').classList.add('hidden'); $('toLobby').classList.toggle('hidden', role !== 'host');
-  GS.paused = false; resetCore(null); GS.rankDone = true;   // online matches with friends are not ranked
+  GS.paused = false; resetCore(null); GS.menuMsg = '';
+  {   // does this online match count for rank? Competitive only, not set to Unranked by the host, and at least 2 real players (a lone host is just a solo match)
+    const humans = cfg.slots.filter((s) => !s.bot), mine = cfg.slots[myIdx];
+    GS.rankWhy = cfg.mode !== 'comp' ? '' : cfg.ranked === 'off' ? 'off' : humans.length < 2 ? 'solo' : '';
+    GS.rankDone = cfg.mode !== 'comp' || !!GS.rankWhy; GS.rankMates = mine ? humans.filter((s) => s.sq === mine.sq).length - 1 : 0;
+  }
   const P = GS.player; P.alive = false; vmRoot.visible = false;
   if (role === 'host') {
     if (GS.mode === 'comp') startRound();
@@ -2919,6 +2952,56 @@ function botTakeover(a) {
   }
 }
 
+// ---------------- pings (Z) ----------------
+// Press Z to mark what you are looking at: a spot (cyan), an enemy (red) or the bomb (orange). Your TEAM sees a marker with your name and the distance,
+// through walls, for a few seconds (enemies never see it). One ping each; a new one replaces your old one.
+const _pgO = new THREE.Vector3(), _pgD = new THREE.Vector3(), _pgC = new THREE.Vector3();
+function sendPing(a) {
+  if (!a.alive || GS.paused || GS.state === 'over' || GS.state === 'menu' || GS.time - (a.pingT || -9) < PINGS.cd) return;
+  const o = eyePos(a, _pgO), d = camera.getWorldDirection(_pgD), hw = rayWorld(o, d, 160), tW = hw ? hw.t : 160;
+  let kind = 'here', bestT = tW, pos = null;
+  for (const e of GS.actors) if (e.alive && e.side !== a.side) { const h = rayActor(o, d, e, bestT); if (h && h.t < bestT) { bestT = h.t; kind = 'enemy'; pos = chestPos(e, V()).setY(e.pos.y + 1.9); } }
+  if (!pos) {
+    if (!hw) { if (a.isPlayer) toast('Look at something to ping it'); return; }
+    pos = o.clone().addScaledVector(d, Math.max(0.5, tW - 0.15));
+    const c = GS.core; if ((c.state === 'dropped' || c.state === 'planted') && pos.distanceTo(c.pos) < 3) { kind = 'bomb'; pos = c.pos.clone().setY(c.pos.y + 0.6); }
+  }
+  a.pingT = GS.time;
+  addPing(a, pos, kind);
+  if (MP.role === 'host') MPH.pingOut(a, pos, kind); else if (MP.role === 'client') MPH.clientPing(pos, kind);
+}
+function addPing(a, p, kind) {
+  const me = GS.player; if (!me || !a || (a.side !== me.side && GS.mode !== 'range')) return;   // only your own team sees it
+  const old = PINGS.list.findIndex((q) => q.a === a); if (old >= 0) { PINGS.list[old].el.remove(); PINGS.list.splice(old, 1); }
+  const el = document.createElement('div'); el.className = 'ping ' + kind;
+  el.innerHTML = `<i></i><b>${a === me ? 'YOU' : String(a.name).replace(/[<>&]/g, '')}${kind === 'enemy' ? ' · ENEMY' : kind === 'bomb' ? ' · BOMB' : ''}</b><small></small>`;
+  $('pings').appendChild(el);
+  PINGS.list.push({ a, p: p.clone ? p.clone() : V().set(p[0], p[1], p[2]), kind, t: 0, el, sm: el.querySelector('small'), dtxt: '' });
+  SFX.ping(kind === 'enemy');
+}
+function clearPings() { for (const q of PINGS.list) q.el.remove(); PINGS.list.length = 0; }
+function updatePings(dt) {
+  if (!PINGS.list.length) return;
+  camera.updateMatrixWorld();
+  const W2 = innerWidth, H2 = innerHeight;
+  for (let i = PINGS.list.length - 1; i >= 0; i--) {
+    const q = PINGS.list[i]; q.t += dt;
+    if (q.t > PINGS.life || GS.state === 'menu') { q.el.remove(); PINGS.list.splice(i, 1); continue; }
+    const cp = _pgC.copy(q.p).applyMatrix4(camera.matrixWorldInverse), behind = cp.z > 0;
+    _pgC.copy(q.p).project(camera);
+    let x = behind ? -_pgC.x : _pgC.x, y = behind ? -_pgC.y : _pgC.y;
+    let sx = (x * 0.5 + 0.5) * W2, sy = (-y * 0.5 + 0.5) * H2;
+    const m = 48, off = behind || sx < m || sx > W2 - m || sy < m || sy > H2 - m;
+    if (off) {   // off screen: sit on the edge of the screen, in the direction of the ping
+      const cx = W2 / 2, cy = H2 / 2; let dx = sx - cx, dy = sy - cy; if (!dx && !dy) dy = 1;
+      const k = Math.min((cx - m) / Math.abs(dx || 1e-6), (cy - m) / Math.abs(dy || 1e-6)); sx = cx + dx * k; sy = cy + dy * k;
+    }
+    const fade = q.t < 0.15 ? q.t / 0.15 : q.t > PINGS.life - 1 ? PINGS.life - q.t : 1;
+    q.el.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px) translate(-50%,-50%)`; q.el.style.opacity = (off ? 0.8 : 1) * Math.max(0, fade);
+    const dm = Math.round(camera.position.distanceTo(q.p)) + 'm'; if (dm !== q.dtxt) { q.dtxt = dm; q.sm.textContent = dm; }
+  }
+}
+
 // ---------------- menus ----------------
 $('mapSeg').innerHTML = $('onMapSeg').innerHTML = MAP_LIST.map((m) => `<button data-v="${m.id}">${m.name}<small>${m.blurb}</small></button>`).join('');
 function syncSeg() {
@@ -2926,7 +3009,7 @@ function syncSeg() {
     const k = seg.dataset.k; seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(S[k]) === b.dataset.v));
   });
   const comp = S.mode === 'comp';
-  $('optSide').style.display = comp ? '' : 'none'; $('optRank').style.display = comp ? '' : 'none';
+  $('optSide').style.display = comp ? '' : 'none'; $('optRank').style.display = comp ? '' : 'none'; $('onRankOpt').style.display = comp ? '' : 'none'; $('optBomb').style.display = $('onBombOpt').style.display = comp ? '' : 'none';
   $('optDiff').style.display = S.mode === 'range' ? 'none' : '';
   $('optLen').style.display = S.mode === 'range' ? 'none' : '';
   const lsm = $('optLen').querySelectorAll('small'), dm = S.mode === 'dm';
@@ -2953,6 +3036,7 @@ $('sXc').onclick = (e) => { const c = e.target.dataset.c; if (!c) return; S.xhCo
 document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => b.closest('.panel').classList.add('hidden')));
 $('openSet').onclick = () => $('setP').classList.remove('hidden');
 $('rankBadge').onclick = () => { $('rankList').innerHTML = rankListHTML(); $('rankP').classList.remove('hidden'); };
+$('ruGo').onclick = () => { $('rankUp').classList.add('hidden'); $('ruConf').innerHTML = ''; SFX.ui(); };
 $('openKeys').onclick = () => $('keysP').classList.remove('hidden');
 $('pSet').onclick = () => $('setP').classList.remove('hidden');
 $('pKeys').onclick = () => $('keysP').classList.remove('hidden');
@@ -2960,7 +3044,7 @@ $('play').onclick = () => { initAudio(S.vol); startMatch(); };
 $('again').onclick = () => { initAudio(S.vol); startMatch(); };
 $('resume').onclick = () => { lock(); if (DEBUG || softLock) { GS.paused = false; $('pause').classList.add('hidden'); } };
 function toMenu() {
-  if (GS.mode === 'comp' && !MP.on && !GS.rankDone && GS.round >= 2 && (GS.state === 'live' || GS.state === 'freeze' || GS.state === 'end')) {   // leaving a ranked match early counts as a loss
+  if (GS.mode === 'comp' && !GS.rankDone && GS.round >= 2 && (GS.state === 'live' || GS.state === 'freeze' || GS.state === 'end')) {   // leaving a ranked match early counts as a loss (also an online one)
     GS.rankDone = true; const r = settleRank('loss', 3, false); GS.menuMsg = `You left a ranked match early: ${r.delta} RP`;
   }
   if (MPH) MPH.leave(); resetToMenu();
@@ -2979,8 +3063,8 @@ $('quit').onclick = toMenu; $('toMenu').onclick = toMenu;
 syncSeg();
 $('loading').remove();
 
-if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
+if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, showRankUp, saveRank, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
 
-MPH = createOnline({ GS, MP, S, WD, $, get worldW() { return W * CS; }, get worldH() { return H * CS; }, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
+MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { return W * CS; }, get worldH() { return H * CS; }, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
   makeSoldier, botTakeover, shotDamage, undoBuy, plantSite, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
   spawnNade, netDetonate, remoteShotFx, killFx, hurtLocal, roundEndFx, roundBannerLocal, netEvent, endMatch, moneyPop, reviveLocal, vmRefresh, renderBuy, clearWorld, sleeveTint });
