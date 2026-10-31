@@ -8,7 +8,8 @@ import { Navball } from './navball.js?v=1';
 import { Sound } from './audio.js?v=1';
 import { career, settings, saveSettings, fmt$, loadLast, saveLast } from './career.js?v=1';
 import { Icons, Preview } from './icons.js?v=1';
-import { Builder } from './build.js?v=1';
+import { Builder } from './build.js?v=2';
+import { TOUCH, initTouch } from './touch.js?v=1';
 import { Shop, Missions, LoadDlg } from './shop.js?v=1';
 import { MapView } from './map.js?v=1';
 
@@ -215,7 +216,7 @@ function applyControls(dt) {
   if (k('ControlLeft') || k('ControlRight')) c.thr = Math.max(0, c.thr - dt * 0.7);
   if (k('ArrowLeft')) view.yaw += dt * 1.6; if (k('ArrowRight')) view.yaw -= dt * 1.6;
   if (k('ArrowUp')) view.pitch = clamp(view.pitch + dt * 1.2, -1.45, 1.5); if (k('ArrowDown')) view.pitch = clamp(view.pitch - dt * 1.2, -1.45, 1.5);
-  if (k('PageUp')) view.zoom(0.98); if (k('PageDown')) view.zoom(1.02);
+  if (k('PageUp')) (mapOn ? map : view).zoom(0.97); if (k('PageDown')) (mapOn ? map : view).zoom(1.03);
 }
 
 function processEvents() {
@@ -448,7 +449,26 @@ $('setVol').oninput = (e) => { settings.vol = +e.target.value; sound.setVolume(s
 
 // ---------------------------------------------------------------- go
 if (DEBUG) window.__ll = { S, view, career, builder, startFlight, get W() { return W; }, get fl() { return fl; }, keys, openBuilder, enterMenu, shop, toast, settings, setWarp: (i) => { warpIdx = i; }, toggleMap, get state() { return state; } };
-if (('ontouchstart' in window || navigator.maxTouchPoints > 0) && !matchMedia('(any-pointer:fine)').matches) $('touchWarn').classList.remove('hide');
+if (TOUCH) {   // tablets and phones: a steering stick, buttons for the keys, and the look pad turns the camera (or the map)
+  document.addEventListener('mousemove', (e) => { if (e.isTrusted || state !== 'flight') return; if (mapOn) map.drag(e.movementX, e.movementY); else view.drag(e.movementX, e.movementY); });
+  const tb = (label, key, o) => Object.assign({ label, key, type: 'tap', s: 52, cls: 'small', fs: 10 }, o);
+  const hold = (label, key, o) => Object.assign({ label, key, s: 52, cls: 'small', fs: 10 }, o);
+  initTouch({
+    visible: () => state === 'flight' && !paused && !(fl && fl.ended) && ['settings', 'result', 'pause'].every((id) => $(id).classList.contains('hide')),
+    pause: () => { if (state === 'flight' && !paused) togglePause(); }, lookScale: 1.4,
+    stick: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' },
+    css: '#hud { z-index: 5; }',   // the flight panels stay tappable above the touch layer
+    buttons: [
+      { label: 'STAGE', cls: 'fire', key: 'Space', type: 'tap', s: 88, r: 24, b: 24 },
+      tb('FULL', 'KeyZ', { r: 122, b: 24 }), tb('CUT', 'KeyX', { r: 122, b: 82 }),
+      hold('THR+', 'ShiftLeft', { r: 182, b: 24 }), hold('THR-', 'ControlLeft', { r: 182, b: 82 }),
+      hold('ROLL L', 'KeyQ', { r: 24, b: 124 }), hold('ROLL R', 'KeyE', { r: 82, b: 124 }),
+      tb('SAS', 'KeyT', { r: 24, b: 182, s: 46 }), tb('LEGS', 'KeyG', { r: 76, b: 182, s: 46 }), tb('CAMERA', 'KeyV', { r: 128, b: 182, s: 46, fs: 8 }),
+      hold('ZOOM +', 'PageUp', { r: 24, b: 234, s: 46, fs: 9 }), hold('ZOOM -', 'PageDown', { r: 76, b: 234, s: 46, fs: 9 }),
+      tb('WARP +', 'Period', { r: 128, b: 234, s: 46, fs: 9 }), tb('WARP -', 'Comma', { r: 180, b: 234, s: 46, fs: 9 }),
+    ],
+  });
+}
 $('loading').remove();
 enterMenu();
 requestAnimationFrame((t) => { lastTime = t; frame(t); });

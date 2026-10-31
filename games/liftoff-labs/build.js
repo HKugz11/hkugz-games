@@ -59,9 +59,19 @@ export class Builder {
     $('vLaunch').onclick = () => this.launch();
     $('vName').addEventListener('input', () => { this.design.name = $('vName').value; });
     const cv = this.renderer.domElement;
-    cv.addEventListener('pointerdown', (e) => this.onDown(e));
-    cv.addEventListener('pointermove', (e) => this.onMove(e));
-    window.addEventListener('pointerup', (e) => this.onUp(e));
+    // a button for removing the picked part (a tablet has no Delete key)
+    this.delBtn = el('button', 'small warn', 'Remove this part'); this.delBtn.style.cssText = 'position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:6;display:none;padding:10px 18px;font-size:15px';
+    this.delBtn.onclick = () => { if (this.selIdx >= 0) this.remove(this.selIdx); }; document.body.appendChild(this.delBtn);
+    // two fingers pinch to zoom
+    this.fingers = new Map(); this.pinch0 = 0;
+    cv.addEventListener('pointerdown', (e) => { this.fingers.set(e.pointerId, [e.clientX, e.clientY]); if (this.fingers.size > 1) { this.drag = null; this.pinch0 = 0; return; } this.onDown(e); });
+    cv.addEventListener('pointermove', (e) => {
+      if (this.fingers.has(e.pointerId)) this.fingers.set(e.pointerId, [e.clientX, e.clientY]);
+      if (this.fingers.size > 1) { const [a, b] = [...this.fingers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (this.pinch0 > 0 && this.open_) this.tDist = Math.max(3, Math.min(70, this.tDist * this.pinch0 / d)); this.pinch0 = d; return; }
+      this.onMove(e);
+    });
+    window.addEventListener('pointerup', (e) => { const multi = this.fingers.size > 1; this.fingers.delete(e.pointerId); if (multi) { this.drag = null; this.pinch0 = 0; return; } this.onUp(e); });
+    window.addEventListener('pointercancel', (e) => { this.fingers.delete(e.pointerId); this.drag = null; this.pinch0 = 0; });
     cv.addEventListener('wheel', (e) => { if (!this.open_) return; e.preventDefault(); this.tDist = Math.max(3, Math.min(70, this.tDist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: false });
     cv.addEventListener('contextmenu', (e) => { if (this.open_) e.preventDefault(); });
     window.addEventListener('keydown', (e) => this.onKey(e));
@@ -329,6 +339,7 @@ export class Builder {
   // ---------------------------------------------------------------- drawing
   render(dt) {
     this.t += dt;
+    this.delBtn.style.display = this.open_ && this.selIdx >= 0 ? '' : 'none';
     const k = Math.min(1, dt * 6);
     this.target.lerp(this.tgt, k); this.dist += (this.tDist - this.dist) * k;
     const cp = Math.cos(this.pitch);

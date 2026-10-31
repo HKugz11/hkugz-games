@@ -9,7 +9,7 @@ import { createPreview } from './preview.js?v=3';
 import * as Online from './online.js?v=3';
 import { NETMODE } from './core.js?v=3';
 const ON = Online.ON;
-import { TOUCH, initTouch } from './touch.js?v=3';
+import { TOUCH, initTouch } from './touch.js?v=3b';
 let tAxis = 0;   // analog steering from the touch stick (-1 left .. 1 right)
 
 const MODES = {

@@ -1,7 +1,7 @@
 // The parts shop, the missions list and the "load a rocket" window.
 import { PARTS, PART_LIST, CATS, STARTERS, MILESTONES, MILESTONE } from './data.js?v=1';
 import { career, fmt$, loadShips, deleteShip } from './career.js?v=1';
-import { partFacts } from './build.js?v=1';
+import { partFacts } from './build.js?v=2';
 import { missingParts, newDesign } from './design.js?v=1';
 import { analyze } from './sim.js?v=1';
 

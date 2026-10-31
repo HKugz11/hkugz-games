@@ -4,7 +4,7 @@ import { world } from './physics.js?v=1';
 import { WINGS, Level } from './map.js?v=1';
 import { Prisoner, cam, updateCamera } from './player.js?v=1';
 import { Guard } from './guard.js?v=1';
-import { TOUCH, initTouch } from './touch.js?v=1';
+import { TOUCH, initTouch } from './touch.js?v=1b';
 
 const keys = {};
 let state = 'menu', wingN = 0, level = null, guards = [], P = null, detection = 0, grace = 0, hitsLeft = 0, catches = 0, totalT = 0, started = false;

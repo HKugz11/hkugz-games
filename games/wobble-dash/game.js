@@ -4,7 +4,7 @@ import { world, pushOut } from './physics.js?v=13';
 import { COURSES, THEMES, generateCourse, Course } from './course.js?v=13';
 import { MOVE, Racer, cam, updateCamera } from './bean.js?v=13';
 import { DIFFS, makeAI, aiStep } from './ai.js?v=13';
-import { TOUCH, initTouch } from './touch.js?v=13';
+import { TOUCH, initTouch } from './touch.js?v=13b';
 
 const NAMES = ['Bumble', 'Noodle', 'Pudding', 'Waffles', 'Sprout', 'Pickle', 'Mochi', 'Biscuit', 'Gizmo', 'Zippy', 'Tofu', 'Muffin', 'Nacho', 'Jellybean', 'Wobbles', 'Pretzel'];
 const COLORS = [0xff4fa8, 0x2ee6ff, 0xffd31a, 0x8aff3a, 0xb06bff, 0xff7a1a, 0xffffff, 0x4a6aff, 0xff4a4a, 0x40e0b0];

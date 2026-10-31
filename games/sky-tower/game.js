@@ -4,7 +4,7 @@ import { world, pushOut } from './physics.js?v=7';
 import { generate, THEMES, JUMP } from './gen.js?v=7';
 import { Tower } from './tower.js?v=7';
 import { Player, cam, updateCamera } from './player.js?v=7';
-import { TOUCH, initTouch } from './touch.js?v=7';
+import { TOUCH, initTouch } from './touch.js?v=7b';
 
 const MODES = {
   classic: { name: 'Classic Tower', blurb: 'The same ten-stage tower every time, with a checkpoint at the top of each stage. Beat your best time!', seed: 20261009, stages: 10, ck: true },

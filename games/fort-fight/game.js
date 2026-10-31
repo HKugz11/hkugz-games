@@ -7,7 +7,7 @@ import { buildMap, MAPS, updateProps, props } from './maps.js?v=10';
 import { makeAI, botUpdate, DIFFS } from './ai.js?v=10';
 import { vmScene, vmCam, updateVM, vmKick, vmSwing } from './viewmodel.js?v=10';
 import * as NET from './online.js?v=10';
-import { TOUCH, initTouch } from './touch.js?v=10';
+import { TOUCH, initTouch } from './touch.js?v=10b';
 const tx = s => !TOUCH ? s : s.replace('Press Z/X/C/V to build. Q to switch.', 'Tap BUILD to build.').replace('Z/X/C/V to build.', 'tap BUILD to build.').replace('Press G to confirm, or click tiles to change it', 'Tap OK to save, or tap FIRE on tiles').replace('Click tiles to cut them · 1-4 quick shapes · G to confirm', 'Tap FIRE on tiles to cut them · slots 1-4 = quick shapes · OK to save').replace('Look at a wall or floor and press G', 'Look at a wall or floor and tap EDIT');
 
 const CFG = { mode: load('mode', 'range'), diff: load('diff', 'normal'), name: load('name', '') };

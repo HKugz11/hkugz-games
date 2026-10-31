@@ -3,7 +3,7 @@
 import * as THREE from './three.module.min.js';
 import { MAPS } from './maps.js?v=7.8';
 import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=7.8';
-import { TOUCH, initTouch } from './touch.js?v=7.8';
+import { TOUCH, initTouch } from './touch.js?v=7.8b';
 const tx = s => TOUCH ? s.replace('PRESS F TO THROW', 'TAP ITEM TO THROW').replace('PRESS F TO USE', 'TAP ITEM TO USE').replace('PRESS R', 'TAP RELOAD') : s;
 const V3 = THREE.Vector3, $ = id => document.getElementById(id);
 const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
