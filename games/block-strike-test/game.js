@@ -1,14 +1,14 @@
-import { displayWeapon } from './showcase.js?v=217';
+import { displayWeapon } from './showcase.js?v=218';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=217';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=217';
-import { platform } from './platform.js?v=217';
-import * as THREE from './three.module.min.js?v=217';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=217';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=217';
-import { createOnline } from './online.js?v=217';
-import { TOUCH, initTouch } from './touch.js?v=217';
-import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=217';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=218';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=218';
+import { platform } from './platform.js?v=218';
+import * as THREE from './three.module.min.js?v=218';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=218';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=218';
+import { createOnline } from './online.js?v=218';
+import { TOUCH, initTouch } from './touch.js?v=218';
+import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=218';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -2275,7 +2275,16 @@ function tryMove(a, dx, dz) {
   const nx = a.pos.x + dx; if (!blocked(nx, a.pos.z, a.pos.y)) a.pos.x = nx; else a.vel.x = 0;
   const nz = a.pos.z + dz; if (!blocked(a.pos.x, nz, a.pos.y)) a.pos.z = nz; else a.vel.z = 0;
 }
+// Never stay stuck inside a box or wall: if a soldier's spot is blocked, slide to the nearest free spot (rings 0.1 m apart, out to 2.5 m); no free spot = stand on top.
+function unstick(a) {
+  for (let r = 0.1; r <= 2.5; r += 0.1) for (let k = 0; k < 16; k++) {
+    const ang = k * Math.PI / 8, x = a.pos.x + Math.cos(ang) * r, z = a.pos.z + Math.sin(ang) * r;
+    if (!blocked(x, z, a.pos.y)) { a.pos.x = x; a.pos.z = z; a.vel.x = a.vel.z = 0; return; }
+  }
+  a.pos.y = groundAt(a.pos.x, a.pos.z, 99); a.vel.y = 0;
+}
 function physics(a, dt, wx, wz, maxSpd, jump) {
+  if (blocked(a.pos.x, a.pos.z, a.pos.y)) unstick(a);
   const accel = a.onGround ? 46 : 9;
   let dvx = wx * maxSpd - a.vel.x, dvz = wz * maxSpd - a.vel.z;
   if (!a.onGround && !wx && !wz) { dvx = 0; dvz = 0; }
@@ -3534,7 +3543,14 @@ setup.classList.add('folded');
 $('play').textContent = 'CUSTOM MATCH';
 $('play').onclick = () => { if (setup.classList.contains('folded')) { setup.classList.remove('folded'); $('play').textContent = 'START CUSTOM MATCH'; return; } initAudio(S.vol); startMatch(); };
 if (!TOUCH) { const tr = document.createElement('button'); tr.className = 'btn'; tr.id = 'training'; tr.textContent = 'TRAINING'; tr.onclick = startTraining; $('launchActions').insertBefore(tr, $('openKeys')); }
-quick.onclick = () => { Object.assign(S, { mode: 'comp', diff: 'hard', length: 'short', side: 'random', arsenal: 'simple', ranked: 'on', bomb: 'random', speed: 'on', tMine: 5, tFoe: 5 }); { const ids = MAP_LIST.map((m) => m.id); let last = ''; try { last = localStorage.getItem('cs.lastQP') || ''; } catch (e) {} const pool = ids.filter((id) => id !== last); S.map = pick(pool.length ? pool : ids); try { localStorage.setItem('cs.lastQP', S.map); } catch (e) {} }
+// QUICK PLAY MAPS: the very first Quick Play is Sandstone, after that a random map that is never the one just played. The match brief on the home screen always shows the map coming up next.
+function qpNext() { let n = ''; try { n = localStorage.getItem('cs.nextQP') || ''; } catch (e) {} return MAP_LIST.some((m) => m.id === n) ? n : 'sandstone'; }
+function qpAdvance(played) { const pool = MAP_LIST.map((m) => m.id).filter((id) => id !== played), nxt = pick(pool.length ? pool : [played]); try { localStorage.setItem('cs.nextQP', nxt); } catch (e) {} }
+function showNextQP() {
+  const m = MAP_LIST.find((x) => x.id === qpNext()), t = document.getElementById('qpBriefMap'), p = document.getElementById('qpBriefInfo');
+  if (t && m) t.textContent = m.name; if (p && m) p.textContent = m.blurb || 'Raiders plant the core. Defenders hold the sites.';
+}
+quick.onclick = () => { Object.assign(S, { mode: 'comp', diff: 'hard', length: 'short', side: 'random', arsenal: 'simple', ranked: 'on', bomb: 'random', speed: 'on', tMine: 5, tFoe: 5 }); S.map = qpNext(); qpAdvance(S.map); showNextQP();
   syncSeg(); updateBriefing(); initAudio(S.vol); startMatch(); showMapPop(MAP_LIST.find((m) => m.id === S.map).name); };
 let mapPop = null;
 function showMapPop(name) {
@@ -3847,6 +3863,7 @@ locker.addEventListener('cancel', (e) => { if (pendingReward || opening) e.preve
   foot.append(footL, footR);
   const briefing = el('aside','lobby-brief');
   briefing.append(el('small','','MATCH BRIEF'), el('h2','','Sandstone'), el('p','','Raiders plant the core. Defenders hold the sites.'), col.querySelector('#quickPlay'));
+  briefing.querySelector('h2').id = 'qpBriefMap'; briefing.querySelector('p').id = 'qpBriefInfo'; showNextQP();
   home.append(bar, briefing, hit, foot); menuBox.replaceChildren(home);
   document.querySelectorAll('.seg').forEach((s) => s.addEventListener('click', () => setTimeout(stageSync, 0)));
   stageSync(); refreshCoins();
