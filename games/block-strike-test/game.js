@@ -1,14 +1,14 @@
-import { displayWeapon } from './showcase.js?v=215';
+import { displayWeapon } from './showcase.js?v=216';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=215';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier } from './skins.js?v=215';
-import { platform } from './platform.js?v=215';
-import * as THREE from './three.module.min.js?v=215';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=215';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=215';
-import { createOnline } from './online.js?v=215';
-import { TOUCH, initTouch } from './touch.js?v=215';
-import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=215';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=216';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=216';
+import { platform } from './platform.js?v=216';
+import * as THREE from './three.module.min.js?v=216';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=216';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=216';
+import { createOnline } from './online.js?v=216';
+import { TOUCH, initTouch } from './touch.js?v=216';
+import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=216';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -144,6 +144,7 @@ function showRankUp(r) {
   if (padMode) padFocus($('ruGo'));
 }
 const LITE = S.gfx === 'lite', LOW = S.gfx !== 'high';
+fxQuality.shine = !LITE;   // moving shine + sparkles on skins: on Fast and High, never on Lite
 GFX.lite = LITE;
 const GFX_AT_LOAD = S.gfx;   // what this page started with: a different choice only takes effect after a reload
 document.body.classList.toggle('lite', LITE); document.body.classList.toggle('low', LOW);
@@ -3235,12 +3236,12 @@ function frame(now) {
   if (fpsAcc > 0.5) { $('fps').textContent = Math.round(fpsN / fpsAcc) + ' fps'; fpsAcc = 0; fpsN = 0; }
   if (GS.state === 'menu') {
     const finish = equipped();
-    const animated = finish.fx && (finish.fx.shine || finish.fx.spark);
+    const animated = fxQuality.shine && finish.fx && (finish.fx.shine || finish.fx.spark);
     if (QC.menu && !lobbyDirty && !animated) return;
     if (QC.menu && !lobbyDirty && now < nextMenuDraw) return;
     lobbyDirty = false;
 
-    nextMenuDraw = now + 180;
+    nextMenuDraw = now + (animated ? 40 : 180);   // a moving shine redraws smoothly (25 a second) instead of in 5 jerky steps
     if (!QC.menu) { QC.menu = true; if (!LITE) { renderer.setPixelRatio(Math.min(devicePixelRatio, WEAK_GPU ? 1.25 : 1.5)); renderer.setSize(innerWidth, innerHeight, false); } setRT(1); renderer.shadowMap.needsUpdate = QL.shadows; }   // sharp on high-resolution screens   // nearly the full picture: my soldier is on this screen now
     if (MAP.id !== 'sandstone') { setMap('sandstone'); menuSoldierSync(); }   // the menu backdrop is always Sandstone
     menuScene(now / 1000);

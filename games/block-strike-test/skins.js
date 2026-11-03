@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=215';
+import * as THREE from './three.module.min.js?v=216';
 
 const th = (body, barrel, stock, grip, metal, edge, dark) => ({ body, barrel, stock, grip, metal, edge, dark });
 // fx: mode (pattern), cell (pattern size), c: 4 pattern colours, glow, glowCol, shine (moving shine), spark (sparkle colour), rivet, outline, gloss (shiny paint too)
@@ -36,6 +36,7 @@ for (const f of finishes) if (OUTFIT[f.id]) f.outfit = OUTFIT[f.id][0];
 
 // ---------------------------------------------------------------- the shader pattern + glow + moving shine
 const TIME = { value: 0 }, SPARKS = new Set(); let lastT = 0;
+export const fxQuality = { shine: false };   // the moving shine + sparkles are on Fast and High, never Lite (game.js sets this before any skin is drawn)
 export function tickSkins() {
   const now = performance.now() / 1000, dt = Math.min(0.1, now - lastT || 0.016); lastT = now; TIME.value = now;
   for (const p of SPARKS) {
@@ -73,7 +74,7 @@ function matFor(f, shiny) {
   const m = new THREE.MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: shiny ? 60 : fx.gloss ? 40 : 12, specular: shiny ? 0x6a6a6a : fx.gloss ? 0x554433 : 0x151515 });
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, {
-      uTime: TIME, uMode: { value: fx.mode || 0 }, uCell: { value: fx.cell || 10 }, uGlow: { value: fx.glow || 0 }, uShine: { value: fx.shine || 0 }, uOutline: { value: fx.outline ? 1 : 0 }, uRivet: { value: fx.rivet ? 1 : 0 },
+      uTime: TIME, uMode: { value: fx.mode || 0 }, uCell: { value: fx.cell || 10 }, uGlow: { value: fx.glow || 0 }, uShine: { value: fxQuality.shine ? fx.shine || 0 : 0 }, uOutline: { value: fx.outline ? 1 : 0 }, uRivet: { value: fx.rivet ? 1 : 0 },
       uC0: { value: col(fx.c && fx.c[0]) }, uC1: { value: col(fx.c && fx.c[1]) }, uC2: { value: col(fx.c && fx.c[2]) }, uC3: { value: col(fx.c && fx.c[3]) }, uGlowCol: { value: col(fx.glowCol) },
     });
     sh.vertexShader = 'attribute float aRole; varying vec3 vObj; varying float vRole;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vObj = position; vRole = aRole;');
@@ -123,7 +124,7 @@ export function applyFinish(mesh, finish, kind) {
   ud.themed ??= {}; const sp = (ud.themed[finish.id + (kind || '')] ??= buildThemed(ud.base.geometry, finish, kind));
   mesh.geometry = sp.matte; mesh.material = matFor(finish, false);
   if (sp.shiny) { const k = new THREE.Mesh(sp.shiny, matFor(finish, true)); mesh.add(k); ud.fxKids.push(k); }
-  if (finish.fx.spark) { const p = makeSparks(sp.box, finish.fx.spark); mesh.add(p); ud.fxKids.push(p); }
+  if (finish.fx.spark && fxQuality.shine) { const p = makeSparks(sp.box, finish.fx.spark); mesh.add(p); ud.fxKids.push(p); }
 }
 
 // ---------------------------------------------------------------- the soldier's uniform on the menu (whiteout skins turn it white)
