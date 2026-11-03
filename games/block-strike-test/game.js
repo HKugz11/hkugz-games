@@ -1,14 +1,14 @@
-import { displayWeapon } from './showcase.js?v=216';
+import { displayWeapon } from './showcase.js?v=217';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=216';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=216';
-import { platform } from './platform.js?v=216';
-import * as THREE from './three.module.min.js?v=216';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=216';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=216';
-import { createOnline } from './online.js?v=216';
-import { TOUCH, initTouch } from './touch.js?v=216';
-import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=216';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=217';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=217';
+import { platform } from './platform.js?v=217';
+import * as THREE from './three.module.min.js?v=217';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=217';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=217';
+import { createOnline } from './online.js?v=217';
+import { TOUCH, initTouch } from './touch.js?v=217';
+import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=217';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -901,7 +901,7 @@ function killFx(v, k, wid, hs, quiet) {
     clearTimeout(msg._t); msg._t = setTimeout(() => (msg.innerHTML = ''), 1800);
   }
 }
-function kill(v, k, wid, hs) {
+function kill(v, k, wid, hs) { if (k && k.brain) k.brain.lastKill = GS.time;
   v.alive = false; v.hp = 0; v.deaths++; v.act = null; v.scoped = 0;
   if (k && k !== v && k.side !== v.side) {
     k.kills++; if (hs) k.hs++; k.roundKills++;
@@ -2059,11 +2059,13 @@ function botThink(a, b) {
         const off = Math.abs(angDiff(a.yaw, Math.atan2(-(best.pos.x - a.pos.x), -(best.pos.z - a.pos.z))));
         const panic = (a.hp < 45 || GS.time - b.hurtT < 0.6) && Math.random() < 0.3 * (1.35 - b.nerve);   // rattled: fires fast and wild
         let rt = dd.react * b.rt * rand(0.85, 1.2) * (a.blindT > 0 ? 2 : 1) * (GS.time - b.hurtT < 0.5 ? 0.85 : 1) * (GS.time < b.tradeT ? 0.8 : 1) * (holding ? 0.85 : 1) * (b.pers === 'rusher' ? 0.92 : b.pers === 'careful' ? 1.06 : 1) + (off > 1 ? 0.16 : off > 0.5 ? 0.07 : 0);
-        b.react = clamp(panic ? rt * 0.8 : rt, 0.17, 0.6);
-        const s = Math.random() < 0.5 ? -1 : 1, sk = b.aimSk * (panic ? 2.4 : 1);
+        const mates = GS.actors.filter((o) => o !== a && o.side === a.side && o.brain && o.brain.vis && o.brain.target === best && GS.time - (o.brain._seen || -9) < 0.5).length, own = a.squad === GS.player.squad && !a.isPlayer;   // two bots never lock on at the same instant; the player's own team plays no better than the enemy
+        rt = (rt + (GS.time - (b.lastKill || -9) < 1.5 ? 0.25 : 0) + (mates ? rand(0.12, 0.3) : 0)) * (own ? 1.06 : 1);   // and nobody snaps straight from one kill to the next target
+        b.react = clamp(panic ? rt * 0.8 : rt, 0.17, 0.75);
+        const s = Math.random() < 0.5 ? -1 : 1, sk = b.aimSk * (b.duel = rand(0.55, 1.9)) * (mates ? 1.4 : 1) * (own ? 1.12 : 1) * (panic ? 2.4 : 1);   // b.duel: some duels they whiff, some they win
         b.errY = s * dd.err * DEG * rand(0.6, 1.3) * sk; b.errP = (Math.random() - 0.3) * dd.err * DEG * 0.7 * sk;
         if (off > 0.35) { const sw = angDiff(a.yaw, Math.atan2(-(best.pos.x - a.pos.x), -(best.pos.z - a.pos.z))); b.errY += Math.sign(sw) * Math.min(12 * DEG, off * rand(0.04, 0.13)); b.errP += (Math.random() - 0.5) * off * 0.06; }   // a flick overshoots, then corrects and settles
-        b.aimHead = Math.random() < dd.head; b.burst = 0;
+        b.aimHead = Math.random() < dd.head * 0.45; b.burst = 0;
         a.crouch = bd > 18 && Math.random() < 0.35 && !!a.prim;
       }
     }
@@ -2186,10 +2188,11 @@ function botUpdate(a, dt) {
   const T = b.target;
   if (T && b.vis && T.alive) {
     const tp = b.aimHead ? headPos(T, _v1) : chestPos(T, _v1);
-    if (dd.lead) { tp.x += T.vel.x * dd.lead; tp.z += T.vel.z * dd.lead; }
+    if (dd.lead) { tp.x += T.vel.x * dd.lead * 0.3; tp.z += T.vel.z * dd.lead * 0.3; }
     const ep = eyePos(a, _v2), dx = tp.x - ep.x, dy = tp.y - ep.y, dz = tp.z - ep.z, hd = Math.hypot(dx, dz);
     tgtYaw = Math.atan2(-dx, -dz); const tgtP = Math.atan2(dy, hd);
-    wantY = tgtYaw + b.errY; wantP = tgtP + b.errP;
+    b.jT = (b.jT || 0) - dt; if (b.jT <= 0) { b.jT = rand(0.25, 0.5); b.jit = rand(-1, 1); }   // a person's aim wanders, a lot more against a runner / strafer
+    wantY = tgtYaw + b.errY + (b.jit || 0) * (0.3 + Math.min(Math.hypot(T.vel.x, T.vel.z), 6)) * 0.8 * DEG * (b.duel || 1); wantP = tgtP + b.errP;
     tol = Math.atan2(b.aimHead ? 0.16 : 0.26, hd) + 0.4 * DEG;
     b.tgtP = tgtP;
   } else if (T && GS.time - b.lastSeenT < 3 && b.lastSeen) {
@@ -2252,7 +2255,7 @@ function botUpdate(a, dt) {
   footsteps(a, dt);
   // fire
   if (T && b.vis && T.alive && b.react <= 0 && !frozen && !a.act && a.switchT <= 0 && (a.reloadT <= 0 || (def.shell && w.mag > 0)) && a.blindT <= 0.3 && GS.time >= a.nextFire && GS.state !== 'freeze') {
-    const aimErr = Math.abs(angDiff(a.yaw, tgtYaw)) + Math.abs(a.pitch - b.tgtP);
+    const aimErr = Math.abs(angDiff(a.yaw, wantY)) + Math.abs(a.pitch - wantP);   // fires when it THINKS it is on target, so a wandering aim really misses
     const dist = T.pos.distanceTo(a.pos);
     const slowEnough = Math.hypot(a.vel.x, a.vel.z) < def.speed * 0.4 || def.melee || def.pellets || dist < 6;
     if (def.melee) { if (dist < 1.9 && aimErr < 0.5) melee(a, Math.random() < 0.3); }
