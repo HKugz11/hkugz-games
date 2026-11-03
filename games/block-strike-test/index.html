@@ -244,7 +244,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 @media (max-height:820px){.logo{font-size:42px}.logo br{display:none}.tag{margin:6px 0 10px}.opt{margin-bottom:8px}.seg button{padding:6px 6px}.row{margin-top:10px}#best{margin-top:6px}}
 @media (max-width:760px){#buyGrid{grid-template-columns:repeat(2,1fr)}.logo{font-size:46px}.keys{columns:1}}
 </style>
-<link rel="stylesheet" href="ui.css?v=218">
+<link rel="stylesheet" href="ui.css?v=219">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -460,7 +460,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 <div id="ffNote" class="hidden"><b>SPEED MODE</b> skipping ahead to the next round &nbsp;·&nbsp; press <b>SPACE</b> to watch normally</div>
 
 <script type="module">
-import('./game.js?v=218').catch((error) => {
+import('./game.js?v=219').catch((error) => {
   console.error(window.GAME_TITLE + ' could not start:', error);
   const loading = document.getElementById('loading');
   if (loading) { loading.style.cssText += ';font-size:18px;letter-spacing:0;text-align:center;padding:24px'; loading.textContent = window.GAME_TITLE + ' could not start. Enable WebGL in your browser, check your connection, and reload the game.'; }

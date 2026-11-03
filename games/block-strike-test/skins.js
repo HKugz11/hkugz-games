@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=218';
+import * as THREE from './three.module.min.js?v=219';
 
 const th = (body, barrel, stock, grip, metal, edge, dark) => ({ body, barrel, stock, grip, metal, edge, dark });
 // fx: mode (pattern), cell (pattern size), c: 4 pattern colours, glow, glowCol, shine (moving shine), spark (sparkle colour), rivet, outline, gloss (shiny paint too)
@@ -23,7 +23,7 @@ export const finishes = [
   // ---- epic (glowing parts + a moving shine) ----
   { id: 'toxic', name: 'Toxic Waste', rule: 'Found in skin crates', rarity: 'epic', theme: th(0x2a2f1e, 0x141808, 0x3a4222, 0x141808, 0xa8ff3c, 0xd8ff8a, 0x080a04), fx: { mode: 3, cell: 10, c: [0xb6ff3c, 0, 0, 0xb6ff3c], glow: 0.8, glowCol: 0x9aff20, shine: 1 } },
   { id: 'ghost', name: 'Ghost', rule: 'Found in skin crates', rarity: 'epic', weight: 0.45, theme: th(0xf8fafc, 0xe8eef3, 0xf2f6f9, 0xe0e7ee, 0xcfe8f7, 0xffffff, 0xc3ccd4), fx: { mode: 0, cell: 10, c: [0, 0, 0, 0xd5e6ef], outline: true, glow: 0.3, glowCol: 0xbfe6ff, shine: 1, gloss: true } },
-  { id: 'polarcamo', name: 'Polar Camo', rule: 'Found in skin crates', rarity: 'epic', weight: 0.45, theme: th(0xf1f4f6, 0xcdd5db, 0xe4e9ed, 0xb9c3cb, 0xa9d6ee, 0xffffff, 0x8f9ba5), fx: { mode: 1, cell: 7, c: [0xffffff, 0xd0d8de, 0xbfcdd7, 0], glow: 0.3, glowCol: 0xcfeaff, shine: 1, spark: 0xdff4ff } },
+  { id: 'polarcamo', name: 'Polar Camo', rule: 'Found in skin crates', rarity: 'epic', weight: 0.45, theme: th(0x6a7a89, 0x3c4853, 0x56646f, 0x1f272e, 0xaab7c2, 0xffffff, 0x12181d), fx: { mode: 1, cell: 5, c: [0xe6edf2, 0x56667a, 0x1f2b36, 0], glow: 0.25, glowCol: 0xbfe0ff, shine: 1, spark: 0xdff4ff } },
   // ---- legendary (clearly special: glow + shine + sparkles) ----
   { id: 'gold', name: 'Gold Plated', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0xe6b422, 0xc99412, 0xf0c53a, 0x8a6410, 0xffe27a, 0xfff3b0, 0x5a3f08), fx: { mode: 0, cell: 10, c: [0, 0, 0, 0xfff0a0], rivet: true, glow: 0.35, glowCol: 0xffc830, shine: 1, spark: 0xffe27a, gloss: true } },
   { id: 'galaxy', name: 'Galaxy', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x120a2e, 0x0a0618, 0x1c1046, 0x0a0618, 0x8a7cff, 0xff9cf6, 0x05030d), fx: { mode: 5, cell: 18, c: [0x9a6cff, 0x5b2bd6, 0xff4fd0, 0], glow: 0.45, glowCol: 0x9a50ff, shine: 1, spark: 0xd6b8ff } },

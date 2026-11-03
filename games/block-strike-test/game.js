@@ -1,14 +1,14 @@
-import { displayWeapon } from './showcase.js?v=218';
+import { displayWeapon } from './showcase.js?v=219';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=218';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=218';
-import { platform } from './platform.js?v=218';
-import * as THREE from './three.module.min.js?v=218';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=218';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=218';
-import { createOnline } from './online.js?v=218';
-import { TOUCH, initTouch } from './touch.js?v=218';
-import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=218';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=219';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=219';
+import { platform } from './platform.js?v=219';
+import * as THREE from './three.module.min.js?v=219';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=219';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=219';
+import { createOnline } from './online.js?v=219';
+import { TOUCH, initTouch } from './touch.js?v=219';
+import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=219';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -3686,7 +3686,7 @@ locker.innerHTML = `<header><h2>INVENTORY</h2><span class="coinbadge">${COIN}<b 
 <section class="inv-pane crate-pane hidden" data-p="crate"><div class="crate-stagewrap"><canvas id="crateStage"></canvas><div id="crateResult" class="hidden"></div><div id="crateFlash"></div></div>
 <div class="crate-info"><b>SKIN CRATE</b><small>A crate costs ${CRATE_PRICE} ${COIN}. You earn ${COIN} by finishing matches: 60 for a loss, 120 for a win, plus 3 for every elimination. Never real money.</small><button class="btn go" id="openCrate"></button>
 <div class="odds"><b>DROP ODDS</b>${Object.values(rarities).map((r) => `<div style="--rc:${hexOf(r.color)}"><i></i><span>${r.name}</span><em>${r.pct}%</em><small>duplicate: +${r.refund} ${COIN}</small></div>`).join('')}</div>
-<small class="fine">The white Whiteout skins (Snow White, Frost, Ivory, Ghost, Polar Camo, Pearl) are rarer than the others in their tier. A skin you already own gives coins back instead. Skins and knives are only for looks.</small></div></section>
+<small class="fine">The white Whiteout skins (Snow White, Frost, Ivory, Ghost, Pearl) are rarer than the others in their tier. A skin you already own gives coins back instead. Skins and knives are only for looks.</small></div></section>
 <small role="status"></small>`;
 document.body.appendChild(locker);
 const lq = (s) => locker.querySelector(s);
