@@ -17,8 +17,19 @@
 <meta property="og:description" content="Free browser games built by HKugz: a 3D robot shooter, a building shooter, a kart racer, a tower defense game, an obstacle race, mini golf, a 3D obby tower, classics like Snake and Breakout, and original one-button games.">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
+<style id="betaLockCss">
+/* BETA LOCK: only Block Strike (test) can be played right now. To switch every game back on, delete "beta-lock" from <body class="hub beta-lock">, this style block, the #betaBanner line and the BETA LOCK script at the bottom. */
+.beta-lock .gcard{position:relative}
+.beta-lock a[href*="games/"]:not([href*="block-strike-test"]){pointer-events:none;cursor:not-allowed}
+.beta-lock .gcard:not([href*="block-strike-test"]){overflow:hidden}
+.beta-lock .gcard:not([href*="block-strike-test"]) .gthumb,.beta-lock .gcard:not([href*="block-strike-test"]) .gbody{opacity:.5;filter:grayscale(.7)}
+.beta-lock .gcard:not([href*="block-strike-test"])::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right,transparent calc(50% - 4px),#e5252a calc(50% - 4px),#e5252a calc(50% + 4px),transparent calc(50% + 4px))}
+.beta-lock a.btn[href*="games/"]:not([href*="block-strike-test"]),.beta-lock .slide:not([href*="block-strike-test"]){opacity:.5;filter:grayscale(.7)}
+#betaBanner{background:#e5252a;color:#fff;font-weight:800;text-align:center;padding:9px 14px;font-size:15px}
+</style>
 </head>
-<body class="hub">
+<body class="hub beta-lock">
+<div id="betaBanner">BETA TEST: only Block Strike (test) is open right now. The other games are switched off for a while.</div>
 <a class="skip" href="#games">Skip to the games</a>
 
 <header class="topnav">
@@ -246,6 +257,13 @@
     q.addEventListener("input", apply);
     document.getElementById("gameCount").textContent = "(" + cards.filter(function (c) { return !c.classList.contains("soon") && !c.hasAttribute("data-nocount"); }).length + ")";
   })();
+</script>
+<script>
+/* BETA LOCK: also stops keyboard / touch opens of the switched-off games (see the style block at the top) */
+document.addEventListener("click", function (e) {
+  var a = e.target.closest && e.target.closest('a[href*="games/"]');
+  if (document.body.classList.contains("beta-lock") && a && a.getAttribute("href").indexOf("block-strike-test") < 0) { e.preventDefault(); e.stopPropagation(); }
+}, true);
 </script>
 </body>
 </html>
