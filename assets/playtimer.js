@@ -1,5 +1,6 @@
 // HKugz Games play timer: opt-in, one device at a time. A parent switches it on with a PIN on that device (see /timer/); after the daily
 // limit every page of the site shows the "time's up" page until tomorrow, or until the parent adds time with the PIN.
+// The same PIN can also BLOCK the games on a device completely (every page shows the "turned off" page until a parent opens them for the day).
 // Everything lives in this browser (localStorage key "hktimer"). Nothing is sent anywhere, and when nobody turned it on it does nothing.
 // It is a nudge, not a lock: clearing the site's data or using another browser gets around it, so a device-level limit (Family Link,
 // Screen Time, Family Safety) is the stronger option.
@@ -13,7 +14,8 @@
   function today() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
   function fresh(s) { if (s && s.day !== today()) { s.day = today(); s.used = 0; s.extra = 0; s.off = false; } return s; }
   function left(s) { return s && s.on && !s.off ? s.limit * 60 + (s.extra || 0) - (s.used || 0) : Infinity; }
-  function locked(s) { return !!s && left(s) <= 0; }
+  function blockedNow(s) { return !!s && !!s.block && s.unblockDay !== today(); }   // the whole device is switched off (until a parent opens it for the day)
+  function locked(s) { return blockedNow(s) || (!!s && left(s) <= 0); }
   function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
   function hash(pin, salt) {
     var text = salt + ':' + pin;
@@ -34,7 +36,7 @@
     base: base,
     state: function () {
       var s = fresh(load()), wait = s && s.fail && s.fail.until > Date.now() ? Math.ceil((s.fail.until - Date.now()) / 1000) : 0;
-      return { exists: !!s, on: !!(s && s.on), off: !!(s && s.off), hasPin: !!(s && s.pin), limit: s ? s.limit : 60, used: s ? s.used || 0 : 0, extra: s ? s.extra || 0 : 0, left: left(s), wait: wait };
+      return { exists: !!s, on: !!(s && s.on), off: !!(s && s.off), hasPin: !!(s && s.pin), limit: s ? s.limit : 60, used: s ? s.used || 0 : 0, extra: s ? s.extra || 0 : 0, left: left(s), wait: wait, block: !!(s && s.block), blocked: blockedNow(s), locked: locked(s) };
     },
     verify: function (pin) {   // -> Promise {ok, wait}; slows down guessing (3 wrong tries = a wait that doubles)
       var s = fresh(load()); if (!s || !s.pin) return Promise.resolve({ ok: false, wait: 0 });
@@ -46,10 +48,11 @@
         t.fail = { n: n, until: wait ? Date.now() + wait * 1000 : 0 }; save(t); return { ok: false, wait: wait };
       });
     },
-    setup: function (pin, minutes) {   // first time on this device (or a new PIN)
+    setup: function (pin, minutes, opts) {   // first time on this device (or a new PIN). opts.blockOnly = block the games completely instead of a daily limit
+      opts = opts || {};
       var salt = newSalt(); return hash(String(pin), salt).then(function (h) {
         var s = fresh(load()) || { v: 1, day: today(), used: 0, extra: 0 };
-        s.v = 1; s.pin = { s: salt, h: h }; s.limit = Math.max(1, Math.min(600, Math.round(minutes) || 60)); s.on = true; s.off = false; s.fail = { n: 0, until: 0 }; return save(s);
+        s.v = 1; s.pin = { s: salt, h: h }; s.limit = Math.max(1, Math.min(600, Math.round(minutes) || 60)); s.on = !opts.blockOnly; s.off = false; s.block = !!opts.blockOnly; s.unblockDay = ''; s.fail = { n: 0, until: 0 }; return save(s);
       });
     },
     changePin: function (pin) { var s = fresh(load()); if (!s) return Promise.resolve(false); var salt = newSalt(); return hash(String(pin), salt).then(function (h) { s.pin = { s: salt, h: h }; return save(s); }); },
@@ -57,6 +60,8 @@
     setOn: function (on) { var s = fresh(load()); if (!s) return false; s.on = !!on; s.off = false; return save(s); },
     addMinutes: function (m) { var s = fresh(load()); if (!s) return false; s.extra = (s.extra || 0) + m * 60; return save(s); },
     offToday: function () { var s = fresh(load()); if (!s) return false; s.off = true; return save(s); },
+    setBlock: function (on) { var s = fresh(load()); if (!s) return false; s.block = !!on; s.unblockDay = ''; return save(s); },
+    unblockToday: function () { var s = fresh(load()); if (!s) return false; s.unblockDay = today(); return save(s); },
     resetToday: function () { var s = fresh(load()); if (!s) return false; s.used = 0; s.extra = 0; s.off = false; return save(s); },
     fmt: fmt, clock: clock
   };
@@ -65,7 +70,7 @@
 
   // ---- every other page: count the time, warn, and send you to the time's-up page when the limit is reached
   function toTimesUp() { go(base + 'timesup/?back=' + encodeURIComponent(location.href)); }
-  var s0 = fresh(load()); if (!s0 || !s0.on) return;
+  var s0 = fresh(load()); if (!s0 || (!s0.on && !s0.block)) return;
   if (locked(s0)) { toTimesUp(); return; }
 
   var toast = null, chip = null, hideT = 0, warned = {};
@@ -90,13 +95,13 @@
   if (isFinite(left(s0))) say('Play time left today: ' + fmt(left(s0)), 5500); dom(badge);
 
   function tick() {
-    var s = fresh(load()); if (!s || !s.on) { if (chip) chip.style.opacity = '0'; return; }
+    var s = fresh(load()); if (!s || (!s.on && !s.block)) { if (chip) chip.style.opacity = '0'; return; }
     var now = Date.now();
-    if (document.visibilityState === 'visible') {   // only count while you can see the page; another open tab counts the same second only once
+    if (s.on && document.visibilityState === 'visible') {   // only count while you can see the page; another open tab counts the same second only once
       var d = now - (s.beat || 0); if (d >= 900) { s.used = (s.used || 0) + Math.min(d, 2500) / 1000; s.beat = now; save(s); }
     }
     var l = left(s);
-    if (l <= 0) { toTimesUp(); return; }
+    if (locked(s)) { toTimesUp(); return; }
     if (l <= 300) showChip(l); else if (chip) chip.style.opacity = '0';
     if (l <= 300 && !warned[300]) { warned[300] = 1; say('5 minutes of play time left today', 7000); }
     if (l <= 60 && !warned[60]) { warned[60] = 1; say('1 minute of play time left. Time to save and finish up!', 9000); }

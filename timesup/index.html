@@ -10,13 +10,13 @@
 <div class="wrap">
   <header class="hero" style="padding-top:38px">
     <img class="logo" src="../assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
-    <h1>That's all the play time for today</h1>
-    <p>Great playing! Time for a break. The games open again tomorrow.</p>
+    <h1 id="h1">That's all the play time for today</h1>
+    <p id="sub">Great playing! Time for a break. The games open again tomorrow.</p>
   </header>
 
   <section class="tbox" id="boxLocked">
-    <h2>Need more time?</h2>
-    <p class="tnote">Ask a parent. They can add time with their PIN.</p>
+    <h2 id="boxTitle">Need more time?</h2>
+    <p class="tnote" id="boxNote">Ask a parent. They can add time with their PIN.</p>
     <form id="f" autocomplete="off">
       <label for="pin">Parent PIN</label>
       <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
@@ -27,10 +27,13 @@
 
   <section class="tbox" id="boxChoose" hidden>
     <h2>Add play time</h2>
-    <div class="trow">
+    <div class="trow" id="rowTime">
       <button class="btn small" type="button" data-min="15">+15 minutes</button>
       <button class="btn small" type="button" data-min="30">+30 minutes</button>
       <button class="btn small" type="button" data-min="60">+1 hour</button>
+    </div>
+    <div class="trow" id="rowBlock" hidden>
+      <button class="btn small" type="button" id="openToday">Open the games for today</button>
     </div>
     <div class="trow">
       <button class="btn small ghost" type="button" id="noLimit">No more limit today</button>
@@ -47,7 +50,12 @@
     return T.base;
   }
   function leave() { location.replace(backUrl()); }
-  var st = T.state(); if (!st.on || st.left > 0) { leave(); return; }   // not locked (any more): nothing to do here
+  var st = T.state(); if (!st.locked) { leave(); return; }   // not locked (any more): nothing to do here
+  if (st.blocked) {   // the parent switched the games off on this device
+    $('h1').textContent = 'The games are turned off on this device'; $('sub').textContent = 'Ask a parent if you want to play.';
+    $('boxTitle').textContent = 'Parents'; $('boxNote').textContent = 'Type the parent PIN to open the games for today. To change this for good, use the timer settings.';
+    document.title = 'Games off - HKugz Games'; $('rowTime').hidden = true; $('noLimit').hidden = true; $('rowBlock').hidden = false; $('boxChoose').querySelector('h2').textContent = 'Open the games';
+  }
   function msg(t, cls) { var m = $('msg'); m.textContent = t; m.className = 'tmsg ' + (cls || ''); }
   function waitNote(w) { return w ? 'Too many wrong tries. Try again in ' + w + ' second' + (w === 1 ? '' : 's') + '.' : ''; }
   if (st.wait) msg(waitNote(st.wait), 'err');
@@ -60,5 +68,6 @@
   });
   document.querySelectorAll('[data-min]').forEach(function (b) { b.addEventListener('click', function () { T.addMinutes(+b.getAttribute('data-min')); leave(); }); });
   $('noLimit').addEventListener('click', function () { T.offToday(); leave(); });
+  $('openToday').addEventListener('click', function () { T.unblockToday(); leave(); });
 })();
 </script>

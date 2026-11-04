@@ -2,8 +2,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Play timer - HKugz Games</title>
-<meta name="description" content="For parents: set a daily play-time limit for the games on this device, protected by a PIN.">
+<title>Play timer and device block - HKugz Games</title>
+<meta name="description" content="For parents: set a daily play-time limit for the games on this device, or switch the games off on it, protected by a PIN.">
 <link rel="icon" type="image/svg+xml" href="../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../assets/logo.png"><link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
 <meta name="theme-color" content="#42d7f1">
 <link rel="stylesheet" href="../assets/site.css?v=4">
@@ -33,20 +33,22 @@
   <header class="hero" style="padding-top:38px">
     <img class="logo" src="../assets/logo.svg" alt="HKugz Games logo" width="92" height="92">
     <h1>Play timer</h1>
-    <p>For parents: set a daily limit for the games on this device. Protected by your own PIN.</p>
+    <p>For parents: set a daily limit for the games on this device, or switch them off completely. Protected by your own PIN.</p>
   </header>
 
   <section class="tbox" id="boxSetup" hidden>
-    <h2>Turn on the timer for this device</h2>
-    <p class="tnote">Do this on the phone, tablet or computer your kids use. Pick a PIN only you know. Kids need it to get more time.</p>
+    <h2>Set up this device</h2>
+    <p class="tnote">Do this on the phone, tablet or computer your kids use. Pick a PIN only you know. Kids need it to get more time or to open the games. Other devices are not affected.</p>
     <form id="fSetup" autocomplete="off">
       <label for="newPin">Choose a PIN (4 to 8 numbers)</label>
       <input id="newPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
       <label for="newPin2">Type it again</label>
       <input id="newPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
-      <label for="limit">Play time per day (minutes)</label>
-      <input id="limit" type="number" inputmode="numeric" min="1" max="600" step="1" value="60" style="max-width:140px">
-      <div class="trow"><button class="btn small" type="submit">Turn on the timer</button></div>
+      <label for="mode">What should happen on this device?</label>
+      <select id="mode"><option value="timer">A daily play-time limit</option><option value="block">The games are blocked (no playing at all)</option></select>
+      <div id="limitWrap"><label for="limit">Play time per day (minutes)</label>
+      <input id="limit" type="number" inputmode="numeric" min="1" max="600" step="1" value="60" style="max-width:140px"></div>
+      <div class="trow"><button class="btn small" type="submit" id="setupBtn">Turn on the timer</button></div>
     </form>
     <div class="tmsg" id="setupMsg" role="status"></div>
   </section>
@@ -77,6 +79,10 @@
     <h3>Timer</h3>
     <div class="trow" style="margin-top:6px"><button class="btn small ghost" type="button" id="toggle">Turn timer off</button></div>
 
+    <h3>Block the games on this device</h3>
+    <p class="tnote" style="margin:4px 0">Every page shows "the games are turned off" until a parent types the PIN. Other devices are not affected.</p>
+    <div class="trow" style="margin-top:6px"><button class="btn small ghost" type="button" id="blockBtn">Block the games on this device</button></div>
+
     <h3>Change PIN</h3>
     <form id="fPin" autocomplete="off">
       <div class="trow" style="margin-top:6px">
@@ -90,8 +96,8 @@
 
   <section class="tbox">
     <h2>How it works</h2>
-    <p class="tnote">The timer counts the minutes the games are open and visible on <b>this browser on this device</b>. When the daily limit is reached, every page shows a "time's up" screen until tomorrow, unless a parent adds time with the PIN. Other devices are not affected, and nothing is sent anywhere: the timer and the PIN (stored scrambled) stay in this browser.</p>
-    <p class="tnote"><b>It is a nudge, not a lock.</b> Clearing this site's data, a private window or a different browser gets around it. For a stronger limit, use <b>Google Family Link</b> (Chromebook, Android), <b>Screen Time</b> (iPad, iPhone) or <b>Microsoft Family Safety</b> (Windows).</p>
+    <p class="tnote">The timer counts the minutes the games are open and visible on <b>this browser on this device</b>. When the daily limit is reached, every page shows a "time's up" screen until tomorrow, unless a parent adds time with the PIN. Blocking switches the games off on this device the same way, until a parent opens them for the day or turns the block off here. Other devices are not affected, and nothing is sent anywhere: the settings and the PIN (stored scrambled) stay in this browser. <b>It cannot ban an IP address or a whole network</b>: every device in a home shares one address, and this site cannot see who visits.</p>
+    <p class="tnote"><b>It is a nudge, not a lock.</b> Clearing this site's data, a private window or a different browser gets around it. For a whole-network or stronger block, use the router's parental controls (ask whoever runs it) or <b>Google Family Link</b> (Chromebook, Android), <b>Screen Time</b> (iPad, iPhone) or <b>Microsoft Family Safety</b> (Windows).</p>
     <p class="tnote">Forgot the PIN? Clearing this site's data in the browser settings removes the timer, but it also removes game progress, so make a <a href="../save/">save code</a> first.</p>
     <p class="tnote"><a href="../index.html">&larr; Back to all games</a></p>
   </section>
@@ -104,6 +110,7 @@
   function say(id, t, cls) { var m = $(id); m.textContent = t; m.className = 'tmsg ' + (cls || ''); }
   function pinOk(a, b) { if (!/^[0-9]{4,8}$/.test(a)) return 'The PIN must be 4 to 8 numbers.'; if (a !== b) return 'The two PINs do not match.'; return ''; }
   function wait(w) { return w ? 'Too many wrong tries. Try again in ' + w + ' second' + (w === 1 ? '' : 's') + '.' : ''; }
+  function modeUi() { var b = $('mode').value === 'block'; $('limitWrap').hidden = b; $('setupBtn').textContent = b ? 'Block the games on this device' : 'Turn on the timer'; }
   function show(which) { ['boxSetup', 'boxLogin', 'boxManage'].forEach(function (id) { $(id).hidden = id !== which; }); }
   function min(sec) { return Math.round(sec / 60); }
 
@@ -116,6 +123,8 @@
     chip('Played today: ' + min(s.used) + ' min');
     if (s.on && !s.off) chip('Left today: ' + (s.left <= 0 ? '0 min' : T.fmt(s.left)));
     $('toggle').textContent = s.on ? 'Turn timer off' : 'Turn timer on';
+    chip(s.block ? (s.blocked ? 'Games are BLOCKED on this device' : 'Block is on (opened for today)') : 'Games are not blocked');
+    $('blockBtn').textContent = s.block ? 'Open the games on this device again' : 'Block the games on this device';
   }
 
   var st0 = T.state();
@@ -123,10 +132,10 @@
 
   $('fSetup').addEventListener('submit', function (e) {
     e.preventDefault(); var err = pinOk($('newPin').value.trim(), $('newPin2').value.trim()); if (err) { say('setupMsg', err, 'err'); return; }
-    var n = mins('limit'); if (!n) { say('setupMsg', 'Type how many minutes a day (1 to 600).', 'err'); return; }
-    T.setup($('newPin').value.trim(), n).then(function (ok) {
+    var blockOnly = $('mode').value === 'block', n = blockOnly ? 60 : mins('limit'); if (!n) { say('setupMsg', 'Type how many minutes a day (1 to 600).', 'err'); return; }
+    T.setup($('newPin').value.trim(), n, { blockOnly: blockOnly }).then(function (ok) {
       if (!ok) { say('setupMsg', 'This browser would not save the timer (private window?). Try a normal window.', 'err'); return; }
-      $('newPin').value = $('newPin2').value = ''; show('boxManage'); renderManage(); say('manageMsg', 'The timer is on for this device.', 'ok');
+      $('newPin').value = $('newPin2').value = ''; show('boxManage'); renderManage(); say('manageMsg', blockOnly ? 'The games are blocked on this device. Only the PIN opens them.' : 'The timer is on for this device.', 'ok');
     });
   });
   $('fLogin').addEventListener('submit', function (e) {
@@ -140,6 +149,8 @@
   $('add15').addEventListener('click', function () { T.addMinutes(15); renderManage(); say('manageMsg', 'Added 15 minutes for today.', 'ok'); });
   $('reset').addEventListener('click', function () { T.resetToday(); renderManage(); say('manageMsg', 'Today\'s time is reset.', 'ok'); });
   $('toggle').addEventListener('click', function () { var on = !T.state().on; T.setOn(on); renderManage(); say('manageMsg', on ? 'The timer is on.' : 'The timer is off. Nobody is limited on this device.', 'ok'); });
+  $('blockBtn').addEventListener('click', function () { var on = !T.state().block; T.setBlock(on); renderManage(); say('manageMsg', on ? 'The games are blocked on this device. Open any page of the site to see it.' : 'The games are open on this device again.', 'ok'); });
+  $('mode').addEventListener('change', modeUi); modeUi();
   $('fPin').addEventListener('submit', function (e) {
     e.preventDefault(); var err = pinOk($('chPin').value.trim(), $('chPin2').value.trim()); if (err) { say('manageMsg', err, 'err'); return; }
     T.changePin($('chPin').value.trim()).then(function () { $('chPin').value = $('chPin2').value = ''; say('manageMsg', 'PIN changed.', 'ok'); });
