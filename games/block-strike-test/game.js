@@ -1,14 +1,14 @@
-import { displayWeapon } from './showcase.js?v=219';
+import { displayWeapon } from './showcase.js?v=220';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=219';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=219';
-import { platform } from './platform.js?v=219';
-import * as THREE from './three.module.min.js?v=219';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=219';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=219';
-import { createOnline } from './online.js?v=219';
-import { TOUCH, initTouch } from './touch.js?v=219';
-import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=219';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=220';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=220';
+import { platform } from './platform.js?v=220';
+import * as THREE from './three.module.min.js?v=220';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=220';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=220';
+import { createOnline } from './online.js?v=220';
+import { TOUCH, initTouch } from './touch.js?v=220';
+import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=220';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -21,7 +21,7 @@ function platformPlaying() {
 const QS = new URLSearchParams(location.search);
 const DEBUG = false;   // the CrazyGames build has no debug tools
 // The game's name lives in ONE place: GAME_TITLE (set in index.html's first <script>). Rename it there.
-const GAME_TITLE = window.GAME_TITLE || 'Core Strike';
+const GAME_TITLE = window.GAME_TITLE || 'Blockade Ops';
 const IS_CROS = /\bCrOS\b/.test(navigator.userAgent); // Chromebook
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

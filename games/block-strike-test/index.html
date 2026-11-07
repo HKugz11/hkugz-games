@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Block Strike</title>
-<script>/* THE GAME'S NAME: change it here only (also change the <title> above to match). */window.GAME_TITLE='Block Strike';document.title=window.GAME_TITLE;</script>
+<title>Blockade Ops</title>
+<script>/* THE GAME'S NAME: change it here only (also change the <title> above to match). */window.GAME_TITLE='Blockade Ops';document.title=window.GAME_TITLE;</script>
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23ff9ccf' stroke-width='6'/%3E%3Cpath d='M32 2v18M32 44v18M2 32h18M44 32h18' stroke='%23ffffff' stroke-width='6'/%3E%3C/svg%3E">
 <style>
@@ -244,7 +244,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 @media (max-height:820px){.logo{font-size:42px}.logo br{display:none}.tag{margin:6px 0 10px}.opt{margin-bottom:8px}.seg button{padding:6px 6px}.row{margin-top:10px}#best{margin-top:6px}}
 @media (max-width:760px){#buyGrid{grid-template-columns:repeat(2,1fr)}.logo{font-size:46px}.keys{columns:1}}
 </style>
-<link rel="stylesheet" href="ui.css?v=219">
+<link rel="stylesheet" href="ui.css?v=220">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -460,7 +460,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 <div id="ffNote" class="hidden"><b>SPEED MODE</b> skipping ahead to the next round &nbsp;·&nbsp; press <b>SPACE</b> to watch normally</div>
 
 <script type="module">
-import('./game.js?v=219').catch((error) => {
+import('./game.js?v=220').catch((error) => {
   console.error(window.GAME_TITLE + ' could not start:', error);
   const loading = document.getElementById('loading');
   if (loading) { loading.style.cssText += ';font-size:18px;letter-spacing:0;text-align:center;padding:24px'; loading.textContent = window.GAME_TITLE + ' could not start. Enable WebGL in your browser, check your connection, and reload the game.'; }

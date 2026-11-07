@@ -339,3 +339,7 @@ button,input,select{font-family:var(--body)}
 .lobby-brief{border-top:1px solid #ffffff26;border-left:3px solid #eea260;background:#171b1eef}
 .lobby-brief h2{letter-spacing:-.025em}
 .soldier-hit,.soldier-hit:active{cursor:default}
+/* the title is plain, bold and easy to read at any size (the old colour font turned K into H in small sizes) */
+@font-face{font-family:LilitaOne;src:url('./fonts/lilita.ttf') format('truetype');font-weight:400;font-display:swap}
+.logo,.home-bar .logo{font-family:LilitaOne,var(--head);font-palette:normal;font-variation-settings:normal;font-weight:400;letter-spacing:.03em;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.45)}
+.logo span{color:#ff7a1f}
