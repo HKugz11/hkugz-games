@@ -244,7 +244,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 @media (max-height:820px){.logo{font-size:42px}.logo br{display:none}.tag{margin:6px 0 10px}.opt{margin-bottom:8px}.seg button{padding:6px 6px}.row{margin-top:10px}#best{margin-top:6px}}
 @media (max-width:760px){#buyGrid{grid-template-columns:repeat(2,1fr)}.logo{font-size:46px}.keys{columns:1}}
 </style>
-<link rel="stylesheet" href="ui.css?v=220">
+<link rel="stylesheet" href="ui.css?v=223">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -321,7 +321,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
     <div class="opt" id="optTeams"></div>
     <div class="row">
       <button class="btn go" id="play">PLAY</button>
-      <button class="btn" id="playOnline">PLAY ONLINE</button>
+      <button class="btn" id="playOnline">PLAY WITH FRIENDS</button>
       <button class="btn" id="openSet">SETTINGS</button>
       <button class="btn" id="openKeys">CONTROLS</button>
     </div>
@@ -416,9 +416,9 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 </div></div>
 
 <div id="onlineP" class="panel hidden"><div class="card" style="width:min(720px,95vw)">
-  <h2>PLAY ONLINE</h2>
+  <h2>PLAY WITH FRIENDS</h2>
   <div id="onHome">
-    <p class="fine" style="margin-top:0">Play with friends over the internet. One person creates a room and invites friends. Up to 6 players; bots fill the rest of each team. Competitive matches with 2 or more players count for your rank.</p>
+    <p class="fine" style="margin:0 0 16px">Play with friends over the internet. One person creates a room and invites friends. Up to 6 players; bots fill the rest of each team. Competitive matches with 2 or more players count for your rank.</p>
     <div class="opt"><label>YOUR NAME</label><input id="onName" maxlength="12" placeholder="Player" autocomplete="off"></div>
     <div class="row"><button class="btn go" id="onHost">HOST A GAME</button></div>
     <p class="fine cg-only" id="onInviteNote">Friends join through CrazyGames: once your room is open, press the <b>Invite</b> button at the top of the page or pick a friend from your CrazyGames friends list. They land in this room.</p>
@@ -429,6 +429,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
     <p class="fine">Privacy: a free matchmaking service (PeerJS) only introduces players. Game data goes straight between your computers, so the people you play with can see your internet address, like in any online game. The host keeps the match running, so the host should keep this tab open and visible.</p>
   </div>
   <div id="onLobby" class="hidden">
+   <div id="onBody">
     <div class="codebox" id="onCodeBox">ROOM CODE <b id="onShow">-----</b> <button class="btn" id="onCopy">COPY</button></div>
     <div class="codebox cg-only" id="onInviteBox">INVITE FRIENDS <button class="btn" id="onInvite">COPY INVITE LINK</button><span class="fine" style="margin-left:12px">or use the Invite button at the top of CrazyGames</span></div>
     <div class="teams"><div class="team t0"><h3>THUGS</h3><div id="teamL0"></div></div><div class="team t1"><h3>OPS</h3><div id="teamL1"></div></div></div>
@@ -436,16 +437,19 @@ body.lite #ruRays,body.lite #ruConf{display:none}
     <div id="onCfg">
       <div class="opt"><label>MAP</label><div class="seg" data-k="map" id="onMapSeg"></div></div>
       <div class="opt"><label>MODE</label><div class="seg" data-k="mode"><button data-v="comp">Competitive<small>plant / defuse rounds</small></button><button data-v="dm">Deathmatch<small>respawns, free guns</small></button></div></div>
+      <details class="onmore"><summary>Match options &middot; bots, guns, length &amp; rules</summary>
       <div class="opt" id="onBombOpt"><label>BOMB CARRIER</label><div class="seg" data-k="bomb"><button data-v="random">Random<small>any Thug, bots too</small></button><button data-v="player">A real player<small>a human always carries it</small></button></div></div>
       <div class="opt" id="onRankOpt"><label>RANKING</label><div class="seg" data-k="ranked"><button data-v="on">Ranked<small>counts for rank</small></button><button data-v="off">Unranked<small>just for fun</small></button></div></div>
-      <div class="opt"><label>BOT SKILL</label><div class="seg" data-k="diff"><button data-v="easy">Chill</button><button data-v="normal">Normal</button><button data-v="hard">Sweaty</button><button data-v="insane">Pro</button></div></div>
+      <div class="opt"><label>BOT SKILL</label><div class="seg" data-k="diff"><button data-v="easy">Chill</button><button data-v="normal">Normal</button><button data-v="hard">Hard</button><button data-v="insane">Pro</button></div></div>
       <div class="opt"><label>GUNS</label><div class="seg" data-k="arsenal"><button data-v="simple">Simple</button><button data-v="pro">Pro</button></div></div>
       <div class="opt"><label>MATCH LENGTH</label><div class="seg" data-k="length"><button data-v="short">Short</button><button data-v="long">Full</button><button data-v="duper">Duper long</button></div></div>
       <div class="opt" id="onTeamsOpt"></div>
+      </details>
     </div>
     <div id="onSummary" class="fine hidden"></div>
     <div id="onRank" class="fine"></div>
     <div id="onStatus" class="fine"></div>
+   </div>
     <div class="row"><button class="btn go" id="onStart">START MATCH</button><button class="btn" id="onLeave">LEAVE</button></div>
   </div>
 </div></div>
@@ -460,7 +464,7 @@ body.lite #ruRays,body.lite #ruConf{display:none}
 <div id="ffNote" class="hidden"><b>SPEED MODE</b> skipping ahead to the next round &nbsp;·&nbsp; press <b>SPACE</b> to watch normally</div>
 
 <script type="module">
-import('./game.js?v=220').catch((error) => {
+import('./game.js?v=223').catch((error) => {
   console.error(window.GAME_TITLE + ' could not start:', error);
   const loading = document.getElementById('loading');
   if (loading) { loading.style.cssText += ';font-size:18px;letter-spacing:0;text-align:center;padding:24px'; loading.textContent = window.GAME_TITLE + ' could not start. Enable WebGL in your browser, check your connection, and reload the game.'; }

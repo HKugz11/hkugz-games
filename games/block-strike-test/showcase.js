@@ -1,7 +1,7 @@
 // Small 3D stages that live in their own little canvases: the home-screen soldier + weapon, and the skin-crate opening.
-import * as THREE from './three.module.min.js?v=220';
-import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE } from './art.js?v=220';
-import { applyFinish, tickSkins } from './skins.js?v=220';
+import * as THREE from './three.module.min.js?v=223';
+import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE } from './art.js?v=223';
+import { applyFinish, tickSkins } from './skins.js?v=223';
 
 function makeStage(canvas, fov, camPos, lookAt) {
   let r;

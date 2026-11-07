@@ -1,14 +1,14 @@
-import { displayWeapon } from './showcase.js?v=220';
+import { displayWeapon } from './showcase.js?v=223';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=220';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=220';
-import { platform } from './platform.js?v=220';
-import * as THREE from './three.module.min.js?v=220';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=220';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=220';
-import { createOnline } from './online.js?v=220';
-import { TOUCH, initTouch } from './touch.js?v=220';
-import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=220';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=223';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality } from './skins.js?v=223';
+import { platform } from './platform.js?v=223';
+import * as THREE from './three.module.min.js?v=223';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=223';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=223';
+import { createOnline } from './online.js?v=223';
+import { TOUCH, initTouch } from './touch.js?v=223';
+import { buildWorld, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX } from './art.js?v=223';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -48,7 +48,7 @@ try { Object.assign(STATS, JSON.parse(localStorage.getItem('cs.stats') || localS
 const saveStats = () => { try { localStorage.setItem('cs.stats', JSON.stringify(STATS)); } catch { } };
 // ---- ranks, like Counter-Strike: win Competitive matches against bots to earn rank points (RP) and climb the leagues
 // Bronze, Silver, Gold, Platinum, Diamond and Master each have 3 divisions (III, II, I) of 100 RP; above that is Elite. Your first 3 ranked matches are placement matches.
-// Easier bots can only take you so far: Chill up to Silver I, Normal up to Platinum I, Sweaty up to Master I, Pro all the way to Elite.
+// Easier bots can only take you so far: Chill up to Silver I, Normal up to Platinum I, Hard up to Master I, Pro all the way to Elite.
 const LEAGUES = [['Bronze', '#cd7f32'], ['Silver', '#c3c9d1'], ['Gold', '#ffd34a'], ['Platinum', '#7fe8d6'], ['Diamond', '#6fb4ff'], ['Master', '#d58bff'], ['Elite', '#ff6a6a']];
 const DIVS = ['III', 'II', 'I'];
 const RANK_CAP = { easy: 599, normal: 1199, hard: 1799, insane: 999999 };
@@ -107,7 +107,7 @@ function rankListHTML() {
     const L = LEAGUES[li], here = !placing && me.li === li, lo = li * 300;
     rows += `<div class="rl ${here ? 'here' : ''}" style="--rc:${L[1]}">${rankShield({ col: L[1] }, li === 6 ? 'E' : 'I')}<b>${L[0]}</b><span>${li === 6 ? '1800+ RP' : DIVS.map((d, i) => `${d} ${lo + i * 100}`).join(' · ')}</span>${here ? `<em>${me.name} · ${RANK.rp} RP</em>` : ''}</div>`;
   }
-  return rows + `<p class="fine">Win Competitive matches against bots to earn rank points (RP); lose and you drop a little. Your first 3 ranked matches are placement matches (wins count double). Chill bots can only take you up to Silver I, Normal up to Platinum I, Sweaty up to Master I, and Pro bots all the way to Elite. Leaving a match early counts as a loss. Pick Unranked in the menu for matches that do not count. Competitive matches online with friends count too when 2 or more real players are in the room (bots fill the rest): the host's bot skill and match length decide the points, and a win is worth a little less when friends play on your team. Deathmatch never counts.</p>
+  return rows + `<p class="fine">Win Competitive matches against bots to earn rank points (RP); lose and you drop a little. Your first 3 ranked matches are placement matches (wins count double). Chill bots can only take you up to Silver I, Normal up to Platinum I, Hard up to Master I, and Pro bots all the way to Elite. Leaving a match early counts as a loss. Pick Unranked in the menu for matches that do not count. Competitive matches online with friends count too when 2 or more real players are in the room (bots fill the rest): the host's bot skill and match length decide the points, and a win is worth a little less when friends play on your team. Deathmatch never counts.</p>
   <p class="fine">Your record: ${RANK.w} wins · ${RANK.l} losses · ${RANK.d} draws · best ${rankInfo(RANK.peak).name} (${RANK.peak} RP)</p>`;
 }
 function rankEndHTML(r) {
@@ -115,7 +115,7 @@ function rankEndHTML(r) {
   if (placing) return `<div class="rk"><div class="rkt">PLACEMENT MATCH ${RANK.m} OF 3</div><div class="rkd" style="color:${r.delta >= 0 ? '#7dff9a' : '#ff8a7a'}">${sign}${r.delta} RP</div><div class="rkn">${3 - RANK.m ? 'Your rank is revealed after ' + (3 - RANK.m) + ' more ranked match' + (3 - RANK.m === 1 ? '' : 'es') : ''}</div></div>`;
   const up = b.step > a.step, down = b.step < a.step, reveal = RANK.m === 3;
   const title = reveal ? 'YOUR RANK' : up ? 'RANK UP!' : down ? 'RANK DOWN' : 'RANK';
-  const cap = r.capped ? `<div class="rkn">${({ easy: 'Chill bots only take you up to Silver I', normal: 'Normal bots only take you up to Platinum I', hard: 'Sweaty bots only take you up to Master I' })[r.diff] || ''}: pick a harder bot skill to keep climbing</div>` : '';
+  const cap = r.capped ? `<div class="rkn">${({ easy: 'Chill bots only take you up to Silver I', normal: 'Normal bots only take you up to Platinum I', hard: 'Hard bots only take you up to Master I' })[r.diff] || ''}: pick a harder bot skill to keep climbing</div>` : '';
   const weak = r.res === 'win' && r.perf < 0.5 ? `<div class="rkn">${r.perf < 0.2 ? 'Your team carried this win, so it gave no RP' : 'Your team carried most of this win, so it gave fewer RP'}: get kills, damage and plants to earn more</div>` : '';
   const friends = r.online ? '<div class="rkn">Friend match: it counted toward your rank</div>' : '';
   return `<div class="rk"><div class="rkt" style="color:${up || reveal ? '#ffd04a' : down ? '#ff8a7a' : '#fff'}">${title}</div><div class="rkr">${rankShield(b, b.div < 0 ? 'E' : DIVS[b.div])}<b style="color:${b.col}">${b.name.toUpperCase()}</b></div>
@@ -3527,7 +3527,7 @@ platform.loaded();
 const intro = document.createElement('section'); intro.className = 'menu-intro';
 const setup = document.createElement('section'); setup.className = 'match-setup';
 intro.innerHTML = '<div class="eyebrow">' + GAME_TITLE.toUpperCase() + ' / TOY-SOLDIER SHOOTER</div>';
-setup.innerHTML = '<h2 class="setup-heading">MATCH SETUP <span>01 / READY</span></h2>';
+setup.innerHTML = '<h2 class="setup-heading">MATCH SETUP</h2>';
 const menuBox = $('menuBox');
 { const w = GAME_TITLE.toUpperCase().split(' '), last = w.pop(); menuBox.querySelector('.logo').innerHTML = (w.length ? w.join(' ') + '<br>' : '') + '<span>' + last + '</span>'; }
 menuBox.append(intro, setup);
@@ -3548,7 +3548,7 @@ function qpNext() { let n = ''; try { n = localStorage.getItem('cs.nextQP') || '
 function qpAdvance(played) { const pool = MAP_LIST.map((m) => m.id).filter((id) => id !== played), nxt = pick(pool.length ? pool : [played]); try { localStorage.setItem('cs.nextQP', nxt); } catch (e) {} }
 function showNextQP() {
   const m = MAP_LIST.find((x) => x.id === qpNext()), t = document.getElementById('qpBriefMap'), p = document.getElementById('qpBriefInfo');
-  if (t && m) t.textContent = m.name; if (p && m) p.textContent = m.blurb || 'Raiders plant the core. Defenders hold the sites.';
+  if (t && m) t.textContent = m.name; if (p && m) p.textContent = m.blurb ? m.blurb.charAt(0).toUpperCase() + m.blurb.slice(1) : 'Thugs plant the bomb. Ops defend the sites.';
 }
 quick.onclick = () => { Object.assign(S, { mode: 'comp', diff: 'hard', length: 'short', side: 'random', arsenal: 'simple', ranked: 'on', bomb: 'random', speed: 'on', tMine: 5, tFoe: 5 }); S.map = qpNext(); qpAdvance(S.map); showNextQP();
   syncSeg(); updateBriefing(); initAudio(S.vol); startMatch(); showMapPop(MAP_LIST.find((m) => m.id === S.map).name); };
@@ -3862,9 +3862,9 @@ locker.addEventListener('cancel', (e) => { if (pendingReward || opening) e.preve
   const footR = el('div', 'foot-r'); footR.append($('best'), $('padNote'));
   foot.append(footL, footR);
   const briefing = el('aside','lobby-brief');
-  briefing.append(el('small','','MATCH BRIEF'), el('h2','','Sandstone'), el('p','','Raiders plant the core. Defenders hold the sites.'), col.querySelector('#quickPlay'));
-  briefing.querySelector('h2').id = 'qpBriefMap'; briefing.querySelector('p').id = 'qpBriefInfo'; showNextQP();
-  home.append(bar, briefing, hit, foot); menuBox.replaceChildren(home);
+  briefing.append(el('small','','MATCH BRIEF'), el('h2','','Sandstone'), el('p','','Desert streets'), el('p','obj','Thugs plant the bomb at A or B. Ops defend and defuse.'), col.querySelector('#quickPlay'));
+  briefing.querySelector('h2').id = 'qpBriefMap'; briefing.querySelector('p').id = 'qpBriefInfo';
+  home.append(bar, briefing, hit, foot); menuBox.replaceChildren(home); showNextQP();   // the brief shows the map Quick Play will pick next
   document.querySelectorAll('.seg').forEach((s) => s.addEventListener('click', () => setTimeout(stageSync, 0)));
   stageSync(); refreshCoins();
 }

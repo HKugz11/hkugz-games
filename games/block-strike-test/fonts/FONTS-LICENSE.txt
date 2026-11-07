@@ -1,1 +1,1 @@
-Lilita One (lilita.ttf) and Fredoka (fredoka.ttf) are from Google Fonts and are licensed under the SIL Open Font License 1.1 (https://openfontlicense.org). They may be used and bundled in games for free.
+Lilita One (lilita.ttf) is from Google Fonts and is licensed under the SIL Open Font License 1.1 (https://openfontlicense.org). It may be used and bundled in games for free.

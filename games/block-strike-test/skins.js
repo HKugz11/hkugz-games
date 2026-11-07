@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=220';
+import * as THREE from './three.module.min.js?v=223';
 
 const th = (body, barrel, stock, grip, metal, edge, dark) => ({ body, barrel, stock, grip, metal, edge, dark });
 // fx: mode (pattern), cell (pattern size), c: 4 pattern colours, glow, glowCol, shine (moving shine), spark (sparkle colour), rivet, outline, gloss (shiny paint too)
