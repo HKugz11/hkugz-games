@@ -426,3 +426,8 @@ html.xmas .home-foot .linkbtn,html.xmas .home-foot #training,html.xmas .home-foo
 html.xmas #quickPlay{background:#d62828!important;color:#fff!important}html.xmas #quickPlay:hover{background:#ff4a4a!important}
 html.xmas .briefing{border-left-color:#d62828!important}html.xmas .briefing small{color:#ff9a9a!important}
 html.xmas #menu .card,html.xmas .home .briefing{box-shadow:0 0 0 1px #2fa34a55}
+#menuSnow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:7}
+/* snow piled on top of the menu cards */
+html.xmas .panel .card,html.xmas .briefing,html.xmas #skinLocker,html.xmas .match-setup{position:relative}
+html.xmas .panel .card::before,html.xmas .home .briefing::before,html.xmas #skinLocker::before{content:"";position:absolute;left:-3px;right:-3px;top:-11px;height:13px;pointer-events:none;background:radial-gradient(circle at 11px 13px,#fff 10px,transparent 11px) 0 0/24px 13px repeat-x,radial-gradient(circle at 23px 13px,#e9f2fb 8px,transparent 9px) 0 0/24px 13px repeat-x}
+html.xmas .home-bar::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:5px;background:#fff;opacity:.0}

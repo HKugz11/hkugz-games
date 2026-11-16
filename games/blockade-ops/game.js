@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=241';
+import { displayWeapon, createHomeStage } from './showcase.js?v=245';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=241';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=241';
-import { platform } from './platform.js?v=241';
-import * as THREE from './three.module.min.js?v=241';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=241';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=241';
-import { createOnline } from './online.js?v=241';
-import { TOUCH, initTouch } from './touch.js?v=241';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=241';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=245';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=245';
+import { platform } from './platform.js?v=245';
+import * as THREE from './three.module.min.js?v=245';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=245';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=245';
+import { createOnline } from './online.js?v=245';
+import { TOUCH, initTouch } from './touch.js?v=245';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=245';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -503,8 +503,8 @@ const WD = {
   brute: { name: 'Brute', slot: 'prim', price: 1650, dmg: 31, rpm: 660, auto: true, mag: 40, res: 120, reload: 3.0, speed: 6.2, inacc: 0.8, moveInacc: 2.2, airInacc: 7, pen: 0.72, range: 0.87, recoil: 0.85, rec: 8, reward: 600, tier: 2, snd: [2400, 0.14, 1.1], acc: '#a8472e', patk: 'smg', draw: 0.4, stagger: 0.25, desc: 'Heavy SMG: slower than the Buzz but hits harder. 40 rounds. $600 per kill.' },
   ghost: { name: 'Ghost', slot: 'prim', price: 3100, dmg: 30, rpm: 700, auto: true, mag: 30, res: 90, reload: 2.4, speed: 6.4, inacc: 0.26, moveInacc: 4.2, airInacc: 10, pen: 0.66, range: 0.96, recoil: 0.7, rec: 8, reward: 300, tier: 3, snd: [1200, 0.1, 0.7], acc: '#7a5aa8', quiet: true, patk: 'ghost', first: 0.25, draw: 0.35, desc: 'Suppressed rifle: does not give your position away. Light and quick, less damage than the Raptor.' },
   breaker: { name: 'Breaker', slot: 'prim', price: 2300, dmg: 17, pellets: 8, cone: 4.2, rpm: 300, mag: 8, res: 32, reload: 3.2, shell: 0.38, speed: 6.1, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.6, recoil: 2.6, rec: 4, reward: 900, tier: 3, snd: [1350, 0.28, 1.5], acc: '#d4a02a', patk: 'cannon', stagger: 0.4, draw: 0.45, desc: 'Fast semi-auto shotgun: 8 pellets, quick follow-up shots. $900 per kill.' },
-  frosty: { name: 'Frosty Pistol', slot: 'sec', price: 600, dmg: 31, rpm: 360, mag: 14, res: 84, reload: 1.9, speed: 6.7, inacc: 0.5, moveInacc: 2.0, airInacc: 6, pen: 0.5, range: 0.86, recoil: 1.0, rec: 7, reward: 300, tier: 1, snd: [2200, 0.12, 0.9], acc: '#7fc4e8', patk: 'tap', stagger: 0.3, first: 0.5, draw: 0.24, desc: 'HOLIDAY GIFT: a snowball pistol. Each snowball shoves the target a little. Accurate taps.' },
-  jingle: { name: 'Tinsel Blaster', slot: 'prim', price: 1700, dmg: 11, pellets: 6, cone: 2.5, rpm: 400, auto: true, mag: 24, res: 72, reload: 2.7, speed: 6.2, inacc: 0.4, moveInacc: 1.4, airInacc: 5, pen: 0.55, range: 0.62, recoil: 1.2, rec: 5, reward: 900, tier: 2, snd: [1500, 0.2, 1.2], acc: '#d62828', patk: 'smg', stagger: 0.25, draw: 0.4, desc: 'HOLIDAY GIFT: a full-auto shotgun. Sprays 6 pellets every shot, hold the button down. Best up close.' },
+  frosty: { name: 'Frosty Pistol', slot: 'sec', price: 600, dmg: 46, rpm: 600, auto: true, mag: 15, res: 90, reload: 1.9, speed: 6.7, inacc: 0.7, moveInacc: 2.4, airInacc: 6, pen: 0.55, range: 0.9, recoil: 0.9, rec: 8, reward: 300, tier: 1, snd: [2200, 0.12, 0.9], acc: '#7fc4e8', patk: 'smg', stagger: 0.3, draw: 0.24, desc: 'HOLIDAY GIFT: a full-auto snowball pistol like a tiny machine gun. 15 rounds, hits hard, each snowball shoves the target a little.' },
+  jingle: { name: 'Tinsel Blaster', slot: 'prim', price: 1700, dmg: 12, pellets: 6, cone: 1.3, rpm: 400, auto: true, mag: 24, res: 72, reload: 2.7, speed: 6.2, inacc: 0.35, moveInacc: 1.4, airInacc: 5, pen: 0.6, range: 0.95, recoil: 1.2, rec: 5, reward: 900, tier: 2, snd: [1500, 0.2, 1.2], acc: '#d62828', patk: 'smg', stagger: 0.25, draw: 0.4, desc: 'HOLIDAY GIFT: a full-auto shotgun with long range. Sprays 6 tight pellets every shot, hold the button down.' },
   bomb: { name: 'BOMB BLAST', hidden: true },   // not a gun: only so a bomb kill has a name (keep it LAST: online play numbers the guns by their place in this list)
 };
 for (const k in WD) if (WD[k].mag) WD[k].pat = pattern(WD[k], k);
@@ -606,6 +606,7 @@ function dressRig(m, id) {   // costume = body colour + silly bits on the head /
   m.g.userData.costumeKids = [];
   const kit = id ? costumeKit(id, m.g.userData.side || 0) : null;
   outfitSoldier(m.g, kit ? { outfit: kit.tint } : null, charMat);
+  if (m.g.userData.hat) m.g.userData.hat.visible = !kit;   // a costume always shows: the Santa hat steps aside (it used to hide the unicorn horn, ears and bunny ears)
   if (!kit) return;
   for (const [geo, parent] of [[kit.head, m.head], [kit.body, m.up]]) if (geo) { const k = new THREE.Mesh(geo, charMat); k.castShadow = true; parent.add(k); m.g.userData.costumeKids.push(k); }
 }
@@ -4238,3 +4239,26 @@ MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { re
   };
   setTimeout(() => document.body.appendChild(el), 1200);
 })();
+
+// ================= CHRISTMAS: snow falling over the whole menu (a light 2D overlay; it stops while a match is on screen) =================
+if (XMAS) {
+  const cv = document.createElement('canvas'); cv.id = 'menuSnow'; cv.setAttribute('aria-hidden', 'true'); document.body.appendChild(cv);
+  const cx = cv.getContext('2d'); let W2 = 0, H2 = 0, flakes = [], last = 0, off = false, offT = 0;
+  const mk = (any) => ({ x: Math.random() * W2, y: any ? Math.random() * H2 : -8, r: 1.3 + Math.random() * 3, v: 24 + Math.random() * 40, s: Math.random() * 6.28, w: 0.4 + Math.random() * 0.9 });
+  const size = () => { W2 = cv.width = innerWidth; H2 = cv.height = innerHeight; const n = Math.round(Math.min(LITE ? 70 : 130, Math.max(40, W2 / 12))); while (flakes.length < n) flakes.push(mk(true)); flakes.length = n; };
+  addEventListener('resize', size); size();
+  const frame = (t) => {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t;
+    offT -= dt; if (offT <= 0) { offT = 1; try { off = localStorage.getItem('hk-xmas-snow') === 'off'; } catch (e) {} }
+    const hide = off || document.body.classList.contains('playing'); cv.style.display = hide ? 'none' : ''; if (hide) return;
+    cx.clearRect(0, 0, W2, H2); cx.fillStyle = '#fff';
+    for (let i = 0; i < flakes.length; i++) {
+      let f = flakes[i]; f.y += f.v * dt * (0.6 + f.r / 4); f.s += f.w * dt; f.x += Math.sin(f.s) * 16 * dt;
+      if (f.y > H2 + 6) { flakes[i] = f = mk(false); } if (f.x < -8) f.x = W2 + 6; else if (f.x > W2 + 8) f.x = -6;
+      cx.globalAlpha = 0.6 + f.r / 8; cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, 6.2832); cx.fill();
+    }
+    cx.globalAlpha = 1;
+  };
+  requestAnimationFrame(frame);
+}
