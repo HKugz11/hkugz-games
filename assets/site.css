@@ -183,6 +183,17 @@ a.gcard:hover .gthumb img { transform: scale(1.05); }
 .gtags { display: flex; flex-wrap: wrap; gap: 6px; }
 .gtags span { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e7f9fd; color: #0b6a80; }
 .gtags span:first-child { background: #eee7ff; color: #5a2ad0; }
+/* "NEW UPDATE!" candy-cane banner: add class="updated" to a .gcard (index.html auto-hides it after 14 days if data-updated="YYYY-MM-DD" is set) */
+.gcard.updated .gthumb::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 30px; z-index: 2; background: repeating-linear-gradient(-45deg, #d6202c 0 11px, #fff 11px 22px); background-size: 31.1px 31.1px; border-bottom: 3px solid #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .35); animation: candy 1.6s linear infinite; }
+.gcard.updated .gthumb::after { content: "NEW UPDATE!"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%); z-index: 3; padding: 0 12px; height: 22px; line-height: 20px; border-radius: 999px; background: #fff; color: #d6202c; border: 2px solid #d6202c; font-size: 12px; font-weight: 900; letter-spacing: .06em; white-space: nowrap; box-shadow: 0 2px 4px rgba(0, 0, 0, .25); }
+.gcard.updated .gbadge, .gcard.newgame .gbadge { top: 40px; }
+/* "NEW GAME!" banner: same as NEW UPDATE! but red, white and green stripes (class="newgame" data-updated="YYYY-MM-DD") */
+.gcard.newgame .gthumb::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 30px; z-index: 2; background: repeating-linear-gradient(-45deg, #d6202c 0 10px, #fff 10px 20px, #1fa84a 20px 30px, #fff 30px 40px); background-size: 56.57px 56.57px; border-bottom: 3px solid #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .35); animation: candy2 2.2s linear infinite; }
+.gcard.newgame .gthumb::after { content: "NEW GAME!"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%); z-index: 3; padding: 0 12px; height: 22px; line-height: 20px; border-radius: 999px; background: #fff; color: #148a3a; border: 2px solid #148a3a; font-size: 12px; font-weight: 900; letter-spacing: .06em; white-space: nowrap; box-shadow: 0 2px 4px rgba(0, 0, 0, .25); }
+@keyframes candy2 { to { background-position: 56.57px 0; } }
+@media (prefers-reduced-motion: reduce) { .gcard.newgame .gthumb::before { animation: none; } }
+@keyframes candy { to { background-position: 31.1px 0; } }
+@media (prefers-reduced-motion: reduce) { .gcard.updated .gthumb::before { animation: none; } }
 .gcard.soon { background: transparent; box-shadow: none; border: 2px dashed rgba(11, 42, 51, .22); }
 .soonthumb { display: grid; place-items: center; font-size: 54px; background: #4d97ff; }
 .nomatch { text-align: center; padding: 40px 0 10px; font-size: 17px; color: var(--ink2); }

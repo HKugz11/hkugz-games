@@ -1,0 +1,45 @@
+/* HKugz Games Christmas theme. Only applies when <html class="xmas"> (set by assets/xmas.js: Nov 15 - Jan 2, or ?xmas=1). */
+html.xmas { --xr: #d6202c; --xr2: #a8141f; --xg: #148a3a; --xg2: #0d3b2a; }
+
+/* top bar: red "Games", a santa hat on the logo and a string of twinkling lights */
+.xmas .brand b { color: var(--xr); }
+.xmas .brand { position: relative; }
+.xmas .brand::before { content: ""; position: absolute; left: -5px; top: -11px; width: 30px; height: 26px; z-index: 2; transform: rotate(-14deg); pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 26'%3E%3Cpath d='M4 20C5 9 13 3 23 3c-1 4-1 9 3 17z' fill='%23d6202c'/%3E%3Cpath d='M4 20C5 9 13 3 23 3c-4 3-8 8-9 17z' fill='%23a8141f' opacity='.35'/%3E%3Crect x='2' y='18' width='26' height='7' rx='3.5' fill='%23fff'/%3E%3Ccircle cx='24' cy='4' r='3.6' fill='%23fff'/%3E%3C/svg%3E") center / contain no-repeat; }
+.xmas header.topnav { box-shadow: 0 2px 0 var(--xr); }
+.xl-lights { position: absolute; left: 0; right: 0; bottom: -17px; height: 22px; display: flex; justify-content: space-around; pointer-events: none; z-index: 30; overflow: hidden; }
+.xl-lights::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: #1d3a30; }
+.xl-lights i { position: relative; flex: none; width: 10px; height: 14px; margin-top: 2px; border-radius: 50% 50% 55% 55%; background: var(--c); box-shadow: 0 0 9px 2px var(--c); animation: xl-twinkle 1.8s ease-in-out infinite; animation-delay: var(--d); }
+.xl-lights i::before { content: ""; position: absolute; left: 50%; top: -3px; width: 6px; height: 4px; margin-left: -3px; background: #1d3a30; border-radius: 1px; }
+@keyframes xl-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* hero: little red/green touches + a snowy edge */
+.xmas .hero2 { position: relative; overflow: hidden; padding-top: 70px; }
+.xmas .hero2::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 40px; pointer-events: none; z-index: 0;
+  background: radial-gradient(circle 46px at 50% 100%, #fff 97%, transparent 100%) 0 100% / 110px 46px repeat-x; opacity: .95; }
+.xmas .hero2 .eyebrow { color: var(--xr); }
+.xmas .eyebrow.dark { color: var(--xg); }
+.xmas .btn:not(.ghost) { background: var(--xr); color: #fff; box-shadow: 0 4px 0 var(--xr2); }
+.xmas .btn:not(.ghost):active { box-shadow: 0 2px 0 var(--xr2); }
+.xmas .chip.on { background: var(--xg); border-color: var(--xg); }
+.xmas .gcard .gtags span:first-child { background: #e4f6e9; color: #0d5a28; }
+.xmas a.gcard:hover { box-shadow: 0 4px 8px rgba(8, 60, 80, .1), 0 20px 36px rgba(214, 32, 44, .22); }
+
+/* footer: deep green with a candy-cane edge */
+.xmas .foot { background: var(--xg2); position: relative; margin-top: 38px; }
+.xmas .foot::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; background: repeating-linear-gradient(-45deg, var(--xr) 0 10px, #fff 10px 20px); background-size: 28.28px 28.28px; }
+
+/* falling snow + the little snow switch */
+#xl-snow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+#xl-toggle { position: fixed; left: 12px; bottom: 12px; z-index: 60; font: inherit; font-size: 13px; font-weight: 800; color: #0b2a33; background: #fff; border: 2px solid var(--xg); border-radius: 999px; padding: 6px 13px; cursor: pointer; box-shadow: 0 3px 10px rgba(0, 0, 0, .2); }
+#xl-toggle[aria-pressed="false"] { opacity: .75; border-color: rgba(11, 42, 51, .3); }
+#xl-toggle:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .xl-lights i { animation: none; } }
+@media (max-width: 560px) { .xl-lights i:nth-child(even) { display: none; } }
+
+/* game pages (script tag has data-mode="game"): menu screens only */
+.xl-fixed { position: fixed; top: -6px; bottom: auto; z-index: 899; }
+html.xmas .screen h1.xl-title { filter: drop-shadow(0 5px 0 #a8141f) drop-shadow(0 0 26px rgba(255, 90, 90, .5)); }
+.xl-hatwrap { display: block; width: fit-content; margin: 0 auto; position: relative; }
+.xl-hat { position: absolute; left: -12%; top: -24%; width: 62%; aspect-ratio: 30 / 26; transform: rotate(-14deg); pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 26'%3E%3Cpath d='M4 20C5 9 13 3 23 3c-1 4-1 9 3 17z' fill='%23d6202c'/%3E%3Cpath d='M4 20C5 9 13 3 23 3c-4 3-8 8-9 17z' fill='%23a8141f' opacity='.35'/%3E%3Crect x='2' y='18' width='26' height='7' rx='3.5' fill='%23fff'/%3E%3Ccircle cx='24' cy='4' r='3.6' fill='%23fff'/%3E%3C/svg%3E") center / contain no-repeat; }

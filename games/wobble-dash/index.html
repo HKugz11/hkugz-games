@@ -36,7 +36,7 @@
   .screen { position: fixed; inset: 0; display: grid; place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.55), rgba(8,4,20,.84)); z-index: 5; text-align: center; padding: 20px; }
   #pause, #results { background: rgba(8,4,20,.82); place-items: center; }
   .screen .box { max-width: 900px; width: 100%; margin: auto; }
-  h1 { font-size: clamp(40px, 9vw, 92px); margin: 0; line-height: .95; letter-spacing: -.02em; background: linear-gradient(180deg, #fff6b0, #ffb02a 55%, #ff5a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 rgba(120,30,0,.7)) drop-shadow(0 0 28px rgba(255,140,40,.5)); }
+  h1 { font-size: clamp(40px, 9vw, 92px); margin: 0; line-height: .95; letter-spacing: -.02em; font-family: "Apple Sans", "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif; font-weight: 900; background: linear-gradient(180deg, #ffffff, #d4f8ff 52%, #7cecff); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 #4a1fc2) drop-shadow(0 0 26px rgba(66,215,241,.55)); }
   .sub { opacity: .85; font-size: 17px; margin: 10px 0 18px; }
   .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; align-items: center; }
   button { font: inherit; font-weight: 800; font-size: 17px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.3); background: linear-gradient(180deg, #a77bff, #7a3bff); border: 0; border-radius: 14px; padding: 11px 24px; cursor: pointer; box-shadow: 0 5px 0 #3a1a9a, inset 0 1px 0 rgba(255,255,255,.4); }
@@ -72,6 +72,7 @@
 <meta property="og:description" content="A wobbly bean obstacle race: dodge spinning bars and swinging hammers, dive for the finish and beat the other racers through eight courses, alone or online with friends. Free, runs in your browser, on Chromebooks and on phones.">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/wobble-dash/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/wobble-dash.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../assets/xmas.css?v=2"><script src="../../assets/xmas.js?v=2" data-mode="game"></script>
 </head>
 <body>
 <canvas id="view"></canvas>

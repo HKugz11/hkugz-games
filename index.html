@@ -9,7 +9,9 @@
 <script src="assets/friends-config.js"></script>
 <script src="assets/hkfriends.js?v=5" defer></script>
 <meta name="description" content="Free browser games built by HKugz: a 3D robot shooter, a building shooter, a kart racer, a tower defense game, an obstacle race, mini golf, a 3D obby tower, classics like Snake and Breakout, and original one-button games.">
-<link rel="stylesheet" href="assets/site.css?v=4">
+<link rel="stylesheet" href="assets/site.css?v=5">
+<link rel="stylesheet" href="assets/xmas.css?v=2">
+<script src="assets/xmas.js?v=2"></script>
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="assets/logo.png"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="theme-color" content="#42d7f1">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
@@ -75,7 +77,7 @@
     </div>
 
     <div class="ggrid" id="ggrid">
-    <a class="gcard" href="games/blockade-ops/" data-cat="shooter online">
+    <a class="gcard newgame" data-updated="2026-11-16" href="games/blockade-ops/" data-cat="shooter online">
       <div class="gthumb"><img src="assets/thumbs/block-strike.jpg" alt="Blockade Ops menu screenshot" loading="lazy"><span class="gbadge">New</span></div>
       <div class="gbody"><h3>Blockade Ops</h3><p>Blocky toy-soldier shooter: Quick Play team deathmatch, human-like bots, skin crates, sticker packs, knives and silly soldier costumes. Plays on Chromebooks too.</p><div class="gtags"><span>Shooter</span><span>1-6 players</span></div></div>
     </a>
@@ -99,7 +101,7 @@
       <div class="gthumb"><img src="assets/thumbs/deep-sea-dive.jpg" alt="Deep Sea Dive screenshot" loading="lazy"><span class="gbadge">New</span></div>
       <div class="gbody"><h3>Deep Sea Dive</h3><p>Dive from your boat, catch 24 kinds of fish with a net or spear gun, dodge sharks, sell your catch and buy gear to reach the Abyss.</p><div class="gtags"><span>Underwater</span><span>Upgrades</span></div></div>
     </a>
-    <a class="gcard" href="games/thug-boi-skate/" data-cat="racing">
+    <a class="gcard newgame" data-updated="2026-11-16" href="games/thug-boi-skate/" data-cat="racing">
       <div class="gthumb"><img src="assets/thumbs/thug-boi-skate.jpg" alt="Thug Boi Skate screenshot" loading="lazy"><span class="gbadge">New</span></div>
       <div class="gbody"><h3>Thug Boi Skate</h3><p>Blocky 3D skateboarding: flips, grabs and grinds on curvy rails, deep pits, a loop-de-loop and seven huge parks. Unlock skaters, boards and stickers.</p><div class="gtags"><span>Skateboarding</span><span>Phone friendly</span></div></div>
     </a>
@@ -115,7 +117,7 @@
       <div class="gthumb"><img src="assets/thumbs/kart-rush.png" alt="Kart Rush screenshot" loading="lazy"></div>
       <div class="gbody"><h3>Kart Rush</h3><p>Toon kart racing against seven robots: drift for mini-turbos, grab item boxes and race a Grand Prix.</p><div class="gtags"><span>Racing</span><span>Phone friendly</span></div></div>
     </a>
-    <a class="gcard" href="games/wobble-dash/" data-cat="racing online">
+    <a class="gcard updated" data-updated="2026-11-16" href="games/wobble-dash/" data-cat="racing online">
       <div class="gthumb"><img src="assets/thumbs/wobble-dash.png" alt="Wobble Dash screenshot" loading="lazy"><span class="gbadge">Online</span></div>
       <div class="gbody"><h3>Wobble Dash</h3><p>A wobbly bean obstacle race on 8 courses: ghost tiles, ice, fire jets and low gravity. Win the crown solo or race up to 8 friends online.</p><div class="gtags"><span>Obstacle race</span><span>1-8 players</span></div></div>
     </a>
@@ -234,6 +236,12 @@
     box.addEventListener("mouseenter", stop); box.addEventListener("mouseleave", start); box.addEventListener("focusin", stop); box.addEventListener("focusout", start);
     go(0); start();
   })();
+
+  // "NEW UPDATE!" candy-cane banner: cards with class "updated" and data-updated="YYYY-MM-DD" lose it after 14 days
+  document.querySelectorAll("#ggrid .gcard.updated[data-updated], #ggrid .gcard.newgame[data-updated]").forEach(function (c) {
+    var age = (Date.now() - new Date(c.dataset.updated + "T00:00:00").getTime()) / 864e5;
+    if (age > 14) c.classList.remove("updated", "newgame");
+  });
 
   // filter buttons + search
   (function () {
