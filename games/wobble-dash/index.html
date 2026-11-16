@@ -6,7 +6,7 @@
 <title>Wobble Dash</title>
 <script src="../../assets/playtimer.js"></script>
 <script src="../../assets/hksettings.js"></script>
-<meta name="description" content="A wobbly bean obstacle race: dodge spinning bars and swinging hammers, dive for the finish and beat the other racers through three courses. Free, runs in your browser, on Chromebooks and on phones.">
+<meta name="description" content="A wobbly bean obstacle race: dodge spinning bars and swinging hammers, dive for the finish and beat the other racers through eight courses, alone or online with friends. Free, runs in your browser, on Chromebooks and on phones.">
 <style>
   :root { --y: #ffd34e; --c: #2ee6ff; --p: #ff4fa8; }
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -52,6 +52,12 @@
   .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 14px 0; font-size: 14px; text-align: left; } .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
   label { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 6px 0; font-weight: 700; } input[type=range] { width: 200px; }
   .fine { font-size: 12px; opacity: .55; max-width: 620px; margin: 6px auto 12px; line-height: 1.5; }
+  .row .lbl { font-weight: 800; letter-spacing: .2em; font-size: 13px; opacity: .7; } button.small { padding: 8px 16px; font-size: 15px; min-width: 46px; }
+  select { font: inherit; font-weight: 800; padding: 9px 12px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.7); color: #fff; }
+  .lobRoster { display: grid; gap: 8px; margin: 12px 0; text-align: left; } .lobRoster .pl { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.1); border-radius: 12px; padding: 8px 14px; font-weight: 800; } .lobRoster .pl i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0,0,0,.4); flex: none; } .lobRoster .pl small { margin-left: auto; opacity: .7; font-weight: 700; letter-spacing: .08em; }
+  .lobCfg { margin: 10px 0; } .lobCfg .row { margin: 8px 0; } .lobCfg .txt { font-weight: 800; opacity: .9; margin: 6px 0; }
+  #note { position: fixed; left: 50%; top: 16px; transform: translateX(-50%) translateY(-140%); z-index: 20; background: linear-gradient(180deg, #ffe48a, #ffb02a); color: #3a2000; font-weight: 900; padding: 10px 22px; border-radius: 16px; box-shadow: 0 6px 0 rgba(120,60,0,.6); transition: transform .35s; letter-spacing: .04em; max-width: 92vw; text-align: center; pointer-events: none; } #note.on { transform: translateX(-50%) translateY(0); }
+  #spec { top: 62px; left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.6); background: rgba(10,6,24,.55); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 6px 16px; font-weight: 900; letter-spacing: .06em; white-space: nowrap; } #spec b { color: var(--y); } #spec small { display: block; font-size: 12px; opacity: .8; letter-spacing: .04em; }
   a.back { position: fixed; left: 18px; top: 14px; z-index: 9; color: #fff; opacity: .6; font-size: 13px; text-decoration: none; }
   #resS { font-size: 18px; line-height: 1.6; margin: 6px 0; } #resS b { color: var(--y); } .nb { color: #6aff9a; font-weight: 900; }
   #resTable { margin: 8px auto; border-collapse: collapse; min-width: 340px; } #resTable td, #resTable th { padding: 4px 12px; border-bottom: 1px solid rgba(255,255,255,.15); font-weight: 700; text-align: left; } #resTable th { font-size: 12px; letter-spacing: .15em; opacity: .65; } #resTable tr.me { color: var(--y); } #resTable i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 2px solid rgba(0,0,0,.4); vertical-align: -1px; } #resTable .ok { color: #6aff9a; } #resTable .x { color: #ff8a8a; }
@@ -63,7 +69,7 @@
 <meta name="theme-color" content="#0b0720">
 <meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
 <meta property="og:title" content="Wobble Dash - free browser game">
-<meta property="og:description" content="A wobbly bean obstacle race: dodge spinning bars and swinging hammers, dive for the finish and beat the other racers through three courses. Free, runs in your browser, on Chromebooks and on phones.">
+<meta property="og:description" content="A wobbly bean obstacle race: dodge spinning bars and swinging hammers, dive for the finish and beat the other racers through eight courses, alone or online with friends. Free, runs in your browser, on Chromebooks and on phones.">
 <meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/wobble-dash/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/wobble-dash.png">
 <meta name="twitter:card" content="summary_large_image">
 </head>
@@ -81,7 +87,9 @@
   <div id="count"></div>
   <div id="big"><div id="bigA"></div><div id="bigB"></div></div>
   <div id="lockhint" class="hide">Click anywhere to lock your mouse and start racing</div>
+  <div id="spec" class="hide"></div>
 </div>
+<div id="note"></div>
 
 <div class="screen" id="menu">
   <a class="back" href="../../">&larr; All games</a>
@@ -89,7 +97,7 @@
     <img src="../../assets/logo.svg" alt="HKugz Games logo" style="display:block;margin:0 auto 6px;width:clamp(48px,11vh,88px);height:clamp(48px,11vh,88px);filter:drop-shadow(0 3px 10px rgba(0,0,0,.45))"><h1>WOBBLE<br>DASH</h1>
     <p class="sub">Run, jump and dive through wobbly obstacle courses. Be one of the fastest beans to stay in the race!</p>
     <div id="menuPickers"></div>
-    <div class="stick"><div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">DASH!</button></div></div>
+    <div class="stick"><div class="row"><input type="text" id="pname" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" id="play">DASH!</button><span id="onlineRow" class="row hide" style="margin:0"><input type="text" id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" style="width:112px;letter-spacing:.1em"><button class="alt" id="joinBtn">JOIN</button><button class="big" id="hostBtn">HOST</button></span></div></div>
     <details><summary>Controls</summary>
     <div class="keys">
       <div><b>WASD</b> run (relative to the camera)</div><div><b>Mouse</b> turn the camera &nbsp; <b>Arrows</b> also turn it &nbsp; <b>Wheel</b> zoom</div>
@@ -106,8 +114,19 @@
     <p class="fine">An original obstacle-race game, not affiliated with any game company.</p>
   </div>
 </div>
+<div class="screen hide" id="lobby"><div class="box" style="max-width:660px">
+  <h1 style="font-size:46px">ONLINE RACE</h1>
+  <p class="sub" style="margin:8px 0">Room code <b id="lobCode" style="font-size:34px;letter-spacing:.2em;color:#ffd34e">-----</b></p>
+  <div class="row" style="margin:4px 0"><button class="alt small" id="lobCopy">Copy invite link</button></div>
+  <p class="fine">Tell your friends the code (up to 8 players; bots fill the empty spots). Players connect directly. The free PeerJS service only introduces them, so players can see each other's network address: only share the code with people you know.</p>
+  <div id="lobRoster" class="lobRoster"></div>
+  <div id="lobCfg" class="lobCfg"></div>
+  <div class="row"><button class="big" id="lobStart">START RACE</button><button class="alt" id="lobLeave">Leave room</button></div>
+  <p id="lobMsg" class="mdesc"></p>
+</div></div>
 <div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="restart">Restart</button><button class="alt" id="quit">Quit to menu</button></div></div></div>
 <div class="screen hide" id="results"><div class="box" style="max-width:560px"><h1 id="resT" style="font-size:48px">RESULTS</h1><p id="resS"></p><table id="resTable"></table><div class="row"><button class="big" id="again">NEXT ROUND</button></div><div class="row"><button class="alt" id="menuBtn">Menu</button></div></div></div>
-<script type="module" src="game.js?v=13"></script>
+<script src="vendor/peerjs.min.js"></script>
+<script type="module" src="game.js?v=15"></script>
 </body>
 </html>

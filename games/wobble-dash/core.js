@@ -3,7 +3,7 @@ import * as THREE from './three.module.min.js';
 export { THREE };
 export const V3 = THREE.Vector3;
 export const $ = id => document.getElementById(id);
-export const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug');
+export const QS = new URLSearchParams(location.search), DEBUG = QS.has('debug'), NETMODE = QS.get('net') === 'local' ? 'local' : 'peerjs';
 export const TAU = Math.PI * 2;
 export const rnd = (a, b) => a + Math.random() * (b - a), rint = (a, b) => Math.floor(rnd(a, b + 1)), clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, pick = a => a[Math.floor(Math.random() * a.length)];
 export const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU; return d; };

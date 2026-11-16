@@ -1,6 +1,6 @@
 // WOBBLE DASH - the racers: wobbly toon beans with a tight platformer controller (run, jump, dive), plus the follow camera.
-import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU, W } from './core.js?v=13';
-import { world, moveEntity, pushOut } from './physics.js?v=13';
+import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU, W } from './core.js?v=15';
+import { world, moveEntity, pushOut } from './physics.js?v=15';
 
 export const MOVE = { speed: 9, sprint: 1.28, jump: 11.5, g: 32, dive: 12.5 };
 const dark = toon(0x2a2140), white = toon(0xffffff); dark.userData.shared = white.userData.shared = true;
@@ -33,6 +33,7 @@ export class Racer {
   constructor(name, color, tuft, isPlayer) {
     this.name = name; this.color = color; this.tuft = tuft; this.isPlayer = !!isPlayer; this.pos = new V3(); this.vel = new V3(); this.r = .42; this.h = 1.7; this.onGround = false; this.ground = null; this.yaw = 0; this.alive = false;
     this.coyote = 0; this.jumpBuf = 0; this.rising = false; this.stun = 0; this.prone = 0; this.diveCD = 0; this.squash = 0; this.walkPh = Math.random() * 6; this.platVel = new V3(); this.safe = new V3(); this.respT = 0; this.invul = 0;
+    this.id = -1; this.human = !!isPlayer; this.remote = false; this.net = null; this.rawState = null;   // online: a remote racer is driven by messages from another player (or from the host's bot AI)
     this.u = 0; this.finished = false; this.finishT = 0; this.place = 0; this.falls = 0; this.out = false; this.ai = null; this.celebrate = 0; this.inp = { mx: 0, mz: 0, jump: false, jumpPressed: false, sprint: false, dive: false };
     this.av = makeBean(color, tuft); this.av.g.visible = false; scene.add(this.av.g);
     this.blob = new THREE.Mesh(geos().blob, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .4, depthWrite: false })); this.blob.rotation.x = -Math.PI / 2; this.blob.visible = false; scene.add(this.blob);
@@ -48,7 +49,7 @@ export class Racer {
     if (this.stun > 0) { this.stun -= dt; tx = tz = 0; k = 1.2; }
     if (this.prone > 0) { this.prone -= dt; tx = tz = 0; k = this.onGround ? 2.4 : .5; }
     this.diveCD = Math.max(0, this.diveCD - dt);
-    if (this.onGround && g) { if (g.conv) { tx += g.conv[0]; tz += g.conv[1]; k = 9; } }
+    if (this.onGround && g) { if (g.conv) { tx += g.conv[0]; tz += g.conv[1]; k = 9; } else if (g.ice) k = Math.min(k, 2.6); }   // ice: you slide
     const a = Math.min(1, k * dt); v.x += (tx - v.x) * a; v.z += (tz - v.z) * a;
     this.coyote = this.onGround ? .11 : this.coyote - dt; this.jumpBuf = inp.jumpPressed ? .13 : this.jumpBuf - dt; if (inp.jumpPressed) inp.jumpPressed = false;
     if (this.jumpBuf > 0 && this.coyote > 0 && this.stun <= 0 && this.prone <= 0) { v.y = MOVE.jump; v.x += this.platVel.x; v.z += this.platVel.z; v.y += Math.max(0, this.platVel.y); this.platVel.set(0, 0, 0); this.onGround = false; this.ground = null; this.coyote = 0; this.jumpBuf = 0; this.rising = true; this.squash = -.18; if (this.isPlayer) sfx('jump'); }
