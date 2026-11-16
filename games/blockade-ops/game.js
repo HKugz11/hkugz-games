@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=245';
+import { displayWeapon, createHomeStage } from './showcase.js?v=246';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=245';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=245';
-import { platform } from './platform.js?v=245';
-import * as THREE from './three.module.min.js?v=245';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=245';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=245';
-import { createOnline } from './online.js?v=245';
-import { TOUCH, initTouch } from './touch.js?v=245';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=245';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=246';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=246';
+import { platform } from './platform.js?v=246';
+import * as THREE from './three.module.min.js?v=246';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=246';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=246';
+import { createOnline } from './online.js?v=246';
+import { TOUCH, initTouch } from './touch.js?v=246';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=246';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -600,13 +600,15 @@ function removeSoldier(a) {
   m.flash.material.dispose();
   a.mesh = null;
 }
+const teamCostume = (side) => (XMAS ? (side === 0 ? 'elf' : 'reindeer') : '');   // Christmas: one team are elves, the other team are reindeer (a costume you wear yourself wins)
 function dressRig(m, id) {   // costume = body colour + silly bits on the head / back (the team band always stays)
-  if (!m || m.lite) return;
+  if (!m) return;
+  id = id || teamCostume(m.g.userData.side || 0);
   for (const k of m.g.userData.costumeKids || []) if (k.parent) k.parent.remove(k);
   m.g.userData.costumeKids = [];
   const kit = id ? costumeKit(id, m.g.userData.side || 0) : null;
   outfitSoldier(m.g, kit ? { outfit: kit.tint } : null, charMat);
-  if (m.g.userData.hat) m.g.userData.hat.visible = !kit;   // a costume always shows: the Santa hat steps aside (it used to hide the unicorn horn, ears and bunny ears)
+  if (m.g.userData.hat) m.g.userData.hat.visible = !kit || id === 'elf';   // a costume always shows: the Santa hat steps aside (it used to hide the unicorn horn, ears and bunny ears)
   if (!kit) return;
   for (const [geo, parent] of [[kit.head, m.head], [kit.body, m.up]]) if (geo) { const k = new THREE.Mesh(geo, charMat); k.castShadow = true; parent.add(k); m.g.userData.costumeKids.push(k); }
 }
@@ -616,7 +618,7 @@ function makeSoldier(a) {
   const hip = (x, geo, shin) => { const h = new THREE.Group(); h.position.set(x, 0.62, 0); g.add(h); mk(geo, h); const k = new THREE.Group(); if (shin) { k.position.y = -0.31; h.add(k); mk(shin, k); } return [h, k]; };
   const [legL, kneeL] = lite ? hip(-0.145, SP.legL) : hip(-0.145, SP.thighL, SP.shin), [legR, kneeR] = lite ? hip(0.145, SP.legR) : hip(0.145, SP.thighR, SP.shin);
   const up = new THREE.Group(); g.add(up); mk(lite ? SP.body : SP.torso, up);
-  const head = new THREE.Group(); if (!lite) { head.position.set(0, 1.55, 0); up.add(head); mk(SP.head, head); }
+  const head = new THREE.Group(); head.position.set(0, 1.55, 0); up.add(head); if (!lite) mk(SP.head, head);   // (Lite has no separate head model, but hats and costumes still hang here)
   const arms = new THREE.Group(); arms.position.set(0, 1.3, 0); up.add(arms); const armsMesh = mk(tpArms(a.side, 'rifle', lite), arms);
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   flash.scale.setScalar(0.5); flash.visible = false; arms.add(flash);
@@ -626,8 +628,8 @@ function makeSoldier(a) {
   a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, flash, phase: 0, flashT: 0, lite, armsMesh, armsKey: '', sh };
   g.visible = a.alive && !a.isPlayer;
   scene.add(g);
-  if (XMAS && !lite) { const hm = new THREE.Mesh(santaHat(), (makeSoldier.hatMat ||= charMat.clone())); hm.castShadow = true; head.add(hm); g.userData.hat = hm; }   // Christmas: Santa hat (its own material so a costume never tints it)
-  g.userData.side = a.side; { const cid = a.isPlayer ? (skinState.costume || (GS.twist === 'party' ? costumes[a.id % costumes.length].id : '')) : GS.twist === 'party' ? costumes[a.id % costumes.length].id : ''; if (cid) dressRig(a.mesh, cid); }
+  if (XMAS) { const hm = new THREE.Mesh(santaHat(), (makeSoldier.hatMat ||= charMat.clone())); hm.castShadow = true; head.add(hm); g.userData.hat = hm; }   // Christmas: Santa hat (its own material so a costume never tints it)
+  g.userData.side = a.side; { const cid = a.isPlayer ? (skinState.costume || (GS.twist === 'party' ? costumes[a.id % costumes.length].id : '')) : GS.twist === 'party' ? costumes[a.id % costumes.length].id : ''; if (cid || XMAS) dressRig(a.mesh, cid); }
 }
 
 const NAMES = ['Pixel', 'Noodle', 'Turbo', 'Waffles', 'Gizmo', 'Biscuit', 'Sprocket', 'Mango', 'Rocket', 'Pickles', 'Nugget', 'Zappy', 'Bolt', 'Taco', 'Nova', 'Scooter',
