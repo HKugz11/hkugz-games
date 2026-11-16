@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=237';
+import { displayWeapon, createHomeStage } from './showcase.js?v=238';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=237';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon } from './skins.js?v=237';
-import { platform } from './platform.js?v=237';
-import * as THREE from './three.module.min.js?v=237';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=237';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=237';
-import { createOnline } from './online.js?v=237';
-import { TOUCH, initTouch } from './touch.js?v=237';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit } from './art.js?v=237';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=238';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=238';
+import { platform } from './platform.js?v=238';
+import * as THREE from './three.module.min.js?v=238';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=238';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=238';
+import { createOnline } from './online.js?v=238';
+import { TOUCH, initTouch } from './touch.js?v=238';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=238';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -468,6 +468,7 @@ const WD = {
   brute: { name: 'Brute', slot: 'prim', price: 1650, dmg: 31, rpm: 660, auto: true, mag: 40, res: 120, reload: 3.0, speed: 6.2, inacc: 0.8, moveInacc: 2.2, airInacc: 7, pen: 0.72, range: 0.87, recoil: 0.85, rec: 8, reward: 600, tier: 2, snd: [2400, 0.14, 1.1], acc: '#a8472e', patk: 'smg', draw: 0.4, stagger: 0.25, desc: 'Heavy SMG: slower than the Buzz but hits harder. 40 rounds. $600 per kill.' },
   ghost: { name: 'Ghost', slot: 'prim', price: 3100, dmg: 30, rpm: 700, auto: true, mag: 30, res: 90, reload: 2.4, speed: 6.4, inacc: 0.26, moveInacc: 4.2, airInacc: 10, pen: 0.66, range: 0.96, recoil: 0.7, rec: 8, reward: 300, tier: 3, snd: [1200, 0.1, 0.7], acc: '#7a5aa8', quiet: true, patk: 'ghost', first: 0.25, draw: 0.35, desc: 'Suppressed rifle: does not give your position away. Light and quick, less damage than the Raptor.' },
   breaker: { name: 'Breaker', slot: 'prim', price: 2300, dmg: 17, pellets: 8, cone: 4.2, rpm: 300, mag: 8, res: 32, reload: 3.2, shell: 0.38, speed: 6.1, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.6, recoil: 2.6, rec: 4, reward: 900, tier: 3, snd: [1350, 0.28, 1.5], acc: '#d4a02a', patk: 'cannon', stagger: 0.4, draw: 0.45, desc: 'Fast semi-auto shotgun: 8 pellets, quick follow-up shots. $900 per kill.' },
+  jingle: { name: 'Tinsel Blaster', slot: 'prim', price: 1700, dmg: 11, pellets: 6, cone: 2.5, rpm: 400, auto: true, mag: 24, res: 72, reload: 2.7, speed: 6.2, inacc: 0.4, moveInacc: 1.4, airInacc: 5, pen: 0.55, range: 0.62, recoil: 1.2, rec: 5, reward: 900, tier: 2, snd: [1500, 0.2, 1.2], acc: '#d62828', patk: 'smg', stagger: 0.25, draw: 0.4, desc: 'HOLIDAY GIFT: a full-auto shotgun. Sprays 6 pellets every shot, hold the button down. Best up close.' },
   bomb: { name: 'BOMB BLAST', hidden: true },   // not a gun: only so a bomb kill has a name (keep it LAST: online play numbers the guns by their place in this list)
 };
 for (const k in WD) if (WD[k].mag) WD[k].pat = pattern(WD[k], k);
@@ -496,6 +497,7 @@ function showTwist() {
 const SIMPLE_GUNS = new Set(['p9', 'viper', 'trio', 'buzz', 'thumper', 'carbine', 'raptor', 'longbow', 'lmg']);
 function gunOK(id) {
   const d = WD[id]; if (!d || !d.mag) return true;   // grenades, gear and the knife are always there
+  if (id === 'jingle') return skinState.rewarded.includes('gun:jingle');   // the Tinsel Blaster is a holiday gift: only if you opened your gift
   const ar = MP.on && MP.cfg && MP.cfg.arsenal ? MP.cfg.arsenal : S.arsenal;
   return ar !== 'simple' || SIMPLE_GUNS.has(id);
 }
@@ -539,7 +541,7 @@ function nameTag(a, g) {
   tag.scale.set(1.3, 0.33, 1); tag.position.y = 2.2; tag.renderOrder = 999; g.add(tag); g.userData.nameTag = tag;
 }
 // What each gun looks like in a soldier's hands (the arms pose and the gun shape come from this class, see tpArms in art.js)
-const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade' };
+const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', jingle: 'shotgun', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade' };
 // A soldier is a few merged meshes: 2 legs (+2 shins in Pretty/Fast), body, head (Pretty/Fast) and ONE arms+gun mesh whose shape changes with the gun in hand.
 // Lite uses straight legs and a body that already includes the head; the knees are empty groups there.
 const shieldMats = { body: new THREE.MeshLambertMaterial({ color: 0x2c3a52, flatShading: true }), rim: new THREE.MeshLambertMaterial({ color: 0x14181f, flatShading: true }), glass: new THREE.MeshBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.3 }) };
@@ -586,6 +588,7 @@ function makeSoldier(a) {
   a.mesh = { g, legL, legR, kneeL, kneeR, up, head, arms, flash, phase: 0, flashT: 0, lite, armsMesh, armsKey: '', sh };
   g.visible = a.alive && !a.isPlayer;
   scene.add(g);
+  if (XMAS && !lite) { const hm = new THREE.Mesh(santaHat(), (makeSoldier.hatMat ||= charMat.clone())); hm.castShadow = true; head.add(hm); g.userData.hat = hm; }   // Christmas: Santa hat (its own material so a costume never tints it)
   g.userData.side = a.side; { const cid = a.isPlayer ? (skinState.costume || (GS.twist === 'party' ? costumes[a.id % costumes.length].id : '')) : GS.twist === 'party' ? costumes[a.id % costumes.length].id : ''; if (cid) dressRig(a.mesh, cid); }
 }
 
@@ -3058,7 +3061,7 @@ function updateBoard() {
 }
 
 // buy menu
-const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit', 'shield']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
+const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker', 'jingle']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit', 'shield']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
 // Original lightweight side profiles. Inline SVG inherits each card's purchase-state color.
 function buyIcon(id) {
  const pistol='M35 20H111V29H72L65 35H55L50 53H32L39 32H31V24Z';
@@ -3067,7 +3070,7 @@ function buyIcon(id) {
  p9:pistol, trio:pistol+' M88 17H101V20H88Z', viper:'M28 17H119V30H71L61 37L54 55H32L40 31H28Z', tec:'M45 19H98V25H120V30H82V51H70V32H61L56 51H41L47 29Z',
  revolver:'M25 23H59V18H78V21H124V28H79L72 35H57L51 53H31L39 32H25Z',duster:'M30 25H131V31H62L50 43H27L38 32Z',
  buzz:'M17 28L40 20H105V24H130V30H84V51H71V32H56L49 47H38L41 32H17Z',brute:rifle,chopper:rifle,
- thumper:'M12 30L42 22H89V24H148V29H93V35H56L39 45H14Z',scatter:'M12 29L37 22H145V28H100V34H72L65 49H52L54 33L15 42Z',breaker:rifle+' M110 31H143V36H110Z',
+ thumper:'M12 30L42 22H89V24H148V29H93V35H56L39 45H14Z',scatter:'M12 29L37 22H145V28H100V34H72L65 49H52L54 33L15 42Z',breaker:rifle+' M110 31H143V36H110Z',jingle:rifle+' M110 31H143V36H110Z',
  carbine:rifle,raptor:rifle+' M81 34L88 48L98 53L92 57L81 54L74 36Z',sentinel:rifle+' M63 13H98V17H63Z',ghost:rifle+' M139 22H160V32H139Z',lmg:rifle+' M75 33H99V53H75Z M126 30L119 53H123L130 34L137 53H141L134 30Z',
  ranger:'M10 29L39 23H117V25H157V28H111V33H64L46 41H12Z M65 15H103V21H65Z M73 20H77V24H73Z M93 20H97V24H93Z',
  dmr:rifle+' M63 13H105V19H63Z M70 18H75V22H70Z M94 18H99V22H94Z',
@@ -3803,7 +3806,7 @@ function menuScene(t) {
 function stageSync() { menuSoldierSync(); }
 const hexOf = (n) => '#' + n.toString(16).padStart(6, '0');
 const gunIds = () => Object.keys(WD).filter((id) => WD[id].mag && (WD[id].slot === 'prim' || WD[id].slot === 'sec'));
-const weaponList = () => [...gunIds(), 'knife'];
+const weaponList = () => [...gunIds().filter((id) => id !== 'jingle' || skinState.rewarded.includes('gun:jingle')), 'knife'];
 const weaponName = (id) => (id === 'knife' ? (knives.find((k) => k.id === skinState.knife) || knives[0]).name : WD[id].name);
 const rebuildGun = (id) => { delete vmModels[id]; delete GM[id]; if (vmId === id) vmId = ''; };   // the in-hand model is rebuilt with the new skin / stickers
 const locker = document.createElement('dialog'); locker.id = 'skinLocker';
@@ -3827,20 +3830,21 @@ let armed = null, pendingReward = false, opening = false, selW = 'raptor', selF 
 const previewStage = createPreviewStage(lq('#invStage')), crateStage = createCrateStage(lq('#crateStage')), costStage = createHomeStage(lq('#costStage'));
 let selC = skinState.costume || '';
 function drawCostumes() {
-  const list = [{ id: '', name: 'Standard Soldier', rarity: null }, ...costumes], own = (c) => !c.id || skinState.costumes.includes(c.id), worn = skinState.costume || '';
+  const list = [{ id: '', name: 'Standard Soldier', rarity: null }, ...costumes.filter((c) => !c.holiday || XMAS || skinState.costumes.includes(c.id))], own = (c) => !c.id || skinState.costumes.includes(c.id), worn = skinState.costume || '';
   lq('.cost-list').replaceChildren(...list.map((c) => {
     const rar = c.rarity && rarities[c.rarity], b = document.createElement('button'); b.className = 'inv-card' + (own(c) ? '' : ' locked') + (worn === c.id ? ' on' : '') + (selC === c.id ? ' sel' : ''); if (rar) b.style.setProperty('--rc', hexOf(rar.color));
-    const nm = document.createElement('b'), tg = document.createElement('small'); nm.textContent = c.name; tg.textContent = worn === c.id ? 'Wearing' : own(c) ? (rar ? rar.name : 'Owned') : (rar ? rar.name + ' · ' : '') + 'Costume Case';
+    const nm = document.createElement('b'), tg = document.createElement('small'); nm.textContent = c.name; tg.textContent = worn === c.id ? 'Wearing' : own(c) ? (rar ? rar.name : 'Owned') : (rar ? rar.name + ' · ' : '') + (c.holiday ? 'Holiday Costume Case' : 'Costume Case');
     b.append(mkCanvas((cx) => drawCostumeIcon(cx, c.id)), nm, tg); b.onclick = () => { selC = c.id; drawCostumes(); }; return b;
   }));
   const c = list.find((x) => x.id === selC) || list[0], rar = c.rarity && rarities[c.rarity];
-  lq('#costName').textContent = c.name; lq('#costName').style.color = rar ? hexOf(rar.color) : ''; lq('#costRule').textContent = own(c) ? (rar ? rar.name + ' costume' : 'Your normal soldier') : 'Locked. Open the Costume Case in CASES & PACKS.';
+  lq('#costName').textContent = c.name; lq('#costName').style.color = rar ? hexOf(rar.color) : ''; lq('#costRule').textContent = own(c) ? (rar ? rar.name + ' costume' : 'Your normal soldier') : (c.holiday ? 'Locked. Open the Holiday Costume Case in CASES & PACKS.' : 'Locked. Open the Costume Case in CASES & PACKS.');
   const eq = lq('#costEquip'); eq.textContent = worn === c.id ? 'WEARING' : own(c) ? 'WEAR IT' : 'LOCKED'; eq.disabled = worn === c.id || !own(c);
   if (costStage) { costStage.setLook(0, 'raptor', null, mutedAccent('raptor')); costStage.setCostume(c.id); }
 }
 lq('#costEquip').onclick = () => { skinState.costume = selC; saveFinish(); stageSync(); drawCostumes(); skinStatus.textContent = 'Costume on!'; };
 function paintKnifeIcon(cx, id) {
   cx.fillStyle = '#2b343c'; cx.fillRect(0, 0, 128, 128);
+  if (id === 'candycane') { for (let k = 0; k < 8; k++) { cx.fillStyle = k % 2 ? '#f6f3ee' : '#d62828'; cx.fillRect(14 + k * 13, 56 - (k > 5 ? (k - 5) : 0), 13, 16 - (k > 5 ? (k - 5) * 3 : 0)); } cx.fillStyle = '#d62828'; cx.fillRect(6, 56, 8, 16); cx.fillStyle = '#f6f3ee'; cx.fillRect(6, 72, 8, 14); cx.fillStyle = '#d62828'; cx.fillRect(14, 86, 8, 8); cx.fillStyle = '#f6f3ee'; cx.fillRect(22, 80, 8, 8); return; }
   const blade = { combat: [[44, 52], [112, 52], [122, 66], [108, 76], [44, 76]], karambit: [[40, 56], [80, 48], [112, 64], [122, 92], [100, 78], [70, 74], [40, 76]], machete: [[40, 50], [118, 48], [124, 58], [116, 80], [40, 76]], dagger: [[44, 56], [84, 52], [124, 64], [84, 76], [44, 72]] }[id];
   cx.fillStyle = '#c5ccd2'; cx.beginPath(); blade.forEach(([x, y], i) => (i ? cx.lineTo(x, y) : cx.moveTo(x, y))); cx.closePath(); cx.fill();
   cx.fillStyle = '#c9a14a'; cx.fillRect(34, 46, 8, 34); cx.fillStyle = '#4a3a2a'; cx.fillRect(6, 53, 28, 20);
@@ -3894,7 +3898,7 @@ function drawCollection() {
   knifeList.replaceChildren(...knives.map((k) => {
     const own = knifeOwned(k), act = skinState.knife === k.id, rar = k.rarity && rarities[k.rarity];
     const b = document.createElement('button'); b.className = 'inv-card' + (own ? '' : ' locked') + (act ? ' on' : ''); if (rar) b.style.setProperty('--rc', hexOf(rar.color));
-    const nm = document.createElement('b'), tg = document.createElement('small'); nm.textContent = k.name; tg.textContent = act ? 'In use' : own ? 'Owned' : (rar ? rar.name + ' · ' : '') + 'from cases';
+    const nm = document.createElement('b'), tg = document.createElement('small'); nm.textContent = k.name; tg.textContent = act ? 'In use' : own ? 'Owned' : k.gift ? 'Holiday gift' : (rar ? rar.name + ' · ' : '') + 'from cases';
     b.append(mkCanvas((cx) => paintKnifeIcon(cx, k.id)), nm, tg);
     b.onclick = () => { if (!own) return; skinState.knife = k.id; saveFinish(); setKnifeStyle(k.id); syncKnifeName(); rebuildGun('knife'); stageSync(); drawCollection(); skinStatus.textContent = k.name + ' is your knife now.'; }; return b;
   }));
@@ -3941,7 +3945,7 @@ function rollCase(c) {
   for (const [id, p] of Object.entries(c.odds)) { if (r < p) { rar = id; break; } r -= p; }
   let cand = [];
   if (c.kind === 'sticker') cand = c.pool.map((id) => stickers.find((s) => s.id === id)).filter((s) => s.rarity === rar).map((s) => ({ s, w: 1 }));
-  else if (c.kind === 'costume') cand = costumes.filter((x) => x.rarity === rar).map((x) => ({ c: x, w: 1 }));
+  else if (c.kind === 'costume') cand = (c.pool || []).map((id) => costumes.find((x) => x.id === id)).filter((x) => x && x.rarity === rar).map((x) => ({ c: x, w: 1 }));
   else {
     const fl = c.finishes.map(finishOf).filter((f) => f.rarity === rar);
     if (c.kind === 'skin') { cand = fl.map((f) => ({ f, w: f.weight || 1 })); if (c.knives) for (const k of knives.filter((k) => k.rarity === rar)) cand.push({ k, w: 1 }); }   // legendary knives drop from the normal cases
@@ -3951,7 +3955,7 @@ function rollCase(c) {
 }
 function drawCases() {
   const c = cases.find((x) => x.id === selCase) || cases[0];
-  caseList.replaceChildren(...cases.map((x) => {
+  caseList.replaceChildren(...cases.filter((x) => !x.holiday || XMAS).map((x) => {
     const b = document.createElement('button'); b.className = 'case-btn' + (x.id === c.id ? ' on' : ''); b.innerHTML = '<b></b><small></small>'; b.firstChild.textContent = x.name; b.lastChild.innerHTML = x.price + ' ' + COIN;
     b.onclick = () => { if (opening) return; selCase = x.id; resultEl.classList.add('hidden'); crateStage?.reset(); crateStage?.setTint(x.tint); drawCases(); }; return b;
   }));
@@ -4156,3 +4160,37 @@ if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rank
 MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { return W * CS; }, get worldH() { return H * CS; }, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
   makeSoldier, botTakeover, shotDamage, undoBuy, plantSite, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
   spawnNade, netDetonate, remoteShotFx, killFx, hurtLocal, roundEndFx, roundBannerLocal, netEvent, endMatch, moneyPop, reviveLocal, vmRefresh, renderBuy, clearWorld, sleeveTint });
+
+// ================= HOLIDAY GIFT (Christmas season): a one-time popup that puts the Candy Cane Knife, the Tinsel Blaster and the Elf Suit into your inventory =================
+(function holidayGift() {
+  if (!XMAS) return;
+  const force = /[?&]gift=1/.test(location.search), KEY = 'xmas-gift-1';
+  skinState.gifts ??= [];
+  if (!force && skinState.gifts.includes(KEY)) return;
+  const el = document.createElement('div'); el.id = 'giftPop';
+  el.innerHTML = '<div class="gift-card"><small class="gift-tag">HOLIDAY GIFT</small><h2>Merry Christmas!</h2><div class="gift-body"></div></div>';
+  const body = el.querySelector('.gift-body');
+  const box = mkCanvas((cx) => {
+    cx.clearRect(0, 0, 128, 128); const R = (x, y, w, h, c) => { cx.fillStyle = c; cx.fillRect(x, y, w, h); };
+    R(16, 54, 96, 66, '#d62828'); R(16, 54, 96, 8, '#a81c1c'); R(10, 40, 108, 18, '#e53935'); R(10, 40, 108, 5, '#f26b66'); R(56, 40, 16, 80, '#f6f3ee'); R(10, 46, 108, 6, '#f6f3ee');
+    R(36, 20, 22, 20, '#f6f3ee'); R(70, 20, 22, 20, '#f6f3ee'); R(42, 26, 10, 14, '#d62828'); R(76, 26, 10, 14, '#d62828'); R(54, 28, 20, 14, '#e6e0d8');
+  });
+  box.className = 'gift-box';
+  const btn = document.createElement('button'); btn.className = 'btn big'; btn.textContent = 'OPEN YOUR GIFT';
+  body.append(box, Object.assign(document.createElement('p'), { textContent: 'A holiday present is waiting for you.' }), btn);
+  const close = () => el.remove();
+  btn.onclick = () => {
+    for (const id of ['knife:candycane', 'gun:jingle']) if (!skinState.rewarded.includes(id)) skinState.rewarded.push(id);
+    if (!skinState.costumes.includes('elf')) skinState.costumes.push('elf');
+    skinState.knife = 'candycane'; try { setKnifeStyle('candycane'); syncKnifeName(); rebuildGun('knife'); } catch (e) {}
+    skinState.gifts.push(KEY); saveFinish();
+    const item = (cv, name, where) => { const f = document.createElement('figure'); f.append(cv, Object.assign(document.createElement('b'), { textContent: name }), Object.assign(document.createElement('small'), { textContent: where })); return f; };
+    const row = document.createElement('div'); row.className = 'gift-items';
+    row.append(item(mkCanvas((cx) => paintKnifeIcon(cx, 'candycane')), 'Candy Cane Knife', 'Already your knife!'),
+      item(mkCanvas((cx) => drawSkinIcon(cx, finishOf('candycane'))), 'Tinsel Blaster', 'A full-auto shotgun. Pick it with B in a match.'),
+      item(mkCanvas((cx) => drawCostumeIcon(cx, 'elf')), 'Elf Suit', 'SKINS & CRATES, then COSTUMES.'));
+    const ok = document.createElement('button'); ok.className = 'btn big'; ok.textContent = 'AWESOME!'; ok.onclick = close;
+    body.replaceChildren(row, Object.assign(document.createElement('p'), { textContent: 'They are in your inventory now. Look for the new Holiday Cases in SKINS & CRATES too!' }), ok);
+  };
+  setTimeout(() => document.body.appendChild(el), 1200);
+})();

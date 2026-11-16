@@ -1,6 +1,14 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=237';
+import * as THREE from './three.module.min.js?v=238';
+
+// CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
+export const XMAS = (() => {
+  try { const m = /[?&]xmas=([01])/.exec(location.search); if (m) localStorage.setItem('hk-xmas', m[1] === '1' ? 'on' : 'off'); } catch (e) {}
+  let pref = null; try { pref = localStorage.getItem('hk-xmas'); } catch (e) {}
+  const d = new Date(), md = (d.getMonth() + 1) * 100 + d.getDate(), season = md >= 1115 || md <= 102;
+  return pref === 'on' ? true : pref === 'off' ? false : season;
+})();
 
 const th = (body, barrel, stock, grip, metal, edge, dark) => ({ body, barrel, stock, grip, metal, edge, dark });
 // fx: mode (pattern), cell (pattern size), c: 4 pattern colours, glow, glowCol, shine (moving shine), spark (sparkle colour), rivet, outline, gloss (shiny paint too)
@@ -40,7 +48,14 @@ export const finishes = [
   { id: 'obsidian', name: 'Obsidian', rule: 'Found in skin crates', rarity: 'epic', theme: th(0x1a1626, 0x0d0a16, 0x241c36, 0x0d0a16, 0xb48cff, 0xe8d8ff, 0x05030a), fx: { mode: 7, cell: 22, c: [0, 0, 0, 0xb48cff], rivet: true, glow: 0.4, glowCol: 0x9a60ff, shine: 1, gloss: true } },
   { id: 'aurora', name: 'Aurora', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x0a2a2a, 0x061a1a, 0x103a3a, 0x061a1a, 0x7affd0, 0xd8fff0, 0x020c0c), fx: { mode: 5, cell: 16, c: [0x4af0b0, 0x2a8fd0, 0x9a6aff, 0], glow: 0.5, glowCol: 0x40ffc0, shine: 1, spark: 0xb8fff0 } },
   { id: 'prism', name: 'Prism', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x70708a, 0x40405a, 0x5a5a76, 0x30304a, 0xe8e8ff, 0xffffff, 0x14141e), fx: { mode: 9, cell: 8, c: [0, 0, 0, 0xffffff], glow: 0.35, glowCol: 0xffffff, shine: 1, spark: 0xffffff, gloss: true } },
-  { id: 'diamondice', name: 'Diamond Ice', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x6fd6f5, 0x2f8fc0, 0x8fe4ff, 0x1f6a94, 0xffffff, 0xffffff, 0x0f3d5a), fx: { mode: 8, cell: 7, c: [0xe8fbff, 0, 0, 0xffffff], glow: 0.4, glowCol: 0x70e0ff, shine: 1, spark: 0xe8fbff, gloss: true } }
+  { id: 'diamondice', name: 'Diamond Ice', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x6fd6f5, 0x2f8fc0, 0x8fe4ff, 0x1f6a94, 0xffffff, 0xffffff, 0x0f3d5a), fx: { mode: 8, cell: 7, c: [0xe8fbff, 0, 0, 0xffffff], glow: 0.4, glowCol: 0x70e0ff, shine: 1, spark: 0xe8fbff, gloss: true } },
+  // ---- HOLIDAY CASE (Christmas season) ----
+  { id: 'candycane', name: 'Candy Cane', rule: 'Found in the Holiday Case', rarity: 'common', holiday: true, theme: th(0xf6f2ee, 0xd62828, 0xf6f2ee, 0xd62828, 0xffffff, 0xffffff, 0x8a1a1a), fx: { mode: 2, cell: 8, c: [0xd62828, 0, 0, 0], gloss: true } },
+  { id: 'gingerbread', name: 'Gingerbread', rule: 'Found in the Holiday Case', rarity: 'common', holiday: true, theme: th(0x9a5b2e, 0x7a4420, 0xa86a38, 0x6a3a1a, 0xfff3e0, 0xfff3e0, 0x4a2610), fx: { mode: 3, cell: 9, c: [0xfff3e0, 0, 0, 0xe53935], rivet: true } },
+  { id: 'holly', name: 'Holly Jolly', rule: 'Found in the Holiday Case', rarity: 'rare', holiday: true, theme: th(0x1f6b3a, 0x144d28, 0x2a8048, 0x144d28, 0xd4a82a, 0xffe08a, 0x0a2a14), fx: { mode: 6, cell: 14, c: [0, 0xd7262f, 0, 0], glow: 0 } },
+  { id: 'ornament', name: 'Ornament', rule: 'Found in the Holiday Case', rarity: 'rare', holiday: true, theme: th(0xc62828, 0x1f8a4c, 0xe6b422, 0x1f8a4c, 0xffd45a, 0xfff0a0, 0x5a1010), fx: { mode: 1, cell: 6, c: [0xc62828, 0x1f8a4c, 0xe6b422, 0], glow: 0.15, glowCol: 0xffd45a, spark: 0xffe08a, gloss: true } },
+  { id: 'snowflake', name: 'Snowflake', rule: 'Found in the Holiday Case', rarity: 'epic', holiday: true, theme: th(0x7fb8e8, 0x3f7fb8, 0x9ad0f2, 0x2f6b9a, 0xe6f8ff, 0xffffff, 0x1c4766), fx: { mode: 10, cell: 18, c: [0xffffff, 0, 0, 0], glow: 0.4, glowCol: 0xa8e0ff, shine: 1, spark: 0xe8fbff, gloss: true } },
+  { id: 'northernlights', name: 'Northern Lights', rule: 'Found in the Holiday Case', rarity: 'legendary', holiday: true, theme: th(0x0b1e2e, 0x061018, 0x10304a, 0x061018, 0x7affd0, 0xd8fff0, 0x03080e), fx: { mode: 11, cell: 16, c: [0x3af0a0, 0x7a5aff, 0x40c8ff, 0], glow: 0.8, glowCol: 0x40ffc0, shine: 1, spark: 0xb8fff0 } }
 ];
 
 // the whiteout set also changes the soldier's uniform on the menu
@@ -73,7 +88,9 @@ vec3 fxE = vec3(0.0);
   else if (m > 5.5 && m < 6.5) { float cr = step(0.8, fxH); fxE += uC0 * cr * paint * (0.9 + 0.3 * sin(uTime * 3.0 + fxH * 6.0)) * uGlow; col = mix(col, uC1, cr * paint); }
   else if (m > 6.5 && m < 7.5) { float ck = mod(fxCell.x + fxCell.y + fxCell.z, 2.0); col *= mix(1.0, mix(0.78, 1.18, ck), paint); }
   else if (m > 7.5 && m < 8.5) { float ice = step(0.72, fxH); col = mix(col, uC0, paint * ice * 0.85); }
-  else if (m > 8.5) { vec3 irid = 0.55 + 0.45 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + (vObj.z * 1.4 + vObj.y * 0.9) * 0.7 + uTime * 0.12)); col = mix(col, irid, paint * 0.28); }
+  else if (m > 8.5 && m < 9.5) { vec3 irid = 0.55 + 0.45 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + (vObj.z * 1.4 + vObj.y * 0.9) * 0.7 + uTime * 0.12)); col = mix(col, irid, paint * 0.28); }
+  else if (m > 9.5 && m < 10.5) { vec2 fq = fract(vec2(vObj.z, vObj.y) * uCell * 0.5) - 0.5; float ax = min(abs(fq.x), abs(fq.y)), mxv = max(abs(fq.x), abs(fq.y)); float flake = max(step(ax, 0.07) * step(mxv, 0.4), step(abs(abs(fq.x) - abs(fq.y)), 0.07) * step(mxv, 0.28)); vec2 cid = floor(vec2(vObj.z, vObj.y) * uCell * 0.5); flake *= step(0.55, fract(sin(dot(cid, vec2(12.9898, 78.233))) * 43758.5453)); col = mix(col, uC0, paint * flake); }
+  else if (m > 10.5) { float wv = 0.5 + 0.5 * sin(vObj.z * uCell * 0.4 + vObj.y * 5.0 + uTime * 0.9); vec3 au = mix(uC0, uC1, wv); au = mix(au, uC2, step(0.7, 0.5 + 0.5 * sin(vObj.z * uCell * 0.9 - uTime * 0.6))); col = mix(col, au, paint * 0.8); fxE += au * paint * uGlow * 0.5; }
   if (uOutline > 0.5) { float ol = max(step(fract(vObj.y * uCell * 0.5), 0.07), step(fract(vObj.z * uCell * 0.5), 0.06)); col = mix(col, uC3, ol * paint * 0.75); }
   if (uRivet > 0.5) { float dt2 = step(0.86, fract(vObj.x * 18.0)) * step(0.86, fract(vObj.z * 18.0)); col = mix(col, uC3, dt2 * paint); }
   diffuseColor.rgb = col;
@@ -176,6 +193,8 @@ export function drawSkinIcon(cx, f) {
     else if (fx.mode === 6) { cx.fillStyle = c(0, '#f80'); for (let yy = y; yy < y + h; yy += 6) for (let xx = x; xx < x + w; xx += 6) if (rnd() > 0.78) cx.fillRect(xx, yy, 6, 6); }
     else if (fx.mode === 7) { for (let yy = y; yy < y + h; yy += 5) for (let xx = x; xx < x + w; xx += 5) if (((xx - x) / 5 + (yy - y) / 5) % 2 === 0) { cx.fillStyle = '#ffffff14'; cx.fillRect(xx, yy, 5, 5); } }
     else if (fx.mode === 8) { cx.fillStyle = c(0, '#fff'); for (let yy = y; yy < y + h; yy += 6) for (let xx = x; xx < x + w; xx += 6) if (rnd() > 0.7) cx.fillRect(xx, yy, 6, 6); }
+    else if (fx.mode === 10) { cx.fillStyle = c(0, '#fff'); for (let yy = y; yy < y + h; yy += 9) for (let xx = x; xx < x + w; xx += 9) if (rnd() > 0.55) { cx.fillRect(xx + 3, yy, 2, 8); cx.fillRect(xx, yy + 3, 8, 2); cx.fillRect(xx + 1, yy + 1, 2, 2); cx.fillRect(xx + 5, yy + 5, 2, 2); } }
+    else if (fx.mode === 11) { cx.globalAlpha = 0.65; for (let xx = x; xx < x + w; xx += 5) { cx.fillStyle = [c(0, '#3fa'), c(1, '#75f'), c(2, '#4cf')][Math.floor(xx / 5 + Math.sin(xx * 0.2) * 1.4 + 9) % 3]; cx.fillRect(xx, y, 5, h); } cx.globalAlpha = 1; }
     else if (fx.mode === 9) { const gr = cx.createLinearGradient(x, y, x + w, y + h); gr.addColorStop(0, '#ffd6f0aa'); gr.addColorStop(0.5, '#d6f0ffaa'); gr.addColorStop(1, '#fff6d6aa'); cx.fillStyle = gr; cx.fillRect(x, y, w, h); }
     if (fx.outline) { cx.strokeStyle = hx(fx.c[3] || 0x9aa5b0); cx.lineWidth = 1; cx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }
     if (fx.rivet) { cx.fillStyle = hx(fx.c[3] || 0xcccccc); for (let xx = x + 4; xx < x + w - 2; xx += 10) cx.fillRect(xx, y + 3, 2, 2); }
@@ -191,7 +210,8 @@ export const knives = [
   { id: 'combat', name: 'Combat Knife', rule: 'Standard issue' },
   { id: 'karambit', name: 'Karambit', rule: 'Legendary drop from cases', rarity: 'legendary' },
   { id: 'machete', name: 'Machete', rule: 'Legendary drop from cases', rarity: 'legendary' },
-  { id: 'dagger', name: 'Dagger', rule: 'Legendary drop from cases', rarity: 'legendary' }
+  { id: 'dagger', name: 'Dagger', rule: 'Legendary drop from cases', rarity: 'legendary' },
+  { id: 'candycane', name: 'Candy Cane Knife', rule: 'Holiday gift', gift: true }
 ];
 
 // crate drop odds (percent), the colour of each rarity, and the coins you get back for a duplicate
@@ -218,6 +238,8 @@ export function drawSkinSwatch(cx, f) {
   else if (m === 6) { cx.save(); cx.shadowColor = c(0, '#f80'); cx.shadowBlur = 8; for (let y = 0; y < W; y += 8) for (let x = 0; x < W; x += 8) { const r = rnd(); if (r > 0.8) { cx.fillStyle = c(0, '#f80'); cx.fillRect(x, y, 8, 8); } else if (r > 0.7) { cx.fillStyle = c(1, '#611'); cx.fillRect(x, y, 8, 8); } } cx.restore(); }
   else if (m === 7) { for (let y = 0; y < W; y += 8) for (let x = 0; x < W; x += 8) { cx.fillStyle = ((x + y) / 8) % 2 ? '#ffffff16' : '#00000030'; cx.fillRect(x, y, 8, 8); } }
   else if (m === 8) { for (let y = 0; y < W; y += 8) for (let x = 0; x < W; x += 8) if (rnd() > 0.68) { cx.fillStyle = c(0, '#fff'); cx.fillRect(x, y, 8, 8); } }
+  else if (m === 10) { cx.fillStyle = c(0, '#fff'); for (let y = 0; y < W; y += 22) for (let x = 0; x < W; x += 22) if (rnd() > 0.45) { cx.fillRect(x + 8, y, 5, 20); cx.fillRect(x, y + 8, 20, 5); cx.fillRect(x + 3, y + 3, 4, 4); cx.fillRect(x + 14, y + 14, 4, 4); cx.fillRect(x + 14, y + 3, 4, 4); cx.fillRect(x + 3, y + 14, 4, 4); } }
+  else if (m === 11) { cx.globalAlpha = 0.75; for (let x = 0; x < W; x += 6) { const t = Math.sin(x * 0.11) + Math.sin(x * 0.05 + 1); cx.fillStyle = t > 0.7 ? c(2, '#4cf') : t > -0.3 ? c(0, '#3fa') : c(1, '#75f'); cx.fillRect(x, 0, 6, W); } cx.globalAlpha = 1; for (let k = 0; k < 20; k++) { cx.fillStyle = '#fff'; cx.fillRect((rnd() * W) | 0, (rnd() * W) | 0, 2, 2); } }
   else if (m === 9) { const g = cx.createLinearGradient(0, 0, W, W); g.addColorStop(0, '#ffd6f0'); g.addColorStop(0.35, '#d6ecff'); g.addColorStop(0.65, '#fff3d6'); g.addColorStop(1, '#e3d6ff'); cx.fillStyle = g; cx.fillRect(0, 0, W, W); }
   if (fx.outline) { cx.strokeStyle = hx(fx.c[3] || 0x9aa5b0); cx.lineWidth = 2; for (let k = 16; k < W; k += 32) { cx.beginPath(); cx.moveTo(0, k); cx.lineTo(W, k); cx.moveTo(k, 0); cx.lineTo(k, W); cx.stroke(); } }
   if (fx.rivet) { cx.fillStyle = hx(fx.c[3] || 0xcccccc); for (let y = 8; y < W; y += 24) for (let x = 8; x < W; x += 24) cx.fillRect(x, y, 3, 3); }
@@ -247,6 +269,10 @@ export const cases = [
     knives: true, finishes: ['dragon', 'tiger', 'cobra', 'toxic', 'plasma', 'magma', 'obsidian', 'gold', 'galaxy', 'aurora', 'prism', 'diamondice'], odds: { rare: 45, epic: 35, legendary: 20 } },
   { id: 'costume', kind: 'costume', name: 'Costume Case', price: 200, tint: 0xb64cd6, sub: 'Silly outfits for your soldier: Bunny Pajamas, Moo Cow, Banana, Shark Hoodie, Dino Onesie and the legendary Unicorn Onesie!',
     pool: ['bunny', 'cow', 'banana', 'shark', 'dino', 'unicorn'], odds: { common: 45, rare: 30, epic: 18, legendary: 7 } },
+  { id: 'holiday', kind: 'skin', holiday: true, name: 'Holiday Case', price: 60, tint: 0xc62828, sub: 'Six holiday skins: Candy Cane, Gingerbread, Holly Jolly, Ornament, Snowflake and the legendary Northern Lights. Each fits one random gun. Only here until Jan 2!',
+    finishes: ['candycane', 'gingerbread', 'holly', 'ornament', 'snowflake', 'northernlights'], odds: { common: 45, rare: 35, epic: 15, legendary: 5 } },
+  { id: 'holidaycos', kind: 'costume', holiday: true, name: 'Holiday Costume Case', price: 120, tint: 0x1f8a4c, sub: 'Christmas outfits for your soldier: Elf Suit, Reindeer Suit and the epic Snowman. Only here until Jan 2!',
+    pool: ['elf', 'reindeer', 'snowman'], odds: { common: 50, rare: 35, epic: 15 } },
   { id: 'stick', kind: 'sticker', name: 'Sticker Pack', price: 50, tint: 0xff8fc4, sub: 'One sticker. You use it once, on one gun, and it stays there.',
     pool: ['star', 'heart', 'smiley', 'lightning', 'flame', 'skull', 'diamond', 'cat', 'crown'], odds: { common: 70, rare: 22, epic: 7, legendary: 1 } },
   { id: 'foil', kind: 'sticker', name: 'Foil Sticker Pack', price: 150, tint: 0x9b7bff, sub: 'One shiny foil sticker: rare or better.',
@@ -307,7 +333,8 @@ export function applyStickers(mesh, list) {
 export const costumes = [
   { id: 'bunny', name: 'Bunny Pajamas', rarity: 'common', tint: 0xf0e6ef }, { id: 'cow', name: 'Moo Cow Suit', rarity: 'common', tint: 0xffffff },
   { id: 'banana', name: 'Banana Suit', rarity: 'rare', tint: 0xffe14a }, { id: 'shark', name: 'Shark Hoodie', rarity: 'rare', tint: 0x4a8fd0 },
-  { id: 'dino', name: 'Dino Onesie', rarity: 'epic', tint: 0x5cc45e }, { id: 'unicorn', name: 'Unicorn Onesie', rarity: 'legendary', tint: 0xffe8f4 }
+  { id: 'dino', name: 'Dino Onesie', rarity: 'epic', tint: 0x5cc45e }, { id: 'unicorn', name: 'Unicorn Onesie', rarity: 'legendary', tint: 0xffe8f4 },
+  { id: 'elf', name: 'Elf Suit', rarity: 'common', tint: 0x2fa34a, holiday: true }, { id: 'reindeer', name: 'Reindeer Suit', rarity: 'rare', tint: 0xa86a3a, holiday: true }, { id: 'snowman', name: 'Snowman', rarity: 'epic', tint: 0xf6f9fc, holiday: true }
 ];
 export function drawCostumeIcon(cx, id) {
   const c = costumes.find((x) => x.id === id), hx = (n) => '#' + n.toString(16).padStart(6, '0'), t = c ? hx(c.tint) : '#6c7580', dk = '#1b1d22';
@@ -322,6 +349,9 @@ export function drawCostumeIcon(cx, id) {
     banana: () => { R(60, 8, 7, 10, '#6b4a1e'); R(66, 6, 18, 6, '#4caf50'); R(54, 8, 12, 5, '#4caf50'); },
     bunny: () => { R(46, -16, 11, 34, '#f3e9f1'); R(72, -16, 11, 34, '#f3e9f1'); R(49, -10, 5, 24, '#ffb6c9'); R(75, -10, 5, 24, '#ffb6c9'); R(96, 80, 18, 18, '#fff'); },
     cow: () => { R(38, 8, 7, 12, '#f0e4c0'); R(83, 8, 7, 12, '#f0e4c0'); R(44, 66, 18, 16, '#1a1a1f'); R(66, 80, 14, 12, '#1a1a1f'); R(92, 84, 5, 28, '#1a1a1f'); },
+    elf: () => { R(26, 14, 12, 8, '#f2c6a0'); R(90, 14, 12, 8, '#f2c6a0'); R(20, 8, 8, 8, '#f2c6a0'); R(100, 8, 8, 8, '#f2c6a0'); R(34, 80, 60, 7, '#d62828'); R(58, 79, 12, 9, '#e6b422'); },
+    reindeer: () => { R(48, 4, 5, 18, '#5a3a1e'); R(75, 4, 5, 18, '#5a3a1e'); R(40, 4, 10, 4, '#5a3a1e'); R(78, 4, 10, 4, '#5a3a1e'); R(56, 46, 16, 12, '#e53935'); R(104, 76, 12, 12, '#f4efe4'); },
+    snowman: () => { R(56, 44, 22, 8, '#ff8a2a'); R(60, 70, 8, 8, '#1a1a1f'); R(60, 84, 8, 8, '#1a1a1f'); R(34, 58, 60, 8, '#d62828'); R(36, 66, 10, 22, '#d62828'); },
     shark: () => { R(60, 4, 6, 18, '#3a7fc0'); R(92, 66, 6, 34, '#3a7fc0'); [-12, -4, 4, 12].forEach((x) => R(60 + x, 54, 6, 6, '#fff')); }
   }[id]; if (acc) acc();
 }

@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=237';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=237';
+import * as THREE from './three.module.min.js?v=238';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=238';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -680,6 +680,13 @@ export function junkify(b, seed = 1) {
   parts.push(pt.cyl(0.02, 0.012, 0, bb.max.y + 0.006, bb.min.z + L * 0.14, 0xd8d8dc));                                                                                 // a bottle cap for the sight
   m.geometry = mergeParts(parts);
 }
+// SANTA HAT (Christmas season): a blocky red hat with a white fur band and a pom-pom that flops over the back. Sits on top of every soldier's head.
+let _hat = null;
+export function santaHat() {
+  if (_hat) return _hat;
+  const R1 = 0xd62828, R2 = 0xc01f1f, WH = 0xf6f6f2;
+  return (_hat = mergeParts([pt.box(.56, .09, .56, 0, .29, 0, WH), pt.box(.47, .1, .47, 0, .38, .01, R1), pt.box(.39, .1, .39, 0, .47, .045, R2), pt.box(.31, .1, .31, 0, .55, .09, R1), pt.box(.23, .09, .23, 0, .62, .15, R2), pt.box(.17, .08, .17, 0, .66, .23, R1), pt.box(.13, .13, .13, 0, .6, .31, WH)]));
+}
 // COSTUMES: a body colour + silly bits for the head and the back (ears, horns, tails, fins). Built in the soldier's own head / torso space.
 const kitCache = {};
 export function costumeKit(id, side = 0) {
@@ -713,6 +720,19 @@ export function costumeKit(id, side = 0) {
     case 'shark': K.tint = 0x4a8fd0;
       h(.04, .18, .15, 0, .36, .06, 0x3a7fc0); for (const x of [-.12, -.06, 0, .06, .12]) h(.045, .045, .03, x, -.13, -.205, 0xffffff);
       bd(.04, .3, .2, 0, 1.22, .38, 0x3a7fc0); bd(.04, .22, .18, 0, .7, .42, 0x3a7fc0);
+      break;
+    case 'elf': K.tint = 0x2fa34a;
+      for (const s of [-1, 1]) { h(.05, .1, .15, s * .29, .08, .02, 0xf2c6a0); h(.04, .1, .08, s * .31, .17, .02, 0xf2c6a0); h(.035, .07, .05, s * .32, .25, .02, 0xf2c6a0); }   // long pointy ears
+      bd(.52, .07, .4, 0, .66, 0, 0xd62828); bd(.1, .08, .02, 0, .66, -.205, 0xe6b422); bd(.52, .03, .4, 0, .73, 0, 0xf6f6f2);   // red belt, gold buckle, white trim
+      break;
+    case 'reindeer': K.tint = 0xa86a3a;
+      for (const s of [-1, 1]) { h(.04, .2, .04, s * .12, .42, 0, 0x5a3a1e); h(.1, .04, .04, s * .17, .5, 0, 0x5a3a1e); h(.04, .1, .04, s * .22, .55, 0, 0x5a3a1e); h(.07, .1, .05, s * .28, .22, .02, 0x8a5a2a); }   // antlers + ears
+      h(.09, .09, .06, 0, 0, -.26, 0xe53935); bd(.1, .1, .1, 0, .7, .36, 0xf4efe4);   // red nose + fluffy tail
+      break;
+    case 'snowman': K.tint = 0xf6f9fc;
+      h(.06, .06, .18, 0, -.01, -.3, 0xff8a2a);                                            // carrot nose
+      for (let k = 0; k < 3; k++) bd(.07, .07, .02, 0, 1.05 - k * .17, -.205, 0x1a1a1f);   // coal buttons
+      bd(.54, .1, .42, 0, 1.38, 0, 0xd62828); bd(.1, .3, .05, .16, 1.2, -.2, 0xd62828);    // scarf
       break;
     default: return (kitCache[key] = null);
   }
@@ -911,7 +931,28 @@ export function buildGun(id, acc) {
       b(.05, .1, .05, 0, -.085, .1, C.dark, -.3); b(.044, .01, .09, 0, -.065, .02, C.dark);
       b(.04, .1, .24, 0, -.01, .3, C.dark); b(.06, .12, .03, 0, -.02, .43, C.metal); b(.012, .014, .012, 0, .07, -.7, C.light);
       spec = { sy: 0.085, mz: [0, 0.035, -0.74], fore: [0, -0.075, -0.36], ads: [-0.42, 1.15] }; break;
+    case 'jingle': {
+      // TINSEL BLASTER (holiday gun): a candy-striped automatic shotgun with a green rail, a striped barrel and a gold jingle bell under the fore-end
+      const RD = 0xd62828, WT = 0xf6f3ee, GR = 0x1f8a4c, GD = 0xe6b422;
+      b(.082, .12, .36, 0, 0, -.02, RD); for (let i = 0; i < 4; i++) b(.086, .124, .035, 0, 0, -.12 + i * .07, WT);
+      b(.07, .03, .3, 0, .075, -.02, GR);
+      cz(.032, .5, 0, .035, -.45, WT); for (let i = 0; i < 4; i++) cz(.034, .05, 0, .035, -.25 - i * .1, RD);
+      cz(.026, .46, 0, -.03, -.42, GR); b(.08, .07, .18, 0, 0, -.36, RD); b(.084, .074, .03, 0, 0, -.31, WT);
+      cz(.026, .05, 0, -.07, -.36, GD, 10); b(.012, .02, .012, 0, -.1, -.36, GD);
+      b(.06, .17, .1, 0, -.14, -.06, GR, .08); b(.05, .1, .05, 0, -.085, .1, GR, -.3); b(.044, .01, .09, 0, -.065, .02, GR);
+      b(.04, .1, .24, 0, -.01, .3, RD); for (let i = 0; i < 2; i++) b(.044, .104, .03, 0, -.01, .22 + i * .09, WT); b(.06, .12, .03, 0, -.02, .43, GR);
+      b(.012, .014, .012, 0, .07, -.7, GD);
+      spec = { sy: 0.085, mz: [0, 0.035, -0.74], fore: [0, -0.075, -0.36], ads: [-0.42, 1.15] }; break;
+    }
     case 'knife': {
+      if (KNIFE_STYLE === 'candycane') {
+        // CANDY CANE KNIFE: a red + white striped cane. The straight shaft is the blade (it tapers to a point), the curled crook at the back is the handle.
+        const CR = 0xd62828, CW = 0xf6f3ee;
+        for (let k = 0; k < 9; k++) { const w = Math.max(0.01, 0.036 - k * 0.0032); b(w, w * 1.1, 0.043, 0, -0.004, -0.03 - k * 0.04, k % 2 ? CW : CR); }   // blade: stripes shrinking to a sharp tip
+        for (let k = 0; k < 5; k++) b(0.036, 0.04, 0.04, 0, -0.004, 0.018 + k * 0.035, k % 2 ? CR : CW);                                                     // striped grip
+        for (let k = 0; k < 6; k++) { const tg = new THREE.TorusGeometry(0.048, 0.019, 6, 3, Math.PI / 6); tg.rotateZ(Math.PI / 2 + k * Math.PI / 6); parts.push([tg, m4(0, -0.004 - 0.048, 0.16, 1, 1, 1, 0, Math.PI / 2), k % 2 ? CW : CR]); }   // the hooked crook
+        spec = { sy: 0, mz: [0, -0.004, -0.4], fore: null }; break;
+      }
       if (KNIFE_STYLE === 'karambit') {
         // KARAMBIT: finger ring at the back, ringed handle, brass guard, and a blade that sweeps down in a real curved claw
         const kb = new THREE.Shape();
@@ -983,7 +1024,7 @@ export function buildGun(id, acc) {
   const finishMesh = new THREE.Mesh(mergeParts(parts), gunMat); g.add(finishMesh);
   for (const e of extra) g.add(e);
   const mz = new THREE.Object3D(); mz.position.set(...spec.mz); g.add(mz);
-  const k = { raptor: 0.8, sentinel: 0.8, buzz: 0.84, thumper: 0.8, longbow: 0.8, chopper: 0.84, scatter: 0.8, carbine: 0.8, ranger: 0.8, dmr: 0.8, lmg: 0.78, brute: 0.84, ghost: 0.8, breaker: 0.8 }[id] || 1;
+  const k = { raptor: 0.8, sentinel: 0.8, buzz: 0.84, thumper: 0.8, longbow: 0.8, chopper: 0.84, scatter: 0.8, carbine: 0.8, ranger: 0.8, dmr: 0.8, lmg: 0.78, brute: 0.84, ghost: 0.8, breaker: 0.8, jingle: 0.8 }[id] || 1;
   if (k !== 1) { g.scale.setScalar(k); spec.sy *= k; }
   return { ...spec, g, mz, lArm, finishMesh };
 }

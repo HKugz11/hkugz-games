@@ -392,3 +392,16 @@ button,input,select{font-family:var(--body)}
 
 /* wild twists + Capture the Duck are switched off (WEIRD_ON in game.js) */
 .no-weird #optTwist,.no-weird .seg[data-k="mode"] button[data-v="duck"]{display:none!important}
+
+/* ===== Christmas: holiday gift popup ===== */
+#giftPop{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#000b}
+.gift-card{background:#17171a;border:2px solid #fff;border-radius:10px;padding:20px 26px 24px;text-align:center;color:#fff;width:min(560px,92vw);box-shadow:0 0 0 4px #d62828,0 18px 60px #000}
+.gift-tag{letter-spacing:.2em;color:#ff8f8f;font-weight:800;font-size:11px}
+.gift-card h2{margin:4px 0 12px;font-size:28px}
+.gift-card p{margin:10px 0 14px;color:#d6d6da}
+.gift-box{width:130px;height:130px;image-rendering:pixelated;animation:giftbob 1.2s ease-in-out infinite}
+@keyframes giftbob{50%{transform:translateY(-6px) rotate(-2deg)}}
+.gift-items{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.gift-items figure{margin:0;width:150px;display:flex;flex-direction:column;gap:3px}
+.gift-items canvas{width:100%;aspect-ratio:1;image-rendering:pixelated;border:1px solid #ffffff44;border-radius:6px}
+.gift-items small{color:#b8b8bd;font-size:11px}
