@@ -26,6 +26,12 @@
     earn: function (amount) { return call('/api/vault/earn', { amount: amount }); },
     gift: function (to, item) { return call('/api/vault/gift', { to: to, item: item }).then(function (v) { H.state = v; return v; }); },
     dismiss: function (id) { return call('/api/vault/gift/dismiss', { id: id }); },
+    sell: function (items) { return call('/api/vault/sell', { items: items }).then(function (v) { H.state = v; return v; }); },
+    marketBrowse: function (o) { return call('/api/market/browse', o || {}); },
+    marketList: function (item, price) { return call('/api/market/list', { item: item, price: price }).then(function (v) { H.state = v; return v; }); },
+    marketBuy: function (id) { return call('/api/market/buy', { id: id }).then(function (v) { H.state = v; return v; }); },
+    marketCancel: function (id) { return call('/api/market/cancel', { id: id }).then(function (v) { H.state = v; return v; }); },
+    salesDismiss: function (id) { return call('/api/market/sales/dismiss', { id: id }); },
     friends: function () { return call('/api/poll', { at: 'hub' }).then(function (r) { return (r.friends || []).map(function (f) { return f.name; }); }); }
   };
   window.HKVault = H;

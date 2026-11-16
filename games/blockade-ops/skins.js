@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=253';
+import * as THREE from './three.module.min.js?v=255';
 
 // CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
 export const XMAS = (() => {
@@ -218,10 +218,10 @@ export const knives = [
 
 // crate drop odds (percent), the colour of each rarity, and the coins you get back for a duplicate
 export const rarities = {
-  common: { name: 'Common', pct: 55, color: 0xb8c2cc, refund: 25 },
-  rare: { name: 'Rare', pct: 30, color: 0x4aa3ff, refund: 50 },
-  epic: { name: 'Epic', pct: 12, color: 0xb45cff, refund: 100 },
-  legendary: { name: 'Legendary', pct: 3, color: 0xffc247, refund: 200 }
+  common: { name: 'Common', pct: 55, color: 0xb8c2cc, refund: 25, sell: 20 },
+  rare: { name: 'Rare', pct: 30, color: 0x4aa3ff, refund: 50, sell: 45 },
+  epic: { name: 'Epic', pct: 12, color: 0xb45cff, refund: 100, sell: 110 },
+  legendary: { name: 'Legendary', pct: 3, color: 0xffc247, refund: 200, sell: 300 }
 };
 
 // ---------------------------------------------------------------- inventory card: a square of the skin itself, edge to edge, like wrapping paper

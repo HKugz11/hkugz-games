@@ -22,6 +22,7 @@ const CORE_DEFAULTS = {
   log: false,
   blockedNames: ['admin', 'moderator', 'hkugz', 'staff', 'support', 'official', 'system', 'root', 'owner'],
   maxEarn: 1200, dailyEarnCap: 12000, earnMinMatchMs: 90e3,   // coins from matches: the most one match can give, the most in one day, and how long a match must last (the server can not see the match, so these limits are all there is)
+  marketDays: 14,            // a listing nobody buys comes back to its owner after this many days
   migrateCoins: 6000, migrateItems: 150,                       // the most an old browser inventory can bring along, once
   xmas: undefined,           // true / false to force the holiday cases on / off (tests); otherwise Nov 15 - Jan 2
   ownerNames: []             // exact names (any capitals) that may be taken even though they contain a blocked word, e.g. ["hkugz"] for whoever runs the site. Only the first person to sign up with it gets it
@@ -47,17 +48,17 @@ function createCore(userCfg, raw) {
   const users = new Map();        // lowercase name -> user (a Map, so a name like "__proto__" can't poison anything)
   const byCode = new Map();       // friend code -> user
   const bySession = new Map();    // sha256(session token) -> user
-  let requests = [], reports = [], meta = {};
+  let requests = [], reports = [], meta = {}, market = [];
   const seen = new Map(), invites = new Map(), declined = new Map(), fails = new Map();   // not saved: who is online, open invites, ...
 
   function indexUser(u) { users.set(u.key, u); byCode.set(u.code, u); for (const s of u.sessions) bySession.set(s.h, u); }
   if (raw) {
     for (const r of raw.users || []) indexUser(Object.assign({}, r, { friends: new Set(r.friends), blocked: new Set(r.blocked), sessions: r.sessions || [] }));
-    requests = raw.requests || []; reports = raw.reports || []; meta = raw.meta || {};
+    requests = raw.requests || []; reports = raw.reports || []; meta = raw.meta || {}; market = raw.market || [];
   }
   let dirty = false;
   function save() { dirty = true; if (core.onDirty) core.onDirty(); }
-  function snapshot() { return { v: 1, users: [...users.values()].map(u => Object.assign({}, u, { friends: [...u.friends], blocked: [...u.blocked] })), requests, reports, meta }; }
+  function snapshot() { return { v: 1, users: [...users.values()].map(u => Object.assign({}, u, { friends: [...u.friends], blocked: [...u.blocked] })), requests, reports, meta, market }; }
 
   // ------------------------------------------------------------------ limits
   const buckets = new Map();
@@ -76,6 +77,7 @@ function createCore(userCfg, raw) {
     for (const [k, f] of fails) if (f.until <= t && t - f.last > 3600e3) fails.delete(k);
     for (const [k, s] of seen) if (t - s.t > 3600e3) seen.delete(k);
     for (const [k, l] of invites) { const keep = l.filter(i => t - i.t < INVITE_MS); if (keep.length) invites.set(k, keep); else invites.delete(k); }
+    { const gone = market.filter(l => t - l.t > cfg.marketDays * 864e5); if (gone.length) { for (const l of gone) { const o = users.get(l.seller); if (o) give(V(o), l.item); } market = market.filter(l => !gone.includes(l)); save(); } }   // old listings go back to their owner
     for (const u of users.values()) { const n = u.sessions.length; u.sessions = u.sessions.filter(s => s.exp > t); if (u.sessions.length !== n) save(); }
   }
 
@@ -126,7 +128,7 @@ function createCore(userCfg, raw) {
   function removeUser(u) {
     dropSessions(u); users.delete(u.key); byCode.delete(u.code); seen.delete(u.key); invites.delete(u.key);
     for (const o of users.values()) { o.friends.delete(u.key); o.blocked.delete(u.key); }
-    requests = requests.filter(r => r.from !== u.key && r.to !== u.key);
+    requests = requests.filter(r => r.from !== u.key && r.to !== u.key); market = market.filter(l => l.seller !== u.key);
     for (const [k, l] of invites) invites.set(k, l.filter(i => i.fromKey !== u.key));
   }
   const validAt = v => (typeof v === 'string' && (v === 'hub' || GAMES[v]) ? v : '');
@@ -318,7 +320,7 @@ function createCore(userCfg, raw) {
     if (p.kind === 'skin') { const pool = (c.slot ? CAT.guns.filter(g => g.slot === c.slot && !g.holiday) : CAT.guns.filter(g => !g.holiday)).map(g => g.id); if (!c.slot) pool.push('knife'); p.wid = pool[rint(pool.length)]; p.id = p.f + '@' + p.wid; }
     return p;
   }
-  const vaultOf = u => { const v = V(u), day = Math.floor(now() / 864e5), earned = v.earnDay === day ? v.earned : 0; return { coins: v.coins, items: Object.assign({}, v.items), earnLeft: Math.max(0, cfg.dailyEarnCap - earned), migrated: !!v.migrated, xmas: xmasOn(), gifts: v.gifts.map(g => ({ id: g.id, from: g.from, item: g.item, t: g.t })) }; };
+  const vaultOf = u => { const v = V(u), day = Math.floor(now() / 864e5), earned = v.earnDay === day ? v.earned : 0; return { coins: v.coins, items: Object.assign({}, v.items), earnLeft: Math.max(0, cfg.dailyEarnCap - earned), migrated: !!v.migrated, xmas: xmasOn(), market: { fee: MKT.fee, maxMult: MKT.maxMult }, sales: (v.sales || []).map(x => ({ id: x.id, item: x.item, net: x.net, t: x.t })), gifts: v.gifts.map(g => ({ id: g.id, from: g.from, item: g.item, t: g.t })) }; };
 
   mine('POST /api/vault', ({ user }) => { limit('vault:' + user.key, 60, 60e3, 'Slow down'); return vaultOf(user); });
 
@@ -374,6 +376,68 @@ function createCore(userCfg, raw) {
     save(); return Object.assign(vaultOf(user), { ok: true });
   });
   mine('POST /api/vault/gift/dismiss', ({ user, body }) => { const v = V(user); if (typeof body.id === 'string') { v.gifts = v.gifts.filter(g => g.id !== body.id); save(); } return { ok: true }; });
+
+
+  // ------------------------------------------------------------------ QUICK SELL and the MARKET
+  // Quick sell: the game buys an item straight away for a fixed price (the rarer, the more). Market: players list an item for a price they choose, within a band; the item waits
+  // safely on the server (escrow) until someone buys it (the seller gets the price minus a 5% fee), or the owner takes it back. Listings never show who is selling.
+  const MKT = { fee: 0.05, maxMult: 20, perUser: 12, global: 2000, page: 60 };
+  const sellOf = r => (RAR[r] && RAR[r].sell) || 0;
+  function rarityOfItem(id) { const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1); return kind === 'skin' ? FIN.get(rest.split('@')[0]).rarity : kind === 'knife' ? KNV.get(rest).rarity : COS.get(rest).rarity; }
+  const bandOf = id => { const s = sellOf(rarityOfItem(id)); return [s, s * MKT.maxMult]; };
+  const live = l => { const o = users.get(l.seller); return !!o && !o.banned; };
+  const listingOut = (l, u) => ({ id: l.id, item: l.item, price: l.price, t: l.t, mine: l.seller === u.key });
+  const newId = () => crypto.randomBytes(6).toString('hex');
+
+  mine('POST /api/vault/sell', ({ user, body }) => {
+    limit('vsell:' + user.key, 60, 600e3, 'Slow down');
+    const ids = Array.isArray(body.items) ? body.items : typeof body.item === 'string' ? [body.item] : [];
+    if (!ids.length || ids.length > 60) throw bad('Pick 1 to 60 items to sell.');
+    const v = V(user), need = {}; let total = 0;
+    for (const id of ids) { if (!itemOk(id)) throw bad('One of those can not be sold.'); need[id] = (need[id] | 0) + 1; if ((v.items[id] | 0) < need[id]) throw bad('You do not have that item.'); total += sellOf(rarityOfItem(id)); }
+    for (const id of ids) takeOne(v, id);
+    v.coins += total; save(); return Object.assign(vaultOf(user), { sold: ids.length, got: total });
+  });
+
+  mine('POST /api/market/browse', ({ user, body }) => {
+    limit('mbrowse:' + user.key, 60, 60e3, 'Slow down');
+    const kind = typeof body.kind === 'string' ? body.kind : '', sort = body.sort === 'high' ? 'high' : body.sort === 'new' ? 'new' : 'low';
+    let list = market.filter(live);
+    if (['skin', 'knife', 'costume'].includes(kind)) list = list.filter(l => l.item.startsWith(kind + ':'));
+    if (typeof body.rarity === 'string' && RAR[body.rarity]) list = list.filter(l => rarityOfItem(l.item) === body.rarity);
+    list = list.slice().sort((a, b) => sort === 'high' ? b.price - a.price : sort === 'new' ? b.t - a.t : a.price - b.price);
+    return { listings: list.slice(0, MKT.page).map(l => listingOut(l, user)), total: list.length, mine: market.filter(l => l.seller === user.key).map(l => listingOut(l, user)), fee: MKT.fee, maxMult: MKT.maxMult };
+  });
+
+  mine('POST /api/market/list', ({ user, body }) => {
+    limit('mlist:' + user.key, 20, 3600e3, 'You listed a lot of items');
+    const id = body.item, price = body.price;
+    if (!itemOk(id)) throw bad('That can not be sold on the market.');
+    if (!Number.isInteger(price)) throw bad('Type a whole number of coins.');
+    const [lo, hi] = bandOf(id); if (price < lo || price > hi) throw bad('For this item the price has to be between ' + lo + ' and ' + hi + ' coins.');
+    const v = V(user); if (!has(v, id)) throw bad('You do not have that item.');
+    if (market.filter(l => l.seller === user.key).length >= MKT.perUser) throw bad('You already have ' + MKT.perUser + ' items for sale. Take one back or wait for a sale.');
+    if (market.length >= MKT.global) throw bad('The market is full right now. Try again later.');
+    takeOne(v, id); market.push({ id: newId(), seller: user.key, item: id, price, t: now() }); save();
+    return Object.assign(vaultOf(user), { ok: true });
+  });
+
+  mine('POST /api/market/buy', ({ user, body }) => {
+    limit('mbuy:' + user.key, 30, 600e3, 'Slow down');
+    const i = market.findIndex(l => l.id === body.id), l = market[i];
+    if (!l || !live(l)) throw new ApiError(404, 'That listing is gone. Someone may have just bought it.');
+    if (l.seller === user.key) throw bad('That is your own listing.');
+    const v = V(user); if (v.coins < l.price) throw bad('Not enough coins.'); if (nItems(v) >= ITEM_CAP) throw bad('Your inventory is full.');
+    const seller = users.get(l.seller), sv = V(seller), net = Math.max(1, l.price - Math.floor(l.price * MKT.fee));
+    v.coins -= l.price; give(v, l.item); sv.coins += net; (sv.sales || (sv.sales = [])).push({ id: newId(), item: l.item, net, t: now() }); while (sv.sales.length > 20) sv.sales.shift();
+    market.splice(i, 1); save(); return Object.assign(vaultOf(user), { ok: true, bought: l.item });
+  });
+
+  mine('POST /api/market/cancel', ({ user, body }) => {
+    const i = market.findIndex(l => l.id === body.id && l.seller === user.key); if (i < 0) throw bad('That listing is not there any more.');
+    give(V(user), market[i].item); market.splice(i, 1); save(); return Object.assign(vaultOf(user), { ok: true });
+  });
+  mine('POST /api/market/sales/dismiss', ({ user, body }) => { const v = V(user); if (typeof body.id === 'string' && v.sales) { v.sales = v.sales.filter(x => x.id !== body.id); save(); } return { ok: true }; });
 
   // ------------------------------------------------------------------ admin (only with the secret from the settings, used by admin.js)
   const adminRoutes = {

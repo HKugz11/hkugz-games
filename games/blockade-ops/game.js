@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=253';
+import { displayWeapon, createHomeStage } from './showcase.js?v=255';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=253';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=253';
-import { platform } from './platform.js?v=253';
-import * as THREE from './three.module.min.js?v=253';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=253';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=253';
-import { createOnline } from './online.js?v=253';
-import { TOUCH, initTouch } from './touch.js?v=253';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=253';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=255';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=255';
+import { platform } from './platform.js?v=255';
+import * as THREE from './three.module.min.js?v=255';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=255';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=255';
+import { createOnline } from './online.js?v=255';
+import { TOUCH, initTouch } from './touch.js?v=255';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=255';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -3860,12 +3860,13 @@ const weaponName = (id) => (id === 'knife' ? (knives.find((k) => k.id === skinSt
 const rebuildGun = (id) => { delete vmModels[id]; delete GM[id]; if (vmId === id) vmId = ''; };   // the in-hand model is rebuilt with the new skin / stickers
 const locker = document.createElement('dialog'); locker.id = 'skinLocker';
 locker.innerHTML = `<header><h2>INVENTORY</h2><span class="coinbadge">${COIN}<b class="coin-n">0</b></span><button class="btn" id="closeSkins">Close</button></header>
-<nav class="inv-tabs"><button class="on" data-t="inv">MY GUNS</button><button data-t="all">ALL ITEMS</button><button data-t="crate">CASES &amp; PACKS</button><button data-t="cost">COSTUMES</button></nav>
+<nav class="inv-tabs"><button class="on" data-t="inv">MY GUNS</button><button data-t="all">ALL ITEMS</button><button data-t="market">MARKET</button><button data-t="crate">CASES &amp; PACKS</button><button data-t="cost">COSTUMES</button></nav>
 <section class="inv-pane inv3" data-p="inv"><div class="wlist"></div>
 <div class="inv-left"><h3>Skins for this weapon</h3><div class="finish-list"></div><small class="fine none-note"></small><div class="knife-box"><h3>Knife style</h3><div class="knife-list"></div></div>
 <div class="stk-box"><h3>Stickers on this gun <small>(pick one from your bag, then click the gun picture where you want it. Click a sticker below to peel it off.)</small></h3><div class="slots"></div><div class="stk-list"></div></div></div>
 <aside class="inv-side"><canvas id="invStage"></canvas><b id="invName"></b><small id="invRule"></small><button class="btn go" id="invEquip">EQUIP</button><small class="fine">A skin you roll fits ONE gun. Skins and stickers only change looks, never power.</small></aside></section>
-<section class="inv-pane inv-all hidden" data-p="all"><div class="inv-left"><div class="all-bar"><div class="all-filters"></div><label class="all-sortl">Sort <select class="all-sort"><option value="rar">Best first</option><option value="gun">By gun</option><option value="name">A to Z</option></select></label></div><div class="all-grid"></div><small class="fine all-count"></small></div><aside class="inv-side all-side"><div class="all-pick"><canvas class="all-big" width="128" height="128"></canvas><b class="all-name">Pick an item</b><small class="all-sub"></small></div><div class="all-actions"></div></aside></section>
+<section class="inv-pane inv-all hidden" data-p="all"><div class="inv-left"><div class="all-bar"><div class="all-filters"></div><label class="all-sortl">Sort <select class="all-sort"><option value="rar">Best first</option><option value="gun">By gun</option><option value="name">A to Z</option></select></label></div><div class="all-grid"></div><div class="all-bulk"></div><small class="fine all-count"></small></div><aside class="inv-side all-side"><div class="all-pick"><canvas class="all-stage"></canvas><canvas class="all-big" width="128" height="128"></canvas><b class="all-name">Pick an item</b><small class="all-sub"></small></div><div class="all-actions"></div></aside></section>
+<section class="inv-pane inv-all inv-market hidden" data-p="market"><div class="inv-left"><div class="all-bar"><div class="mk-filters all-filters"></div><div class="mk-sel"><select class="mk-rar"><option value="">Any rarity</option><option value="common">Common</option><option value="rare">Rare</option><option value="epic">Epic</option><option value="legendary">Legendary</option></select> <select class="mk-sort"><option value="low">Cheapest</option><option value="high">Most expensive</option><option value="new">Newest</option></select></div></div><div class="mk-grid all-grid"></div><small class="fine mk-count"></small><h3 class="mk-mine-h">Your listings</h3><div class="mk-mine all-grid"></div></div><aside class="inv-side all-side"><div class="all-pick"><canvas class="mk-big all-big" width="128" height="128"></canvas><b class="mk-name">Pick a listing</b><small class="mk-sub"></small></div><div class="mk-actions all-actions"></div></aside></section>
 <section class="inv-pane crate-pane hidden" data-p="crate"><div class="crate-stagewrap"><canvas id="crateStage"></canvas><div id="crateResult" class="hidden"></div><div id="crateFlash"></div></div>
 <div class="crate-info"><div class="case-list"></div><small class="case-sub"></small><button class="btn go" id="openCrate"></button><div class="odds"></div>
 <small class="fine">You earn ${COIN} by finishing matches. Never real money. A skin you already own gives ${COIN} back. The white Whiteout skins are rarer than the others in their tier.</small></div></section>
@@ -3877,7 +3878,7 @@ const lq = (s) => locker.querySelector(s);
 const finishList = lq('.finish-list'), knifeList = lq('.knife-list'), skinStatus = lq('[role=status]'), wlist = lq('.wlist'), slotsEl = lq('.slots'), stkList = lq('.stk-list'), noneNote = lq('.none-note');
 const invEquip = lq('#invEquip'), crateBtn = lq('#openCrate'), resultEl = lq('#crateResult'), flashEl = lq('#crateFlash'), caseList = lq('.case-list'), caseSub = lq('.case-sub'), oddsEl = lq('.odds');
 let armed = null, pendingReward = false, opening = false, selW = 'raptor', selF = 'factory', selCase = cases[0].id;
-const previewStage = createPreviewStage(lq('#invStage')), crateStage = createCrateStage(lq('#crateStage')), costStage = createHomeStage(lq('#costStage'));
+const allStage = createPreviewStage(lq('.all-stage')), previewStage = createPreviewStage(lq('#invStage')), crateStage = createCrateStage(lq('#crateStage')), costStage = createHomeStage(lq('#costStage'));
 let selC = skinState.costume || '';
 function drawCostumes() {
   const list = [{ id: '', name: 'Standard Soldier', rarity: null }, ...costumes.filter((c) => !c.holiday || XMAS || skinState.costumes.includes(c.id))], own = (c) => !c.id || skinState.costumes.includes(c.id), worn = skinState.costume || '';
@@ -4015,6 +4016,11 @@ function drawCases() {
 }
 // ================= ALL ITEMS: everything you own in one grid, like the CS2 inventory: filter, sort, pick one to equip it or give it to a friend =================
 const RKO = { legendary: 4, epic: 3, rare: 2, common: 1 };
+const thumbDraw = (cx, item, accent, key, fb) => {   // the card shows the REAL gun (or knife) with the skin on it
+  cx.clearRect(0, 0, 128, 128); const bg = cx.createLinearGradient(0, 0, 0, 128); bg.addColorStop(0, '#32363d'); bg.addColorStop(1, '#1b1e23'); cx.fillStyle = bg; cx.fillRect(0, 0, 128, 128);
+  let t = null; try { t = weaponThumb(item, accent, key); } catch (e) {} if (t) cx.drawImage(t, 0, 0); else fb(cx);
+};
+const itemObj = (wid, f) => (wid === 'knife' ? { knife: skinState.knife || 'combat', finish: f } : { gun: wid, finish: f, stickers: skinState.applied[wid] });
 let allFilter = 'all', allSort = 'rar', allSel = '';
 const gunLabel = (w) => (w === 'knife' ? 'Knife' : WD[w] ? WD[w].name : w);
 const itemName = (id) => {   // 'skin:desert@raptor' -> 'Raptor AR | Desert Camo'
@@ -4028,10 +4034,10 @@ function allItems() {
   const out = [];
   for (const k of skinState.skins) {
     const [fid, wid] = k.split('@'), f = finishOf(fid); if (!f || !(WD[wid] || wid === 'knife')) continue;
-    out.push({ key: 'skin:' + k, kind: 'skin', name: gunLabel(wid) + ' | ' + f.name, gun: gunLabel(wid), sub: rarities[f.rarity] ? rarities[f.rarity].name : '', rar: f.rarity, draw: (cx) => drawSkinIcon(cx, f), gift: 'skin:' + k, on: skinState.equip[wid] === fid, equipTxt: 'EQUIP ON ' + gunLabel(wid).toUpperCase(), equip: () => { skinState.equip[wid] = fid; saveFinish(); rebuildGun(wid); stageSync(); } });
+    out.push({ key: 'skin:' + k, kind: 'skin', name: gunLabel(wid) + ' | ' + f.name, gun: gunLabel(wid), sub: rarities[f.rarity] ? rarities[f.rarity].name : '', rar: f.rarity, draw: (cx) => thumbDraw(cx, wid === 'knife' ? { knife: 'combat', finish: f } : { gun: wid, finish: f }, mutedAccent(wid === 'knife' ? 'p9' : wid), 'skin:' + k, (c) => drawSkinIcon(c, f)), item3d: () => itemObj(wid, f), acc: () => mutedAccent(wid === 'knife' ? 'p9' : wid), gift: 'skin:' + k, on: skinState.equip[wid] === fid, equipTxt: 'EQUIP ON ' + gunLabel(wid).toUpperCase(), equip: () => { skinState.equip[wid] = fid; saveFinish(); rebuildGun(wid); stageSync(); } });
   }
-  for (const f of finishes) if (f.rp !== undefined && ownsSkin(f, 'raptor')) out.push({ key: 'rank:' + f.id, kind: 'skin', name: f.name, gun: 'Every gun', sub: 'Rank reward', rar: 'epic', draw: (cx) => drawSkinIcon(cx, f), gift: null, note: 'A rank reward fits every gun. Equip it in MY GUNS.' });
-  for (const k of knives) if (k.id !== 'combat' && knifeOwned(k)) out.push({ key: 'knife:' + k.id, kind: 'knife', name: k.name, gun: 'Knife', sub: k.rarity ? rarities[k.rarity].name : 'Holiday gift', rar: k.rarity || 'legendary', draw: (cx) => paintKnifeIcon(cx, k.id), gift: k.gift ? null : 'knife:' + k.id, on: skinState.knife === k.id, equipTxt: 'USE THIS KNIFE', equip: () => { skinState.knife = k.id; saveFinish(); setKnifeStyle(k.id); syncKnifeName(); rebuildGun('knife'); stageSync(); } });
+  for (const f of finishes) if (f.rp !== undefined && ownsSkin(f, 'raptor')) out.push({ key: 'rank:' + f.id, kind: 'skin', name: f.name, gun: 'Every gun', sub: 'Rank reward', rar: 'epic', draw: (cx) => thumbDraw(cx, { gun: 'raptor', finish: f }, mutedAccent('raptor'), 'rank:' + f.id, (c) => drawSkinIcon(c, f)), item3d: () => ({ gun: 'raptor', finish: f }), acc: () => mutedAccent('raptor'), gift: null, note: 'A rank reward fits every gun. Equip it in MY GUNS.' });
+  for (const k of knives) if (k.id !== 'combat' && knifeOwned(k)) out.push({ key: 'knife:' + k.id, kind: 'knife', name: k.name, gun: 'Knife', sub: k.rarity ? rarities[k.rarity].name : 'Holiday gift', rar: k.rarity || 'legendary', draw: (cx) => thumbDraw(cx, { knife: k.id }, mutedAccent('p9'), 'knife:' + k.id, (c) => paintKnifeIcon(c, k.id)), item3d: () => ({ knife: k.id }), acc: () => mutedAccent('p9'), gift: k.gift ? null : 'knife:' + k.id, on: skinState.knife === k.id, equipTxt: 'USE THIS KNIFE', equip: () => { skinState.knife = k.id; saveFinish(); setKnifeStyle(k.id); syncKnifeName(); rebuildGun('knife'); stageSync(); } });
   for (const c of costumes) if (skinState.costumes.includes(c.id)) out.push({ key: 'costume:' + c.id, kind: 'costume', name: c.name, gun: 'Costume', sub: rarities[c.rarity].name + ' costume', rar: c.rarity, draw: (cx) => drawCostumeIcon(cx, c.id), gift: 'costume:' + c.id, on: skinState.costume === c.id, equipTxt: 'WEAR IT', equip: () => { skinState.costume = c.id; saveFinish(); stageSync(); } });
   for (const s of stickers) { const n = skinState.stickers[s.id] | 0; if (n) out.push({ key: 'sticker:' + s.id, kind: 'sticker', name: s.name + ' sticker', gun: 'Sticker', sub: 'x' + n + ' in your bag', rar: s.rarity, draw: (cx) => drawSticker(cx, s.id, 128), gift: null, note: 'Stick it on a gun in MY GUNS.' }); }
   return out;
@@ -4049,13 +4055,36 @@ function drawAll() {
     const nm = document.createElement('b'), tg = document.createElement('small'); nm.textContent = it.name; tg.textContent = it.on ? 'In use' : it.sub;
     b.append(mkCanvas(it.draw), nm, tg); b.onclick = () => { allSel = it.key; drawAll(); }; return b;
   }) : [Object.assign(document.createElement('small'), { className: 'fine', textContent: 'Nothing here yet. Open cases in CASES & PACKS!' })]));
+  const bulk = lq('.all-bulk'); bulk.replaceChildren();
+  for (const [maxR, label] of [[1, 'SELL ALL COMMON'], [2, 'SELL COMMON + RARE']]) {
+    const sl = items.filter((x) => x.gift && !x.on && (RKO[x.rar] | 0) <= maxR); if (!sl.length) continue;
+    const tot = sl.reduce((a, x) => a + (rarities[x.rar].sell | 0), 0), b = document.createElement('button'); b.className = 'btn sellbtn'; b.innerHTML = label + ' (' + sl.length + ') +' + tot + ' ' + COIN;
+    b.onclick = async () => { if (!confirm('Quick sell ' + sl.length + ' items (everything that is not in use) for ' + tot + ' coins?')) return; b.disabled = true; try { let got = 0; const ids = sl.map((x) => x.gift); for (let i = 0; i < ids.length; i += 60) got += await doSell(ids.slice(i, i + 60)); skinStatus.textContent = 'Sold ' + sl.length + ' items for ' + got + ' coins.'; drawAll(); drawCollection(); } catch (e) { b.disabled = false; skinStatus.textContent = e.message; } };
+    bulk.append(b);
+  }
   lq('.all-count').textContent = items.length + ' items' + (vaultOn ? ' · saved on your account' : ' · saved in this browser');
   const it = list.find((x) => x.key === allSel), big = lq('.all-big'), side = lq('.all-actions'); side.replaceChildren();
-  if (!it) { lq('.all-name').textContent = 'Pick an item'; lq('.all-sub').textContent = ''; big.getContext('2d').clearRect(0, 0, 128, 128); return; }
+  if (!it) { lq('.all-name').textContent = 'Pick an item'; lq('.all-sub').textContent = ''; big.getContext('2d').clearRect(0, 0, 128, 128); lq('.all-stage').style.display = 'none'; big.style.display = ''; return; }
   const rar = rarities[it.rar]; lq('.all-name').textContent = it.name; lq('.all-name').style.color = rar ? hexOf(rar.color) : ''; lq('.all-sub').textContent = it.sub + (it.kind === 'skin' && it.gun !== 'Every gun' ? ' · fits only the ' + it.gun : '');
-  it.draw(big.getContext('2d'));
+  const stageCv = lq('.all-stage'), is3d = !!allStage && !!it.item3d;
+  stageCv.style.display = is3d ? '' : 'none'; big.style.display = is3d ? 'none' : '';
+  if (is3d) { allStage.setItem(it.item3d(), it.acc(), rar ? rar.color : 0xff8a2a); allStage.start(); } else it.draw(big.getContext('2d'));
   if (it.equip) { const eq = document.createElement('button'); eq.className = 'btn go'; eq.textContent = it.on ? 'IN USE' : it.equipTxt; eq.disabled = !!it.on; eq.onclick = () => { it.equip(); drawAll(); skinStatus.textContent = it.name + ' is on.'; }; side.append(eq); }
   if (it.note) side.append(Object.assign(document.createElement('small'), { className: 'fine', textContent: it.note }));
+  // quick sell: the game buys it straight away (the rarer, the more); and (with an account) sell to other players on the market
+  if (it.gift) {
+    const val = rarities[it.rar].sell | 0, q = document.createElement('button'); q.className = 'btn sellbtn'; q.innerHTML = 'QUICK SELL +' + val + ' ' + COIN;
+    q.onclick = async () => { if (it.on && !confirm(it.name + ' is in use right now. Sell it anyway?')) return; if (!confirm('Quick sell ' + it.name + ' for ' + val + ' coins?')) return; q.disabled = true; try { const got = await doSell([it.gift]); skinStatus.textContent = 'Sold ' + it.name + ' for ' + got + ' coins.'; drawAll(); drawCollection(); } catch (e) { q.disabled = false; skinStatus.textContent = e.message; } };
+    side.append(q);
+    if (vaultOn) {
+      const mx = ((window.HKVault.state && window.HKVault.state.market) || {}).maxMult || 20, fee = ((window.HKVault.state && window.HKVault.state.market) || {}).fee || 0.05, lo = val, hi = val * mx, box = document.createElement('div'); box.className = 'gift-box2';
+      const inp = document.createElement('input'); inp.type = 'number'; inp.min = lo; inp.max = hi; inp.step = 1; inp.value = Math.min(hi, lo * 3); inp.className = 'sell-in';
+      const info = document.createElement('small'); info.className = 'fine'; const upd = () => { const p = inp.valueAsNumber | 0; info.textContent = 'Price ' + lo + ' to ' + hi + '. You get ' + Math.max(0, p - Math.floor(p * fee)) + ' coins after the ' + Math.round(fee * 100) + '% fee.'; }; inp.oninput = upd; upd();
+      const go = document.createElement('button'); go.className = 'btn'; go.textContent = 'SELL ON THE MARKET';
+      go.onclick = async () => { const price = inp.valueAsNumber | 0; if (price < lo || price > hi) { skinStatus.textContent = 'The price has to be between ' + lo + ' and ' + hi + '.'; return; } go.disabled = true; try { vaultApply(await window.HKVault.marketList(it.gift, price)); skinStatus.textContent = it.name + ' is on the market for ' + price + ' coins. Find it in MARKET > Your listings.'; drawAll(); drawCollection(); } catch (e) { go.disabled = false; skinStatus.textContent = e.message; } };
+      box.append(Object.assign(document.createElement('small'), { className: 'fine', textContent: 'Sell to other players:' }), inp, info, go); side.append(box);
+    }
+  }
   // giving it to a friend (needs your account: the server keeps the items, so a gift really moves from your inventory to theirs)
   if (it.gift) {
     const box = document.createElement('div'); box.className = 'gift-box2';
@@ -4072,6 +4101,68 @@ function drawAll() {
     side.append(box);
   }
 }
+function itemMeta(id) {
+  const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1);
+  if (kind === 'skin') { const [fid, wid] = rest.split('@'), f = finishOf(fid); return { name: gunLabel(wid) + ' | ' + f.name, rar: f.rarity, draw: (cx) => thumbDraw(cx, wid === 'knife' ? { knife: 'combat', finish: f } : { gun: wid, finish: f }, mutedAccent(wid === 'knife' ? 'p9' : wid), 'skin:' + rest, (c) => drawSkinIcon(c, f)), sub: rarities[f.rarity].name + ' · fits only the ' + gunLabel(wid) }; }
+  if (kind === 'knife') { const k = knives.find((x) => x.id === rest); return { name: k.name, rar: k.rarity, draw: (cx) => thumbDraw(cx, { knife: k.id }, mutedAccent('p9'), 'knife:' + k.id, (c) => paintKnifeIcon(c, k.id)), sub: rarities[k.rarity].name + ' knife' }; }
+  const c = costumes.find((x) => x.id === rest); return { name: c.name, rar: c.rarity, draw: (cx) => drawCostumeIcon(cx, c.id), sub: rarities[c.rarity].name + ' costume' };
+}
+async function doSell(ids) {   // quick sell: on your account the server pays; without one it happens in this browser
+  if (vaultOn) { const r = await window.HKVault.sell(ids); vaultApply(r); return r.got; }
+  let total = 0;
+  for (const id of ids) {
+    const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1); total += rarities[itemMeta(id).rar].sell | 0;
+    if (kind === 'skin') { skinState.skins = skinState.skins.filter((k) => k !== rest); const [fid, wid] = rest.split('@'); if (skinState.equip[wid] === fid) { delete skinState.equip[wid]; try { rebuildGun(wid); } catch (e) {} } }
+    else if (kind === 'knife') { skinState.rewarded = skinState.rewarded.filter((x) => x !== id); if (skinState.knife === rest) { skinState.knife = 'combat'; setKnifeStyle('combat'); syncKnifeName(); try { rebuildGun('knife'); } catch (e) {} } }
+    else if (kind === 'costume') { skinState.costumes = skinState.costumes.filter((x) => x !== rest); if (skinState.costume === rest) skinState.costume = ''; }
+  }
+  addCoins(total); try { stageSync(); } catch (e) {} return total;
+}
+// ================= MARKET: buy from and sell to other players with coins (needs your account; the server holds the items safely until they sell) =================
+let mk = null, mkSel = '', mkKind = 'all', mkSort = 'low', mkRar = '';
+function showMarket() { if (vaultOn) mkLoad(); else drawMarket(); }
+async function mkLoad() {
+  try { mk = await window.HKVault.marketBrowse({ kind: mkKind === 'all' ? '' : mkKind, sort: mkSort, rarity: mkRar }); } catch (e) { mk = { error: e.message, listings: [], mine: [], total: 0 }; }
+  drawMarket();
+}
+function drawMarket() {
+  const grid = lq('.mk-grid'), mine = lq('.mk-mine'), side = lq('.mk-actions'), big = lq('.mk-big'), bar = lq('.mk-filters');
+  const hint = (t) => Object.assign(document.createElement('small'), { className: 'fine', textContent: t });
+  if (!vaultOn) { bar.replaceChildren(); grid.replaceChildren(hint('The market is for players with an account. Log in to the friends panel on the games site, then press MOVE MY INVENTORY. After that you can buy and sell here.')); mine.replaceChildren(); side.replaceChildren(); lq('.mk-count').textContent = ''; lq('.mk-name').textContent = 'Market'; lq('.mk-sub').textContent = ''; return; }
+  bar.replaceChildren(...[['all', 'All'], ['skin', 'Skins'], ['knife', 'Knives'], ['costume', 'Costumes']].map(([id, nm]) => { const b = document.createElement('button'); b.className = 'chip' + (mkKind === id ? ' on' : ''); b.textContent = nm; b.onclick = () => { mkKind = id; mkLoad(); }; return b; }));
+  const rs = lq('.mk-rar'), ss = lq('.mk-sort'); rs.value = mkRar; ss.value = mkSort; rs.onchange = () => { mkRar = rs.value; mkLoad(); }; ss.onchange = () => { mkSort = ss.value; mkLoad(); };
+  if (!mk) { grid.replaceChildren(hint('Loading...')); return; }
+  if (mk.error) { grid.replaceChildren(hint(mk.error)); return; }
+  const card = (l) => { const m = itemMeta(l.item), rar = rarities[m.rar], b = document.createElement('button'); b.className = 'inv-card' + (l.id === mkSel ? ' sel' : ''); if (rar) b.style.setProperty('--rc', hexOf(rar.color)); const nm = document.createElement('b'), tg = document.createElement('small'); nm.textContent = m.name; tg.innerHTML = (l.mine ? 'Yours · ' : '') + l.price + ' ' + COIN; b.append(mkCanvas(m.draw), nm, tg); b.onclick = () => { mkSel = l.id; drawMarket(); }; return b; };
+  const others = mk.listings.filter((l) => !l.mine);
+  grid.replaceChildren(...(others.length ? others.map(card) : [hint('Nothing for sale here right now. Be the first: pick an item in ALL ITEMS and press SELL ON THE MARKET!')]));
+  mine.replaceChildren(...(mk.mine.length ? mk.mine.map(card) : [hint('You are not selling anything.')]));
+  lq('.mk-count').textContent = mk.total + ' for sale · listing is free, the seller pays a ' + Math.round((mk.fee || 0.05) * 100) + '% fee when it sells · you have ' + (skinState.coins | 0) + ' coins';
+  const l = mk.listings.concat(mk.mine).find((x) => x.id === mkSel); side.replaceChildren();
+  if (!l) { lq('.mk-name').textContent = 'Pick a listing'; lq('.mk-sub').textContent = ''; big.getContext('2d').clearRect(0, 0, 128, 128); return; }
+  const m = itemMeta(l.item), rar = rarities[m.rar]; lq('.mk-name').textContent = m.name; lq('.mk-name').style.color = rar ? hexOf(rar.color) : ''; lq('.mk-sub').textContent = m.sub; m.draw(big.getContext('2d'));
+  const pr = document.createElement('div'); pr.className = 'mk-price'; pr.innerHTML = l.price + ' ' + COIN; side.append(pr);
+  const act = document.createElement('button');
+  if (l.mine) {
+    act.className = 'btn'; act.textContent = 'TAKE IT BACK';
+    act.onclick = async () => { act.disabled = true; try { vaultApply(await window.HKVault.marketCancel(l.id)); skinStatus.textContent = m.name + ' is back in your inventory.'; mkSel = ''; mkLoad(); } catch (e) { act.disabled = false; skinStatus.textContent = e.message; mkLoad(); } };
+  } else {
+    act.className = 'btn go'; act.innerHTML = 'BUY NOW'; act.disabled = (skinState.coins | 0) < l.price; if (act.disabled) side.append(hint('You need ' + (l.price - (skinState.coins | 0)) + ' more coins.'));
+    act.onclick = async () => { if (!confirm('Buy ' + m.name + ' for ' + l.price + ' coins?')) return; act.disabled = true; try { vaultApply(await window.HKVault.marketBuy(l.id)); skinStatus.textContent = 'You bought ' + m.name + '! Find it in ALL ITEMS.'; mkSel = ''; mkLoad(); } catch (e) { act.disabled = false; skinStatus.textContent = e.message; mkLoad(); } };
+  }
+  side.prepend(act);
+}
+function showSales(list) {
+  const el = document.createElement('div'); el.id = 'giftPop'; el.innerHTML = '<div class="gift-card"><small class="gift-tag">SOLD!</small><h2></h2><div class="gift-items"></div></div>';
+  el.querySelector('h2').textContent = list.length === 1 ? 'Your item sold!' : list.length + ' of your items sold!';
+  const row = el.querySelector('.gift-items');
+  for (const s of list) { const m = itemMeta(s.item), f = document.createElement('figure'); f.append(mkCanvas(m.draw), Object.assign(document.createElement('b'), { textContent: m.name }), Object.assign(document.createElement('small'), { textContent: '+' + s.net + ' coins' })); row.append(f); }
+  const ok = document.createElement('button'); ok.className = 'btn big'; ok.textContent = 'NICE!'; ok.onclick = () => el.remove(); el.querySelector('.gift-card').append(Object.assign(document.createElement('p'), { textContent: 'The coins are in your account.' }), ok);
+  document.body.appendChild(el);
+}
+function vaultSales(v) { const list = (v.sales || []).filter((s) => !vaultSales.seen.has(s.id)); if (!list.length) return; for (const s of list) { vaultSales.seen.add(s.id); window.HKVault.salesDismiss(s.id).catch(() => {}); } showSales(list); }
+vaultSales.seen = new Set();
+if (allStage) { const pc = lq('.all-stage'); let last = null; pc.style.touchAction = 'none'; pc.addEventListener('pointerdown', (e) => { pc.setPointerCapture(e.pointerId); last = e.clientX; allStage.hold(true); }); pc.addEventListener('pointermove', (e) => { if (last === null) return; allStage.drag(e.clientX - last); last = e.clientX; }); const up = () => { last = null; allStage.hold(false); }; pc.addEventListener('pointerup', up); pc.addEventListener('pointercancel', up); pc.addEventListener('wheel', (e) => { e.preventDefault(); allStage.zoom(e.deltaY * 0.002); }, { passive: false }); }
 // ================= YOUR ACCOUNT (games site only): coins + skins live on the server, so you can give gifts and nobody can fake an inventory =================
 function vaultApply(v) {   // make the browser copy match the server
   const sk = [], kn = [], co = [];
@@ -4139,8 +4230,8 @@ function vaultOffer(v0) {
       let v = await H.refresh();
       if (!v.migrated) { await vaultOffer(v); v = H.state || v; }
       if (!v.migrated) return;   // "not now": keep playing with this browser's inventory
-      vaultOn = true; vaultApply(v); vaultGifts(v);
-      setInterval(async () => { if (document.hidden || opening) return; try { const w = await H.refresh(); vaultApply(w); vaultGifts(w); if (!lq('[data-p="all"]').classList.contains('hidden')) drawAll(); } catch (e) { if (e && e.status === 401) vaultOn = false; } }, 15000);
+      vaultOn = true; vaultApply(v); vaultGifts(v); vaultSales(v);
+      setInterval(async () => { if (document.hidden || opening) return; try { const w = await H.refresh(); vaultApply(w); vaultGifts(w); vaultSales(w); if (!lq('[data-p="all"]').classList.contains('hidden')) drawAll(); } catch (e) { if (e && e.status === 401) vaultOn = false; } }, 15000);
     } catch (e) { /* the server can not be reached or you are logged out: the browser inventory works as before */ }
   }, 1500);
 })();
@@ -4170,10 +4261,11 @@ crateBtn.onclick = () => {
 };
 locker.querySelectorAll('.inv-tabs button').forEach((b) => (b.onclick = () => {
   if (opening && b.dataset.t !== 'crate') return;
-  costStage?.stop(); previewStage?.stop(); crateStage?.stop(); ({ crate: crateStage, cost: costStage, all: null }[b.dataset.t] === undefined ? previewStage : { crate: crateStage, cost: costStage, all: null }[b.dataset.t])?.start();
+  costStage?.stop(); previewStage?.stop(); crateStage?.stop(); allStage?.stop(); ({ crate: crateStage, cost: costStage, all: allStage, market: null }[b.dataset.t] === undefined ? previewStage : { crate: crateStage, cost: costStage, all: allStage, market: null }[b.dataset.t])?.start();
   locker.querySelectorAll('.inv-tabs button').forEach((x) => x.classList.toggle('on', x === b));
   locker.querySelectorAll('.inv-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.p !== b.dataset.t));
   if (b.dataset.t === 'all') drawAll();
+  if (b.dataset.t === 'market') showMarket();
   if (b.dataset.t === 'crate' && crateStage && !opening) { crateStage.reset(); crateStage.setTint((cases.find((x) => x.id === selCase) || cases[0]).tint); resultEl.classList.add('hidden'); }
 }));
 if (previewStage) {   // drag (mouse or finger) to turn the weapon, wheel / pinch to zoom

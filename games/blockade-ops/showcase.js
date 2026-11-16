@@ -1,7 +1,7 @@
 // Small 3D stages that live in their own little canvases: the home-screen soldier + weapon, and the skin-crate opening.
-import * as THREE from './three.module.min.js?v=253';
-import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=253';
-import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=253';
+import * as THREE from './three.module.min.js?v=255';
+import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=255';
+import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=255';
 
 function makeStage(canvas, fov, camPos, lookAt) {
   let r;
@@ -51,6 +51,18 @@ export function displayWeapon(item, accent) {
   b.g.userData.fore = b.fore && new THREE.Vector3(...b.fore);
   b.g.userData.mesh = b.finishMesh;
   return b.g;
+}
+// A little picture of a gun (or knife) with a skin on it, for the inventory cards: the REAL model, drawn once and kept (one shared hidden canvas)
+let thumbSt = null; const thumbCache = new Map(), _tb = new THREE.Box3(), _ts = new THREE.Vector3(), _tc = new THREE.Vector3();
+export function weaponThumb(item, accent, key) {
+  if (thumbCache.has(key)) return thumbCache.get(key);
+  if (!thumbSt) { const cv = document.createElement('canvas'); cv.width = cv.height = 192; thumbSt = makeStage(cv, 30, [0, 0.2, 3.4], [0, 0, 0]); if (thumbSt) { thumbSt.r.setPixelRatio(1); thumbSt.r.setSize(192, 192, false); thumbSt.cv = cv; } }
+  if (!thumbSt) return null;
+  const w = displayWeapon(item, accent), grp = new THREE.Group(); grp.add(w); w.position.z = 0.3; grp.rotation.y = Math.PI / 2; grp.rotation.x = 0.12; grp.updateMatrixWorld(true);
+  _tb.setFromObject(grp); _tb.getSize(_ts); _tb.getCenter(_tc); const s = 1.5 / Math.max(_ts.x, _ts.y, _ts.z, 0.2); grp.scale.setScalar(s); grp.position.copy(_tc).multiplyScalar(-s);
+  thumbSt.scene.add(grp); tickSkins(); thumbSt.r.render(thumbSt.scene, thumbSt.cam);
+  const out = document.createElement('canvas'); out.width = out.height = 128; out.getContext('2d').drawImage(thumbSt.cv, 0, 0, 128, 128);
+  thumbSt.scene.remove(grp); freeWeapon(w); thumbCache.set(key, out); return out;
 }
 const freeWeapon = (g) => { if (g && g.userData.mesh) g.userData.mesh.geometry.dispose(); };
 

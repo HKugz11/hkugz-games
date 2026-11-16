@@ -2,16 +2,20 @@
  "v": 1,
  "rarities": {
   "common": {
-   "refund": 25
+   "refund": 25,
+   "sell": 20
   },
   "rare": {
-   "refund": 50
+   "refund": 50,
+   "sell": 45
   },
   "epic": {
-   "refund": 100
+   "refund": 100,
+   "sell": 110
   },
   "legendary": {
-   "refund": 200
+   "refund": 200,
+   "sell": 300
   }
  },
  "finishes": [

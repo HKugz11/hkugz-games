@@ -43,7 +43,9 @@ When a logged-in player moves their inventory to their account, the server also 
 - **Cases are opened by the server**, with the same odds the game used offline. The holiday cases only open between Nov 15 and Jan 2.
 - **Coins from matches cannot be checked.** The server cannot see a match, so it only limits it: the game must say a match started and ask for coins at least 90 seconds later, one match at a time, at most 1200 coins a time and 12000 a day per account. A determined cheater can still make up to that much; nothing more.
 - **Moving an old inventory in** happens once per account and is capped (6000 coins, 150 items, 2 of each), because the server cannot check what a browser says it owns.
-- Everything above is deleted with the account, and is part of the admin export.
+- **Quick sell** (like FIFA): the game buys an item straight away for a fixed price: Common 20, Rare 45, Epic 110, Legendary 300 coins. These prices are always lower than what a case gives back on average (checked by a test), so nobody can print coins by opening cases and selling.
+- **The market**: players list a skin, knife or costume for a price they choose (between the quick-sell price and 20 times it). The item is held by the server while it is for sale; the seller gets the price minus a 5% fee when someone buys it, or takes it back any time. A listing nobody buys goes back to its owner after 14 days. At most 12 listings per player. **Listings show the item and the price only, never who is selling**, and there are no messages. A banned player's listings disappear; deleting an account removes its listings.
+- Everything above is deleted with the account, and is part of the admin export (the market list too).
 
 ## What a stranger could do
 
