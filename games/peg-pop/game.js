@@ -3,7 +3,7 @@
   'use strict';
   var W = 800, H = 640;
   var R = 8, PR = 11, WALL = 6;                 // ball radius, peg radius, side rail thickness
-  var G = 980, DT = 1 / 240, SPEED = 640, E_PEG = 0.72, E_WALL = 0.82, MAXV = 1200;
+  var G = 640, DT = 1 / 240, SPEED = 500, E_PEG = 0.68, E_WALL = 0.8, MAXV = 820;
   var LX = W / 2, LY = 30;                       // launcher
   var BTOP = H - 50;                              // top of the bucket
   var START_BALLS = 12;
@@ -62,7 +62,7 @@
   var lvl = 0, pegs = [], balls = [], parts = [], texts = [], banner = null, trails = [];
   var state = 'menu';            // menu | aim | shot | result
   var ballsLeft = 0, score = 0, shotHits = 0, orangeLeft = 0, ang = Math.PI / 2, wideShots = 0, cleared = false, winT = 0, resultShown = false;
-  var bucket = { x: W / 2, w: 110, dir: 1, flash: 0 };
+  var bucket = { x: W / 2, w: 120, dir: 1, flash: 0 };
   var slow = 1, slowT = 0, slowUsed = false, cam = { z: 1, x: W / 2, y: H / 2 }, focus = null;
   var acc = 0, time = 0, stuckFixes = 0, longestShot = 0, shotTime = 0;
   var keys = { left: false, right: false };
@@ -78,7 +78,7 @@
     pegs[idx[n++]].t = 'p';
     for (k = 0; k < greens; k++) pegs[idx[n++]].t = 'g';
     orangeLeft = def.orange; balls = []; parts = []; texts = []; trails = [];
-    ballsLeft = START_BALLS; score = 0; shotHits = 0; wideShots = 0; bucket.w = 110; bucket.x = W / 2; bucket.flash = 0;
+    ballsLeft = START_BALLS; score = 0; shotHits = 0; wideShots = 0; bucket.w = 120; bucket.x = W / 2; bucket.flash = 0;
     cleared = false; winT = 0; resultShown = false; slow = 1; slowT = 0; slowUsed = false; cam.z = 1; cam.x = W / 2; cam.y = H / 2; focus = null; acc = 0; ang = Math.PI / 2;
     banner = { s: 'Level ' + (i + 1) + ': ' + def.name, life: 2.2, max: 2.2, col: '#fff' };
   }
@@ -134,11 +134,11 @@
           if (b.fire <= 0) bounceOff(b, p.x, p.y, PR, E_PEG);
         }
       }
-      // bucket rims bounce the ball, the inside catches it
-      if (b.y > BTOP - 14) {
+      // bucket: a ball whose middle is over the opening catches (generous on purpose), the outer rims bounce it away
+      if (b.y > BTOP - 6) {
         var bx = bucket.x, hw = bucket.w / 2;
-        bounceOff(b, bx - hw, BTOP + 2, 7, 0.6); bounceOff(b, bx + hw, BTOP + 2, 7, 0.6);
-        if (b.y > BTOP + 10 && Math.abs(b.x - bx) < hw - 3 && b.vy > 0) { caught(b); dead = true; }
+        if (Math.abs(b.x - bx) < hw + 2 && b.vy > 0) { caught(b); dead = true; }
+        else { bounceOff(b, bx - hw - 8, BTOP, 6, 0.6); bounceOff(b, bx + hw + 8, BTOP, 6, 0.6); }
       }
       if (b.y > H + 30) dead = true;
       // stuck check: barely moved for a second -> pop the pegs it is touching and give it a shove
@@ -206,7 +206,7 @@
   }
   function endShot() {
     retireLit();
-    if (wideShots > 0) { wideShots--; } bucket.w = wideShots > 0 ? 180 : 110;
+    if (wideShots > 0) { wideShots--; } bucket.w = wideShots > 0 ? 190 : 120;
     // the purple bonus peg hops to a new blue peg after every shot
     var purple = pegs.filter(function (p) { return !p.gone && p.t === 'p'; })[0], blues = pegs.filter(function (p) { return !p.gone && p.t === 'b'; });
     if (blues.length && (purple || !pegs.some(function (p) { return !p.gone && p.t === 'p'; }))) { if (purple) purple.t = 'b'; blues[Math.floor(Math.random() * blues.length)].t = 'p'; }
@@ -493,6 +493,7 @@
     },
     leaveOrange: function (n) { var o = pegs.filter(function (p) { return !p.gone && p.t === 'o'; }); while (o.length > n) { var p = o.pop(); p.t = 'b'; orangeLeft--; } },
     tick: function (sec) { var n = Math.round(sec * 60), m = 1; for (var i = 0; i < n; i++) { update(1 / 60); if (slow < m) m = slow; } draw(); return m; },
+    setBucket: function (x) { bucket.x = x; bucket.dir = 0.0001; },
     sizes: function () { return LEVELS.map(function (l) { return l.pegs.length; }); },
     minGap: function () { return LEVELS.map(function (l) { var m = 1e9; for (var i = 0; i < l.pegs.length; i++) for (var j = i + 1; j < l.pegs.length; j++) m = Math.min(m, Math.hypot(l.pegs[i][0] - l.pegs[j][0], l.pegs[i][1] - l.pegs[j][1])); return Math.round(m); }); }
   };
