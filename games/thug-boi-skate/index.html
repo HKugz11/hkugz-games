@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Thug Boi Skate</title>
+<script src="../../assets/playtimer.js"></script>
+<script src="../../assets/hksettings.js"></script>
+<meta name="description" content="A blocky 3D skateboarding game: pull off flips, grabs and grinds on curvy rails, ride sunken pits and a loop-de-loop, and unlock skaters, boards and stickers. Free, runs in your browser.">
+<link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#42d7f1">
+<meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games"><meta property="og:title" content="Thug Boi Skate - free skateboarding game">
+<meta property="og:description" content="Flips, grinds, curvy rails, deep pits and a loop-de-loop. Free in your browser.">
+<meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/thug-boi-skate/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/thug-boi-skate.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root { --y: #ffd34e; --o: #ff7a2f; --n: #14213d; --g: #5be08a; --r: #ff5a4f; }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hide { display: none !important; }
+  #placer { touch-action: none; }
+  .hud { position: fixed; inset: 0; pointer-events: none; }
+  .hud > * { position: absolute; }
+
+  .panel { background: var(--n); border: 3px solid #fff; box-shadow: 4px 4px 0 rgba(0,0,0,.35); padding: 6px 14px; }
+  #scoreBox { top: 14px; left: 14px; }
+  .lab { font-size: 12px; font-weight: 800; letter-spacing: .12em; color: var(--y); }
+  #score { font-size: 40px; font-weight: 900; line-height: 1; }
+  #best { font-size: 13px; font-weight: 700; color: #b9c4e0; margin-top: 2px; }
+  #timeBox { top: 14px; right: 14px; text-align: center; }
+  #time { font-size: 40px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  #time.low { color: var(--r); }
+  #combo { top: 92px; left: 50%; transform: translateX(-50%); text-align: center; min-width: 260px; max-width: 80vw; }
+  #cnames { font-size: 20px; font-weight: 800; color: #fff; }
+  #cpts { font-size: 34px; font-weight: 900; color: var(--y); line-height: 1.1; }
+  #spin { top: 36%; left: 50%; transform: translateX(-50%); font-size: 54px; font-weight: 900; color: var(--y); text-shadow: 3px 3px 0 var(--n); }
+  #msg { top: 58%; left: 50%; transform: translateX(-50%); font-size: 40px; font-weight: 900; opacity: 0; text-shadow: 4px 4px 0 var(--n); white-space: nowrap; text-align: center; }
+  #msg.show { opacity: 1; }
+  #msg.good { color: var(--g); }
+  #msg.bad { color: var(--r); font-size: 30px; }
+  #speedBox { bottom: 16px; left: 14px; width: 150px; height: 14px; background: var(--n); border: 3px solid #fff; box-shadow: 3px 3px 0 rgba(0,0,0,.35); padding: 0; }
+  #speed { height: 100%; width: 0; background: var(--o); }
+  #boostBox { top: 92px; right: 14px; text-align: center; min-width: 120px; }
+  #boostBar { height: 12px; background: #0b1428; border: 2px solid #fff; margin-top: 4px; }
+  #boost { height: 100%; background: #35ffb0; width: 100%; }
+  .parkrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #1f2f55; padding: 6px 8px; border: 2px solid #34467a; }
+  #parkName { font-size: 20px; font-weight: 900; color: var(--y); text-align: center; flex: 1; }
+  button.sm { padding: 4px 14px; font-size: 20px; }
+  #hint { bottom: 14px; right: 14px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0 var(--n); text-align: right; line-height: 1.4; }
+
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(20,33,61,.5); }
+  .screen.side { justify-content: flex-start; padding-left: 3vw; background: linear-gradient(90deg, rgba(20,33,61,.55), rgba(20,33,61,0) 70%); }
+  .card { background: var(--n); border: 4px solid #fff; box-shadow: 8px 8px 0 rgba(0,0,0,.4); padding: 22px 28px; max-width: 760px; width: calc(100vw - 32px); text-align: center; }
+  .side .card { width: min(480px, calc(100vw - 24px)); text-align: left; }
+  .card h1 { margin: 0 0 4px; font-size: 52px; letter-spacing: .02em; color: var(--y); text-shadow: 4px 4px 0 #000; }
+  .card h2 { margin: 0; font-size: 32px; color: var(--y); text-shadow: 3px 3px 0 #000; }
+  .card .sub { color: #b9c4e0; font-weight: 700; margin-bottom: 14px; }
+  .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 26px; text-align: left; font-size: 15px; margin: 10px 0 14px; }
+  .keys b { display: inline-block; min-width: 56px; padding: 1px 7px; margin-right: 6px; background: #fff; color: var(--n); text-align: center; font-size: 12px; font-weight: 900; }
+  .keys h3 { grid-column: 1 / -1; margin: 6px 0 0; color: var(--y); font-size: 14px; letter-spacing: .1em; }
+  button { font: 900 20px "Trebuchet MS", system-ui, sans-serif; background: var(--o); color: #fff; border: 3px solid #fff; padding: 9px 24px; cursor: pointer; box-shadow: 4px 4px 0 rgba(0,0,0,.4); }
+  button:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 rgba(0,0,0,.4); }
+  button.alt { background: #3f7cc4; }
+  .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .coinrow { font-size: 22px; font-weight: 900; color: var(--y); margin-bottom: 4px; }
+  .coinrow span { color: #fff; }
+  .big { font-size: 64px; font-weight: 900; color: #fff; line-height: 1; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+  .stats div { background: #1f2f55; padding: 8px; font-size: 13px; font-weight: 800; color: #b9c4e0; }
+  .stats span { display: block; font-size: 24px; color: #fff; }
+  #oBest { font-size: 20px; font-weight: 900; color: var(--y); margin-bottom: 4px; }
+  #oBest.new { color: var(--g); }
+  #oCoins { font-size: 20px; font-weight: 900; color: var(--y); margin-bottom: 10px; }
+
+  /* main menu */
+  #menu { background: linear-gradient(90deg, rgba(14,10,40,.82), rgba(14,10,40,.35) 45%, rgba(14,10,40,0) 75%); }
+  .mcard { width: min(500px, calc(100vw - 24px)); text-align: left; padding: 10px 6px; animation: mslide .6s cubic-bezier(.2,1.2,.4,1); }
+  @keyframes mslide { 0% { transform: translateX(-60px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  .logo { transform: rotate(-3deg); margin: 0 0 18px 4px; }
+  .logo span { display: block; font-weight: 900; text-transform: uppercase; line-height: .92; -webkit-text-stroke: 3px #0c1230; paint-order: stroke fill; }
+  .logo .l1 { font-size: 50px; color: var(--y); text-shadow: 4px 4px 0 #0c1230, 8px 8px 0 rgba(0,0,0,.28); letter-spacing: .04em; }
+  .logo .l2 { font-size: 104px; color: var(--o); text-shadow: 5px 5px 0 #0c1230, 10px 10px 0 rgba(0,0,0,.28), 0 0 34px rgba(255,122,47,.55); letter-spacing: .01em; animation: logobob 2.4s ease-in-out infinite; }
+  @keyframes logobob { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-5px) rotate(-1.2deg); } }
+  .logo .tagline { margin-top: 10px; font-size: 14px; letter-spacing: .28em; color: #fff; -webkit-text-stroke: 0; text-shadow: 2px 2px 0 #0c1230; background: linear-gradient(90deg, #ff3df0, #00e5ff); display: inline-block; padding: 4px 12px; transform: skew(-8deg); box-shadow: 3px 3px 0 #0c1230; }
+  .chips { display: flex; gap: 8px; margin-bottom: 10px; }
+  .chip { flex: 1; display: flex; align-items: center; gap: 8px; background: rgba(12,18,48,.88); border: 3px solid #fff; padding: 6px 10px; box-shadow: 3px 3px 0 rgba(0,0,0,.4); min-width: 0; }
+  .chips { flex-wrap: wrap; }
+  .chip.wide { flex: 1 1 100%; order: 3; }
+  .chip.wide span { min-width: 0; }
+  .chip.wide b { font-size: 18px; }
+  .chip em { display: block; font-style: normal; font-weight: 800; font-size: 13px; color: #9fd0ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip canvas { width: 15px; height: 35px; flex: none; }
+  .chip .coinic, .chip .staric { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; flex: none; font-weight: 900; font-size: 16px; color: #8a5a00; background: radial-gradient(circle at 35% 30%, #fff3a8, #ffc633 60%, #e09a10); border: 2px solid #0c1230; }
+  .chip .staric { color: #fff; background: radial-gradient(circle at 35% 30%, #ff9a9a, #e8343c 70%); }
+  .chip i { font-style: normal; font-size: 24px; }
+  .chip small { display: block; font-size: 10px; font-weight: 900; letter-spacing: .12em; color: var(--y); }
+  .chip b { display: block; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .parkbox { background: rgba(12,18,48,.88); border: 3px solid #fff; padding: 8px; margin-bottom: 10px; box-shadow: 3px 3px 0 rgba(0,0,0,.4); }
+  .parkbox .parkrow { border: 0; background: transparent; padding: 0; }
+  #parkSpecial { margin-top: 6px; text-align: center; font-size: 13px; font-weight: 900; letter-spacing: .06em; color: #0c1230; background: linear-gradient(90deg, #ffd34e, #ff9a3d); padding: 3px 8px; }
+  button.play { width: 100%; font-size: 30px; padding: 14px 20px; background: linear-gradient(180deg, #ff9a3d, #ff5a1a); text-shadow: 2px 2px 0 rgba(0,0,0,.35); margin-bottom: 10px; transition: transform .12s; }
+  button.play small { font-size: 14px; opacity: .85; }
+  button.play:hover { transform: scale(1.025) rotate(-.6deg); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .mcard button.alt { width: 100%; font-size: 18px; transition: transform .12s, background .12s; }
+  .mcard button.alt.sm { width: auto; flex: none; min-width: 52px; padding: 4px 14px; font-size: 22px; }
+  #parkName { white-space: nowrap; font-size: 22px; }
+  .chip { padding: 6px 8px; gap: 6px; }
+  .chip b { font-size: 15px; }
+  .mcard button.alt:hover { transform: translateY(-2px); background: #5a97e0; }
+  .mcard .shopb { background: linear-gradient(180deg, #ff6fd0, #c23fb8); }
+  .mcard .shopb:hover { background: linear-gradient(180deg, #ff8be0, #d457c9); }
+  .mcard .how { font-size: 15px; padding: 7px; }
+  .vers { margin-top: 10px; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 #0c1230; opacity: .85; }
+  @media (max-width: 640px) { .logo .l2 { font-size: 72px; } .logo .l1 { font-size: 36px; } }
+
+  /* shop */
+  .shophead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  #shopTabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  #shopTabs button { flex: 1 0 22%; font-size: 13px; padding: 7px 4px; background: #2a3a66; box-shadow: none; }
+  #shop .card { border-color: #ff3df0; box-shadow: 6px 6px 0 rgba(0,0,0,.4), 0 0 26px rgba(255,61,240,.45); }
+  #shop h2 { color: #ffd1fa; text-shadow: 0 0 10px #ff3df0, 0 0 22px #ff3df0; letter-spacing: .08em; }
+  .item .bimg { width: 34px; height: 90px; object-fit: contain; flex: none; background: #14213d; border: 2px solid #34467a; padding: 3px; }
+  .stkhead { font-size: 12px; font-weight: 900; color: var(--y); letter-spacing: .08em; margin: 10px 0 6px; }
+  .slots { display: flex; gap: 8px; }
+  .slot { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; font-size: 11px; background: #1f2f55; border: 2px solid #34467a; box-shadow: none; min-height: 74px; justify-content: center; }
+  .slot b { font-size: 24px; line-height: 44px; color: #6b7aa8; }
+  .slot img { width: 44px; height: 44px; }
+  .slot.on { border-color: var(--y); background: #2a3a66; }
+  .slot.clr { flex: 0 0 64px; }
+  .stkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
+  .stk { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 11px; background: #1f2f55; border: 2px solid #34467a; box-shadow: none; }
+  .stk:hover { border-color: var(--y); }
+  .stk img { width: 48px; height: 48px; }
+  .stk em { font-style: normal; font-weight: 800; }
+  .stk i { position: absolute; top: 2px; right: 4px; font-style: normal; font-size: 12px; color: #fff; }
+  #placer .card { border-color: #ff3df0; box-shadow: 6px 6px 0 rgba(0,0,0,.4), 0 0 26px rgba(255,61,240,.45); }
+  #placer h2 { color: #ffd1fa; text-shadow: 0 0 10px #ff3df0, 0 0 22px #ff3df0; letter-spacing: .08em; }
+  #placer { cursor: grab; }
+  #placer .card { cursor: default; }
+  .plhelp { font-size: 13px; line-height: 1.5; color: #dfe8ff; margin: 4px 0 2px; }
+  .plctl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .plctl button { font-size: 12px; padding: 7px 4px; background: #2a3a66; box-shadow: none; }
+  .plctl button:disabled { opacity: .35; }
+  .plctl button.wide2 { grid-column: 1 / -1; background: #6a3aa6; }
+  .plmsg { min-height: 34px; margin: 8px 0 2px; font-size: 13px; font-weight: 800; color: var(--y); }
+  .stk.on { border-color: var(--y); background: #2a3a66; }
+  .stk.used { opacity: .4; }
+  #plGrid { max-height: 26vh; overflow-y: auto; }
+  #reveal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(8,12,30,.78); }
+  #reveal.hide { display: none; }
+  #reveal .rv { text-align: center; padding: 26px 40px; background: #14213d; border: 4px solid #fff; box-shadow: 8px 8px 0 rgba(0,0,0,.45); animation: rvpop .5s cubic-bezier(.2,1.6,.4,1); }
+  #rvName { font-size: 30px; font-weight: 900; color: #fff; margin-top: 6px; }
+  #rvRar { font-size: 18px; font-weight: 900; margin: 4px 0 14px; letter-spacing: .06em; }
+  @keyframes rvpop { 0% { transform: scale(.2) rotate(-12deg); opacity: 0; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+  .item.board { align-items: center; }
+  .item.board .txt { flex: 1; }
+  #shopTabs button.on { background: var(--o); }
+  #shopList { max-height: 56vh; overflow-y: auto; padding-right: 6px; }
+  .item { display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #1f2f55; padding: 10px 12px; margin-bottom: 8px; border: 2px solid #34467a; }
+  .item:hover { border-color: var(--y); }
+  .item .nm { font-size: 17px; font-weight: 900; }
+  .item .ds { font-size: 13px; color: #b9c4e0; font-weight: 700; margin-top: 2px; }
+  .item .pips { display: flex; gap: 4px; margin: 5px 0; }
+  .item .pips i { width: 26px; height: 8px; background: #34467a; }
+  .item .pips i.on { background: var(--g); }
+  .item .sw { display: flex; gap: 3px; margin: 4px 0; }
+  .item .sw span { width: 20px; height: 14px; border: 1px solid #fff; }
+  .item .tl { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .item .tl span { background: #14213d; padding: 2px 7px; font-size: 12px; font-weight: 800; }
+  .item .tl em { color: var(--y); font-style: normal; font-weight: 700; margin-left: 4px; }
+  .buy { font-size: 15px; padding: 8px 12px; min-width: 104px; background: var(--g); color: #0b2a14; flex: none; }
+  .buy.poor { background: #6b7690; color: #dfe5f5; }
+  .buy.owned { background: #34467a; color: #b9c4e0; box-shadow: none; cursor: default; border-color: #34467a; }
+  #shopList::-webkit-scrollbar { width: 8px; } #shopList::-webkit-scrollbar-thumb { background: #4a5c92; }
+
+  @media (max-width: 640px) { .keys { grid-template-columns: 1fr; } .card h1 { font-size: 38px; } #score, #time { font-size: 30px; } }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div class="hud">
+  <div id="scoreBox" class="panel"><div class="lab">SCORE</div><div id="score">0</div><div id="best">Best combo 0</div></div>
+  <div id="timeBox" class="panel"><div class="lab">TIME</div><div id="time">2:00</div></div>
+  <div id="combo" class="panel hide"><div id="cnames"></div><div id="cpts"></div></div>
+  <div id="spin"></div>
+  <div id="msg"></div>
+  <div id="speedBox"><div id="speed"></div></div>
+  <div id="boostBox" class="panel" style="display:none"><div class="lab">BOOST</div><div id="boostBar"><div id="boost"></div></div></div>
+  <div id="hint">Space ollie &nbsp; Shift grind &nbsp; P pause</div>
+</div>
+
+<div id="menu" class="screen side">
+  <div class="mcard">
+    <div class="logo"><span class="l1">THUG BOI</span><span class="l2">SKATE</span><span class="tagline">GRIND &bull; FLIP &bull; LOOP &bull; REPEAT</span></div>
+    <div class="chips">
+      <div class="chip"><i class="coinic">$</i><span><small>COINS</small><b id="menuCoins">0</b></span></div>
+      <div class="chip"><i class="staric">&#x2605;</i><span><small>BEST SCORE</small><b id="menuBest">0</b></span></div>
+      <div class="chip wide"><canvas id="menuBoard" width="30" height="70"></canvas><span><small>YOUR RIDE</small><b id="menuWho">Rookie</b><em id="menuBoardName"></em></span></div>
+    </div>
+    <div class="parkbox">
+      <div class="parkrow"><button id="parkPrev" class="alt sm">&lt;</button><div id="parkName">Sunny Plaza</div><button id="parkNext" class="alt sm">&gt;</button></div>
+      <div id="parkSpecial"></div>
+    </div>
+    <button id="go" class="play">&#9654;&nbsp; TIMED RUN <small>(Space)</small></button>
+    <div class="grid2">
+      <button id="goFree" class="alt">FREE SKATE</button>
+      <button id="goShop" class="alt shopb">SKATE SHOP</button>
+    </div>
+    <button id="goHow" class="alt how">HOW TO PLAY</button>
+    <div class="vers">Land clean to bank your combo. Spend coins in the shop! &nbsp;&bull;&nbsp; <a href="../../" style="color:#fff">&larr; All games</a></div>
+  </div>
+</div>
+
+<div id="shop" class="screen side hide">
+  <div class="card">
+    <div class="shophead"><h2>SKATE SHOP</h2><div class="coinrow" style="margin:0">Coins: <span id="shopCoins">0</span></div></div>
+    <div id="shopTabs"><button data-tab="boards">BOARDS</button><button data-tab="board">UPGRADES</button><button data-tab="chars">SKATERS</button><button data-tab="tricks">TRICKS</button><button data-tab="stickers">STICKERS</button><button data-tab="items">ITEMS</button><button data-tab="parks">PARKS</button></div>
+    <div id="shopList"></div>
+    <div class="btns"><button id="shopBack">BACK</button></div>
+  </div>
+</div>
+
+<div id="placer" class="screen side hide">
+  <div class="card">
+    <div class="shophead"><h2>PLACE STICKERS</h2></div>
+    <div class="plhelp"><b>Drag</b> = turn the board &nbsp; <b>Scroll</b> = zoom<br>Pick a sticker, then <b>click the board</b> where you want it. <b>Drag</b> a stuck sticker to move it.</div>
+    <div class="stkhead">YOUR COLLECTION (number = copies left)</div>
+    <div id="plGrid" class="stkgrid"></div>
+    <div class="stkhead">SELECTED: <span id="plSelName"></span> &nbsp;&bull;&nbsp; <span id="plCount"></span></div>
+    <div id="plCtl" class="plctl">
+      <button data-pl="smaller">SMALLER (-)</button><button data-pl="bigger">BIGGER (+)</button>
+      <button data-pl="left">TURN LEFT (Q)</button><button data-pl="right">TURN RIGHT (E)</button>
+      <button data-pl="remove">REMOVE (Del)</button><button data-pl="clearall">REMOVE ALL</button>
+      <button data-pl="flip" class="wide2">FLIP THE BOARD OVER (F) - stickers go underneath too</button>
+    </div>
+    <div id="plMsg" class="plmsg"></div>
+    <div class="btns"><button data-pl="done">DONE</button></div>
+  </div>
+</div>
+
+<div id="reveal" class="hide"><div class="rv"><div id="rvArt"></div><div id="rvName"></div><div id="rvRar"></div><button id="rvOk">NICE!</button></div></div>
+
+<div id="how" class="screen hide">
+  <div class="card">
+    <h2>HOW TO PLAY</h2>
+    <div class="keys">
+      <h3>MOVING</h3>
+      <div><b>W S</b> push / brake</div><div><b>A D</b> steer (spin in the air)</div>
+      <div><b>Space</b> ollie (hold = bigger)</div><div><b>Shift</b> grind rails &amp; ledges</div>
+      <div><b>Q</b> manual (hold)</div><div><b>R</b> reset / <b>P</b> pause</div>
+      <h3>TRICKS IN THE AIR  (buy more in the shop)</h3>
+      <div><b>↑ / I</b> kickflip</div><div><b>↓ / K</b> heelflip</div>
+      <div><b>← / J</b> shove-it</div><div><b>→ / L</b> Indy grab (hold)</div>
+      <div><b>M</b> impossible</div><div><b>W</b> frontflip (pack)</div>
+      <div><b>O U Y T G</b> grabs (hold)</div><div><b>B N</b> Superman / Christ air</div>
+      <div><b>F</b> backflip (free!)</div><div><b>Z</b> nose manual</div><div><b>Shift + keys</b> switch grinds</div>
+    </div>
+    <div class="sub">Combo = every different trick adds to the multiplier. Bail = you lose it. Spend coins on better wheels, trucks, decks, new skaters and new tricks.</div>
+    <button id="howBack">GOT IT</button>
+  </div>
+</div>
+
+<div id="over" class="screen hide">
+  <div class="card">
+    <h1 id="oTitle">TIME'S UP!</h1>
+    <div class="sub">Final score</div>
+    <div class="big" id="oScore">0</div>
+    <div id="oBest"></div>
+    <div id="oCoins"></div>
+    <div class="stats">
+      <div>Best combo<span id="oCombo">0</span></div>
+      <div>Tricks landed<span id="oTricks">0</span></div>
+      <div>Bails<span id="oBails">0</span></div>
+    </div>
+    <div class="btns" style="flex-direction:row;justify-content:center">
+      <button id="again">PLAY AGAIN (Enter)</button>
+      <button id="overShop" class="alt">SHOP</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="screen hide"><div class="card"><h1>PAUSED</h1><div class="sub">Press P to keep skating</div><div class="btns"><button id="pResume">RESUME</button><button id="pFinish" class="alt">FINISH &amp; COLLECT COINS</button><button id="pMenu" class="alt">QUIT TO MENU</button></div></div></div>
+
+<script type="module" src="main.js?v=1"></script>
+</body>
+</html>
