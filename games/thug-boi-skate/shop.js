@@ -31,9 +31,10 @@ export function createShop(ctx) {
   }
 
   function renderChars() {
-    // shop order: Monkey Max, Mythic Unicorn, Onesie Ollie first, then everybody else in the usual order
-    const TOP = ['monkey', 'unicorn', 'onesie'];
-    const list = [...TOP.map((id) => CHARS.find((x) => x.id === id)).filter(Boolean), ...CHARS.filter((x) => !TOP.includes(x.id))];
+    // shop order: Mythic Unicorn, Onesie Ollie first, then everybody else in the usual order, Monkey Max very last
+    const TOP = ['unicorn', 'onesie'], LAST = ['monkey'];
+    const pick = (ids) => ids.map((id) => CHARS.find((x) => x.id === id)).filter(Boolean);
+    const list = [...pick(TOP), ...CHARS.filter((x) => !TOP.includes(x.id) && !LAST.includes(x.id)), ...pick(LAST)];
     return list.map((c) => {
       const owned = ctx.save.chars.includes(c.id), on = ctx.save.char === c.id;
       const sw = [c.cfg.shirt, c.cfg.pants, c.cfg.hatColor, c.cfg.skin].map((x) => `<span style="background:${hex(x)}"></span>`).join('');
