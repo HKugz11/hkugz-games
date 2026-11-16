@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Peg Pop</title>
+<script src="../../assets/playtimer.js"></script>
+<script src="../../assets/hksettings.js"></script>
+<meta name="description" content="Aim, fire and bounce the ball off the pegs. Clear every orange peg in ten levels, catch the ball in the moving bucket and watch for the last-peg slow-mo. Free, runs in your browser and on phones.">
+<link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#0b0720">
+<meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
+<meta property="og:title" content="Peg Pop - free browser game">
+<meta property="og:description" content="Aim, fire and bounce the ball off the pegs. Clear every orange peg in ten levels. Free in your browser.">
+<meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/peg-pop/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/peg-pop.svg">
+<link rel="stylesheet" href="../../assets/site.css?v=4">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body.game { display: flex; flex-direction: column; background: #0b0720; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  .bar { flex: none; padding: 7px 12px; gap: 10px; }
+  .bar button { font: inherit; font-weight: 700; border: 0; cursor: pointer; background: #2a2236; color: #fff; padding: 7px 14px; border-radius: 999px; }
+  .bar button:hover { background: #3b2f4d; }
+  .bar .hint { white-space: nowrap; }
+  @media (max-width: 640px) { .bar .hint { display: none; } .bar .logo { display: none; } .bar .title { text-align: center; } }
+  .stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 6px; }
+  #wrap { position: relative; width: 800px; height: 640px; --u: 1px; user-select: none; -webkit-user-select: none; }
+  #c { width: 100%; height: 100%; display: block; border-radius: 12px; touch-action: none; cursor: crosshair; outline: none; box-shadow: 0 10px 40px rgba(0,0,0,.6); background: #4aa7ff; }
+  .ov { position: absolute; inset: 0; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: rgba(12, 18, 60, .72); padding: calc(var(--u) * 14); font-size: calc(var(--u) * 16); line-height: 1.25; overflow: hidden; }
+  .ov.hide { display: none; }
+  .ov h1 { margin: 0; font-size: calc(var(--u) * 58); letter-spacing: .02em; color: #ffd34e; text-shadow: 0 calc(var(--u) * 4) 0 #b2561a, 0 calc(var(--u) * 8) calc(var(--u) * 14) rgba(0,0,0,.4); }
+  .ov h2 { margin: 0 0 calc(var(--u) * 6); font-size: calc(var(--u) * 44); color: #ffd34e; text-shadow: 0 calc(var(--u) * 4) 0 #b2561a; }
+  .ov p { margin: calc(var(--u) * 6) 0; max-width: calc(var(--u) * 560); opacity: .92; }
+  .lv { display: grid; grid-template-columns: repeat(5, 1fr); gap: calc(var(--u) * 10); margin: calc(var(--u) * 12) 0 calc(var(--u) * 8); width: calc(var(--u) * 700); max-width: 100%; }
+  .lv button { font: inherit; color: #14234d; background: #fff; border: 0; border-radius: calc(var(--u) * 14); padding: calc(var(--u) * 8) calc(var(--u) * 4); cursor: pointer; box-shadow: 0 calc(var(--u) * 4) 0 #8aa4d8; }
+  .lv button:hover:not(:disabled) { transform: translateY(-2px); background: #fff7d6; }
+  .lv button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 calc(var(--u) * 1) 0 #8aa4d8; }
+  .lv button:disabled { background: #6c7aa8; color: #cfd6ee; box-shadow: none; cursor: default; }
+  .lv b { display: block; font-size: calc(var(--u) * 30); line-height: 1.1; }
+  .lv span { display: block; font-size: calc(var(--u) * 12.5); font-weight: 700; }
+  .lv i { display: block; font-style: normal; font-size: calc(var(--u) * 17); letter-spacing: .1em; color: #ff9d1e; height: calc(var(--u) * 20); }
+  .lv button:disabled i { color: #aab3d4; }
+  .btns { display: flex; gap: calc(var(--u) * 10); flex-wrap: wrap; justify-content: center; margin-top: calc(var(--u) * 10); }
+  .big { font: inherit; font-weight: 800; font-size: calc(var(--u) * 20); color: #4a0f2e; background: #ffa8d4; border: 0; border-radius: calc(var(--u) * 14); padding: calc(var(--u) * 10) calc(var(--u) * 24); cursor: pointer; box-shadow: 0 calc(var(--u) * 4) 0 #d4659d; }
+  .big.alt { background: #fff; color: #14234d; box-shadow: 0 calc(var(--u) * 4) 0 #8aa4d8; }
+  .big:hover { filter: brightness(1.06); } .big:active { transform: translateY(2px); box-shadow: 0 calc(var(--u) * 1) 0 #d4659d; }
+  .stars { font-size: calc(var(--u) * 54); letter-spacing: .08em; color: #ffd34e; text-shadow: 0 calc(var(--u) * 3) 0 #b2561a; margin: calc(var(--u) * 2) 0; }
+  .stars s { text-decoration: none; color: #4a5a99; text-shadow: none; }
+  .rot { display: none; } @media (orientation: portrait) and (max-width: 700px) { .rot { display: inline; } }
+  .tiny { font-size: calc(var(--u) * 12); opacity: .7; }
+  .tiny button { font: inherit; color: inherit; background: none; border: 0; text-decoration: underline; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body class="game">
+<div class="bar"><a href="../../index.html">&larr; All games</a><img class="logo" src="../../assets/logo.svg" alt="" width="28" height="28"><span class="title">Peg Pop</span><span class="hint">Mouse or finger to aim, click or tap to fire</span><button id="bLevels" type="button">Levels</button><button id="bSound" type="button" aria-pressed="false">Sound: on</button></div>
+<div class="stage"><div id="wrap">
+  <canvas id="c" tabindex="0" aria-label="Peg Pop game"></canvas>
+  <div id="menu" class="ov"></div>
+  <div id="res" class="ov hide"></div>
+</div></div>
+<script src="levels.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
