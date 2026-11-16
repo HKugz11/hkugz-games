@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=238';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=238';
+import * as THREE from './three.module.min.js?v=241';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=241';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -229,7 +229,7 @@ export function buildWorld(root) {
   const sunDir = new THREE.Vector3(0.5, 0.75, -0.42).normalize();
   // sky: clean gradient. Lite uses a small dome (100 m, ~200 triangles) that game.js keeps centred on the camera; it blends into the fog at the horizon.
   const R = GFX.lite ? 100 : 600, skyGeo = new THREE.SphereGeometry(R, GFX.lite ? 12 : 32, GFX.lite ? 8 : 16), col = [], c = new THREE.Color(), p = skyGeo.attributes.position;
-  const top = new THREE.Color(TH.skyTop), hor = new THREE.Color(GFX.lite ? TH.fog : TH.skyHor);
+  const top = new THREE.Color(GFX.xmas ? 0x7fb0e6 : TH.skyTop), hor = new THREE.Color(GFX.xmas ? 0xe3edf7 : GFX.lite ? TH.fog : TH.skyHor);   // Christmas: a cool bright winter sky
   for (let i = 0; i < p.count; i++) { const t = Math.max(0, p.getY(i) / R); c.copy(hor).lerp(top, Math.pow(t, 0.6)); col.push(c.r, c.g, c.b); }
   skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
@@ -240,6 +240,7 @@ export function buildWorld(root) {
   const isOpen = (x, z) => x >= 0 && z >= 0 && x < W && z < H && G[z * W + x] !== '#';
   const blk = (cx, cz) => hAt(cx, cz) > 0.3;
   // ---- floor (2 m pixel tiles, darker in corners next to walls) ----
+  const SNOWC = (x, z) => { const v = 0.93 + 0.07 * (((x * 7 + z * 13) % 4) / 3); return [0.96 * v, 0.985 * v, v]; };   // Christmas: every floor tile is a slightly different white
   const fl = new BoxBatch(), st = new BoxBatch();
   for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
     if (G[z * W + x] === '#') continue;
@@ -251,11 +252,11 @@ export function buildWorld(root) {
     const verts = [[x0, z0, a00], [x0 + CS, z0, a10], [x0 + CS, z0 + CS, a11], [x0, z0 + CS, a01]];
     for (const i of [0, 2, 1, 0, 3, 2]) {
       const [vx, vz, ao] = verts[i]; b.pos.push(vx, 0, vz); b.nor.push(0, 1, 0); b.uv.push(vx / CS, -vz / CS);
-      b.col.push(ao * tint[0], ao * tint[1], ao * tint[2]);
+      if (GFX.xmas) { const sn = SNOWC(x, z); b.col.push(ao * tint[0] * sn[0], ao * tint[1] * sn[1], ao * tint[2] * sn[2]); } else b.col.push(ao * tint[0], ao * tint[1], ao * tint[2]);
     }
   }
-  addMesh(scene, fl.geometry(), lam({ map: TEX[TH.floor], vertexColors: true }), false, true);
-  addMesh(scene, st.geometry(), lam({ map: TEX.site, vertexColors: true }), false, true);
+  addMesh(scene, fl.geometry(), lam({ map: GFX.xmas ? TEX.plain : TEX[TH.floor], vertexColors: true }), false, true);
+  addMesh(scene, st.geometry(), lam({ map: GFX.xmas ? TEX.plain : TEX.site, vertexColors: true }), false, true);
   // site letters + hazard borders painted on top
   const PX = 16, pc = cv(W * PX, H * PX), px = pc.getContext('2d', {willReadFrequently:true});
   for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
@@ -279,6 +280,7 @@ export function buildWorld(root) {
   // Every wall is a full 3D build: a stone base (plinth), the wall itself with a real block / brick / panel texture, a pillar every 6 m, and a ledge with a little parapet on top.
   // Each piece is a solid box with a textured top, sides, ends and underside (the plinth and pillars are built once per straight run of wall).
   const wb = new BoxBatch(), tops = new BoxBatch(), crates = new BoxBatch(), conc = new BoxBatch(), bags = new BoxBatch(), base = new BoxBatch(), cap = new BoxBatch();
+  const snowB = new BoxBatch(), SNOW = [0.97, 0.985, 1];   // Christmas: thin white snow caps on wall tops, ledges, crates and cover
   const WI = new Array(W * H).fill(null);   // for every wall cell that touches open ground: which sides are open, its colour and its height
   for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
     const ch = G[z * W + x], h = HG[z * W + x], x0 = x * CS, z0 = z * CS, x1 = x0 + CS, z1 = z0 + CS;
@@ -298,16 +300,18 @@ export function buildWorld(root) {
         const bottom = outside ? 0 : HG[nz * W + nx];
         if (h > bottom) wb.add(x0, bottom, z0, x1, h, z1, { c0: T, faces: face });
       }
-      tops.add(x0, h - 0.01, z0, x1, h, z1, { faces: 'y', c0: T });   // deep rock gets a flat top too (just 2 triangles): the menu camera looks down from above and used to see straight through it to the ground
+      tops.add(x0, h - 0.01, z0, x1, h, z1, { faces: 'y', c0: T }); if (GFX.xmas) snowB.add(x0, h, z0, x1, h + 0.07, z1, { c0: SNOW, faces: 'y' + f });   // deep rock gets a flat top too (just 2 triangles): the menu camera looks down from above and used to see straight through it to the ground
     } else if (ch === 'C') {
-      crates.add(x0 + 0.02, 0, z0 + 0.02, x1 - 0.02, 1.96, z1 - 0.02, TH.crates ? { uvMode: 'face', c0: TH.crates[(Math.floor(x / 3) * 7 + z * 13) % TH.crates.length] } : { uvMode: 'face' });   // maps with shipping containers colour them in runs of 3
+      crates.add(x0 + 0.02, 0, z0 + 0.02, x1 - 0.02, 1.96, z1 - 0.02, TH.crates ? { uvMode: 'face', c0: TH.crates[(Math.floor(x / 3) * 7 + z * 13) % TH.crates.length] } : { uvMode: 'face' }); if (GFX.xmas) snowB.add(x0 + 0.02, 1.96, z0 + 0.02, x1 - 0.02, 2.03, z1 - 0.02, { c0: SNOW, faces: 'xXzZy' });   // maps with shipping containers colour them in runs of 3
     } else if (ch === 'c') {
-      for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const t = 0.88 + rnd() * 0.16, pc = TH.crates ? TH.crates[(x * 5 + z * 3) % TH.crates.length] : [1, 1, 1]; crates.add(x0 + a + 0.02, 0, z0 + b + 0.02, x0 + a + 0.98, 0.98, z0 + b + 0.98, { uvMode: 'face', c0: [pc[0] * t, pc[1] * t, pc[2] * t] }); }
+      for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const t = 0.88 + rnd() * 0.16, pc = TH.crates ? TH.crates[(x * 5 + z * 3) % TH.crates.length] : [1, 1, 1]; crates.add(x0 + a + 0.02, 0, z0 + b + 0.02, x0 + a + 0.98, 0.98, z0 + b + 0.98, { uvMode: 'face', c0: [pc[0] * t, pc[1] * t, pc[2] * t] }); if (GFX.xmas) snowB.add(x0 + a + 0.02, 0.98, z0 + b + 0.02, x0 + a + 0.98, 1.04, z0 + b + 0.98, { c0: SNOW, faces: 'xXzZy' }); }
     } else if ('P123'.includes(ch)) {
       conc.add(x0, 0, z0, x1, h, z1, { c0: [0.8, 0.8, 0.8], c1: [1, 1, 1] });
       if (ch === 'P') conc.add(x0, h, z0, x1, h + 0.04, z1, { c0: [1, 0.85, 0.3], faces: 'y' });
+      if (GFX.xmas) snowB.add(x0, h + (ch === 'P' ? 0.04 : 0), z0, x1, h + 0.1, z1, { c0: SNOW, faces: 'xXzZy' });
     } else if (ch === 's') {
       bags.add(x0 + 0.05, 0, z0 + 0.05, x1 - 0.05, 0.9, z1 - 0.05, { tile: 2 });
+      if (GFX.xmas) snowB.add(x0 + 0.05, 0.9, z0 + 0.05, x1 - 0.05, 0.96, z1 - 0.05, { c0: SNOW, faces: 'xXzZy' });
     }
   }
   {
@@ -327,6 +331,7 @@ export function buildWorld(root) {
         const c = cells[i - a], A = i * CS, B = A + CS;
         piece(cap, f, bnd, A, B, 0.16, 0.12, c.h - 0.32, c.h, f + 'yY' + ends, c.T, 1.06, eps);   // Complete textured ledge in every quality mode; boxes meet without overlapping tops.
         if (!GFX.lite) piece(cap, f, bnd, A, B, 0.05, 0.5, c.h, c.h + 0.22, f + OPP[f] + 'y' + ends, c.T, 1.0, eps);
+        if (GFX.xmas) { piece(snowB, f, bnd, A, B, 0.16, 0.12, c.h, c.h + 0.045, f + 'y' + ends, SNOW, 1, eps); if (!GFX.lite) piece(snowB, f, bnd, A, B, 0.05, 0.5, c.h + 0.22, c.h + 0.27, f + 'y' + ends, SNOW, 1, eps); }   // snow on the ledge and the parapet
         if (!GFX.lite && i > a && (i - a) % 3 === 0) { const p = cells[i - a - 1], hh = Math.min(p.h, c.h) - 0.32; piece(wb, f, bnd, A - 0.26, A + 0.26, 0.14, 0.1, 0.5, hh, f + 'y' + ends, c.T, 1.05, eps); }   // a pillar every 6 m
       }
     };
@@ -351,6 +356,7 @@ export function buildWorld(root) {
   addMesh(scene, crates.geometry(), lam({ map: TH.crates ? TEX.container : TEX.crate, vertexColors: true }));
   addMesh(scene, conc.geometry(), lam({ map: TEX.concrete, vertexColors: true }));
   addMesh(scene, bags.geometry(), lam({ map: TEX.bag, vertexColors: true }));
+  if (GFX.xmas) addMesh(scene, snowB.geometry(), lam({ map: TEX.plain, vertexColors: true }));
 
   // ---- barrels, decorations ----
   const barrels = [], deco = [], glow = [], plants = [];
@@ -395,6 +401,58 @@ export function buildWorld(root) {
   if (plants.length) addMesh(scene, mergeParts(plants), lam({ map: TEX.grass, vertexColors: true }));
   addMesh(scene, mergeParts(glow), new THREE.MeshBasicMaterial({ vertexColors: true }), false, false);
 
+  // ---- CHRISTMAS: small blocky trees, present piles, snowmen and candy canes tucked into quiet corners, plus strings of coloured lights on a few walls.
+  // Plain decoration (nothing solid, nothing in the lanes: only corners where two walls meet and the rest of the area is open). Not in Lite. All merged into 2 meshes. ----
+  if (GFX.xmas && !GFX.lite) {
+    let ps = ((MAP.seedOff + 7) * 2654435) % 2147483647 || 12345; const pr = () => (ps = (ps * 16807) % 2147483647) / 2147483647;
+    const dec = [], bulbs = [], open = (cx, cz) => cx > 0 && cz > 0 && cx < W - 1 && cz < H - 1 && G[cz * W + cx] === '.';
+    const put = (list, cx, cz, yaw, sc = 1) => { const s = Math.sin(yaw), c = Math.cos(yaw); for (const [lx, ly, lz, w, h, d, col] of list) dec.push([GEO.box, m4(cx + (lx * c + lz * s) * sc, ly * sc, cz + (-lx * s + lz * c) * sc, w * sc, h * sc, d * sc, 0, yaw), col]); };
+    const tree = () => {
+      const L = [[0, .3, 0, .26, .6, .26, 0x6b4a2a]], GR = [0x1e6b34, 0x27853f, 0x1e6b34, 0x2a8f46], OC = [0xe53935, 0xffc107, 0x2979ff, 0xd81b60, 0xf6f6f2];
+      [[1.5, .8], [1.15, 1.25], [.82, 1.7], [.5, 2.12]].forEach(([w, y], i) => {
+        L.push([0, y, 0, w, .46, w, GR[i]], [0, y + .24, 0, w * .86, .06, w * .86, 0xf4f8ff]);   // a tier, with a little snow on it
+        const h2 = w / 2 + .02; L.push([h2, y, w * .1, .14, .14, .14, OC[i % 5]], [-h2, y - .05, -w * .2, .14, .14, .14, OC[(i + 2) % 5]], [w * .2, y + .02, h2, .14, .14, .14, OC[(i + 3) % 5]], [-w * .15, y - .06, -h2, .14, .14, .14, OC[(i + 1) % 5]]);   // ornament cubes
+      });
+      L.push([0, 2.5, 0, .22, .22, .22, 0xffd23f], [0, 2.5, 0, .4, .08, .08, 0xffd23f], [0, 2.5, 0, .08, .4, .08, 0xffd23f]);   // yellow star
+      return L;
+    };
+    const presents = () => { const L = []; [[0, 0, .55, 0xd32f2f, 0xf6f6f2], [.6, .3, .4, 0x2e7d32, 0xe6b422], [-.38, .52, .34, 0xe6b422, 0xd32f2f]].forEach(([x, z, s, c, r]) => { L.push([x, s / 2, z, s, s, s, c], [x, s / 2, z, s + .02, s + .02, .08, r], [x, s / 2, z, .08, s + .02, s + .02, r], [x, s + .05, z, .17, .1, .17, r]); }); return L; };
+    const snowman = () => [[0, .35, 0, .95, .7, .95, 0xf6f9fc], [0, .95, 0, .68, .5, .68, 0xf6f9fc], [0, 1.45, 0, .48, .46, .48, 0xf6f9fc], [-.1, 1.52, .25, .07, .07, .05, 0x15151a], [.1, 1.52, .25, .07, .07, .05, 0x15151a], [0, 1.43, .34, .08, .08, .3, 0xff8a2a],
+      [0, 1.17, 0, .56, .1, .56, 0xd62828], [0, .95, .35, .08, .08, .04, 0x15151a], [0, .75, .5, .08, .08, .04, 0x15151a], [-.58, 1.0, 0, .62, .05, .05, 0x5a3a1e], [.58, 1.0, 0, .62, .05, .05, 0x5a3a1e], [0, 1.74, 0, .42, .05, .42, 0x15151a], [0, 1.9, 0, .28, .27, .28, 0x15151a], [0, 1.82, 0, .3, .06, .3, 0xd62828]];
+    const canes = () => { const L = []; [[-.45, 0, 1], [0, .22, .85], [.45, -.1, 1.1]].forEach(([x, z, s]) => { for (let k = 0; k < 8; k++) L.push([x, (k + .5) * .13 * s, z, .09 * s, .13 * s, .09 * s, k % 2 ? 0xf6f3ee : 0xd62828]); const t = 8 * .13 * s; L.push([x + .06 * s, t + .02, z, .2 * s, .1 * s, .09 * s, 0xf6f3ee], [x + .15 * s, t - .06 * s, z, .09 * s, .14 * s, .09 * s, 0xd62828]); }); return L; };
+    const kinds = [tree, tree, presents, snowman, canes, tree, presents, snowman];
+    // corner cells: two touching walls, the opposite two sides open, and a clear patch inside
+    const cand = [];
+    for (let z = 2; z < H - 2; z++) for (let x = 2; x < W - 2; x++) {
+      if (G[z * W + x] !== '.' || ZONE[z * W + x] === 'a' || ZONE[z * W + x] === 'b') continue;
+      const ws = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dz]) => G[(z + dz) * W + x + dx] === '#');
+      if (ws.length !== 2) continue;
+      const sx = ws[0][0] + ws[1][0], sz = ws[0][1] + ws[1][1]; if (!sx || !sz) continue;
+      if (open(x - sx, z - sz) && open(x - sx * 2, z - sz) && open(x - sx, z - sz * 2) && open(x - sx * 2, z - sz * 2)) cand.push([x, z, sx, sz]);
+    }
+    for (let i = cand.length - 1; i > 0; i--) { const j = (pr() * (i + 1)) | 0; [cand[i], cand[j]] = [cand[j], cand[i]]; }
+    const taken = []; let n = 0;
+    for (const [x, z, sx, sz] of cand) {
+      if (n >= 24) break;
+      if (taken.some(([tx, tz]) => (tx - x) * (tx - x) + (tz - z) * (tz - z) < 49)) continue;
+      taken.push([x, z]); put(kinds[n % kinds.length](), x * CS + 1 + sx * 0.38, z * CS + 1 + sz * 0.38, Math.atan2(-sx, -sz) + (pr() - 0.5) * 0.7, 0.85 + pr() * 0.3); n++;
+    }
+    // strings of lights along a few tall walls (emissive little cubes, no real lights)
+    const BC = [0xff3b3b, 0xffd23f, 0x2fd36b, 0x3fa7ff]; let strands = 0;
+    for (let z = 1; z < H - 1 && strands < 8; z++) for (let x = 1; x < W - 1 && strands < 8; x++) {
+      const info = WI[z * W + x]; if (!info || info.h < 4.5 || (x * 31 + z * 17) % 29 !== 0) continue;
+      for (const f of 'xXzZ') {
+        if (!info.f.includes(f)) continue;
+        const along = f === 'x' || f === 'X', nb = WI[(along ? z + 1 : z) * W + (along ? x : x + 1)]; if (!nb || !nb.f.includes(f)) continue;
+        const face = f === 'x' ? x * CS - 0.09 : f === 'X' ? (x + 1) * CS + 0.09 : f === 'z' ? z * CS - 0.09 : (z + 1) * CS + 0.09, a0 = along ? z * CS : x * CS;
+        for (let k = 0; k <= 8; k++) { const t = k / 8, y = 3.3 - 0.32 * Math.sin(Math.PI * t), p = a0 + t * 4; bulbs.push([GEO.box, along ? m4(face, y, p, 0.14, 0.17, 0.14) : m4(p, y, face, 0.14, 0.17, 0.14), BC[k % 4]]); }
+        strands++; break;
+      }
+    }
+    if (dec.length) addMesh(scene, mergeParts(dec), lam({ map: TEX.plain, vertexColors: true }));
+    if (bulbs.length) addMesh(scene, mergeParts(bulbs), new THREE.MeshBasicMaterial({ vertexColors: true }), false, false);
+  }
+
   // ---- skyline (skipped in Lite) ----
   const sk = new BoxBatch(), roofs = [], palms = [];
   for (let i = 0; i < (GFX.lite ? 0 : 70); i++) {
@@ -414,7 +472,7 @@ export function buildWorld(root) {
     addMesh(scene, mergeParts(palms), lam({ map: TEX.plain, vertexColors: true }), false, false);
   }
   // (the outside ground sits well below the floor tiles and is pushed back in depth: the 3 cm gap it used to have made it flash through the floor, green on Ruins, when the menu camera looks down from high up)
-  const sand = addMesh(scene, new THREE.PlaneGeometry(1400, 1400), lam({ color: TH.ground, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), false, false);
+  const sand = addMesh(scene, new THREE.PlaneGeometry(1400, 1400), lam({ color: GFX.xmas ? 0xe4ebf3 : TH.ground, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), false, false);
   sand.rotation.x = -Math.PI / 2; sand.position.set(W, -0.4, H);
 
   // signs
@@ -685,7 +743,7 @@ let _hat = null;
 export function santaHat() {
   if (_hat) return _hat;
   const R1 = 0xd62828, R2 = 0xc01f1f, WH = 0xf6f6f2;
-  return (_hat = mergeParts([pt.box(.56, .09, .56, 0, .29, 0, WH), pt.box(.47, .1, .47, 0, .38, .01, R1), pt.box(.39, .1, .39, 0, .47, .045, R2), pt.box(.31, .1, .31, 0, .55, .09, R1), pt.box(.23, .09, .23, 0, .62, .15, R2), pt.box(.17, .08, .17, 0, .66, .23, R1), pt.box(.13, .13, .13, 0, .6, .31, WH)]));
+  return (_hat = mergeParts([pt.box(.6, .1, .6, 0, .25, 0, WH), pt.box(.5, .1, .5, 0, .34, .01, R1), pt.box(.41, .1, .41, 0, .43, .05, R2), pt.box(.32, .1, .32, 0, .51, .1, R1), pt.box(.24, .09, .24, 0, .58, .16, R2), pt.box(.18, .08, .18, 0, .625, .24, R1), pt.box(.14, .14, .14, 0, .56, .33, WH)]));
 }
 // COSTUMES: a body colour + silly bits for the head and the back (ears, horns, tails, fins). Built in the soldier's own head / torso space.
 const kitCache = {};
@@ -739,10 +797,23 @@ export function costumeKit(id, side = 0) {
   const p = SPAL[side]; if (p) h(p.cap ? 0.475 : 0.505, 0.07, p.cap ? 0.475 : 0.505, 0, p.cap ? 0.125 : 0.195, 0, p.team);   // the team band always stays visible
   return (kitCache[key] = { tint: K.tint, head: K.head.length ? mergeParts(K.head) : null, body: K.body.length ? mergeParts(K.body) : null });
 }
+// Two boxes that overlap AND share a flat face flicker against each other (z-fighting). For every box that does, pull the shared face in by a hair (0.7 mm) so only one of them draws it.
+function fixCoplanar(parts, bxs) {
+  const E = 1e-4, SH = 0.0007;
+  for (let j = 1; j < bxs.length; j++) {
+    const [idx, w, h, d, x, y, z, c] = bxs[j], lo = [x - w / 2, y - h / 2, z - d / 2], hi = [x + w / 2, y + h / 2, z + d / 2]; let changed = false;
+    for (let i = 0; i < j; i++) {
+      const A = bxs[i], alo = [A[4] - A[1] / 2, A[5] - A[2] / 2, A[6] - A[3] / 2], ahi = [A[4] + A[1] / 2, A[5] + A[2] / 2, A[6] + A[3] / 2];
+      if ([0, 1, 2].some((k) => Math.min(hi[k], ahi[k]) - Math.max(lo[k], alo[k]) < 2e-4)) continue;   // they do not overlap: nothing to fix
+      for (let k = 0; k < 3; k++) { if (Math.abs(lo[k] - alo[k]) < E) { lo[k] += SH; changed = true; } if (Math.abs(hi[k] - ahi[k]) < E) { hi[k] -= SH; changed = true; } }
+    }
+    if (changed) parts[idx] = pt.box(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, c);
+  }
+}
 export function buildGun(id, acc) {
   makeTextures();
-  const parts = [], extra = [], A = acc;
-  const b = (w, h, d, x, y, z, c, rx = 0) => parts.push(pt.box(w, h, d, x, y, z, c, rx));
+  const parts = [], extra = [], A = acc, bxs = [];
+  const b = (w, h, d, x, y, z, c, rx = 0) => { if (!rx) bxs.push([parts.length, w, h, d, x, y, z, c]); parts.push(pt.box(w, h, d, x, y, z, c, rx)); };
   const cz = (r, len, x, y, z, c, seg = 12) => parts.push(pt.cz(r, len, x, y, z, c, seg));
   const tz = (r1, r2, len, x, y, z, c) => parts.push(pt.tz(r1, r2, len, x, y, z, c));
   let spec;
@@ -931,6 +1002,16 @@ export function buildGun(id, acc) {
       b(.05, .1, .05, 0, -.085, .1, C.dark, -.3); b(.044, .01, .09, 0, -.065, .02, C.dark);
       b(.04, .1, .24, 0, -.01, .3, C.dark); b(.06, .12, .03, 0, -.02, .43, C.metal); b(.012, .014, .012, 0, .07, -.7, C.light);
       spec = { sy: 0.085, mz: [0, 0.035, -0.74], fore: [0, -0.075, -0.36], ads: [-0.42, 1.15] }; break;
+    case 'frosty': {
+      // FROSTY PISTOL (holiday gun): a white pistol with red candy stripes, a green frame, gold sights and a snowball loaded in the muzzle
+      const WT = 0xf6f3ee, RD = 0xd62828, GR = 0x1f8a4c, GD = 0xe6b422;
+      b(.034, .04, .19, 0, .05, -.075, WT); b(.036, .012, .19, 0, .059, -.075, RD); b(.0356, .03, .03, 0, .05, -.14, RD); b(.0356, .03, .03, 0, .05, -.03, RD);
+      b(.032, .022, .17, 0, .016, -.065, GR); b(.022, .006, .05, 0, -.014, -.037, GR); b(.022, .03, .006, 0, 0, -.062, GR);
+      b(.034, .11, .05, 0, -.045, .026, RD, -.28); b(.038, .014, .056, 0, -.098, .044, GD, -.28);
+      b(.008, .012, .012, 0, .074, .016, GD); b(.007, .01, .01, 0, .0745, -.162, GD);
+      cz(.022, .03, 0, .05, -.19, WT, 10);
+      spec = { sy: 0.08, mz: [0, 0.05, -0.2], grip: [0, -0.045, 0.026], ads: [-0.42, 1.2], pistol: true, hs: 1 }; break;
+    }
     case 'jingle': {
       // TINSEL BLASTER (holiday gun): a candy-striped automatic shotgun with a green rail, a striped barrel and a gold jingle bell under the fore-end
       const RD = 0xd62828, WT = 0xf6f3ee, GR = 0x1f8a4c, GD = 0xe6b422;
@@ -1021,6 +1102,7 @@ export function buildGun(id, acc) {
     if (spec.fore) lArm = armBox(V(spec.fore[0], spec.fore[1] - 0.012, spec.fore[2]), V(-0.2, -0.6, 0.42), 0.1, 1.2);
   }
 
+  fixCoplanar(parts, bxs);
   const finishMesh = new THREE.Mesh(mergeParts(parts), gunMat); g.add(finishMesh);
   for (const e of extra) g.add(e);
   const mz = new THREE.Object3D(); mz.position.set(...spec.mz); g.add(mz);

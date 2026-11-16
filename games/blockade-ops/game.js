@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=238';
+import { displayWeapon, createHomeStage } from './showcase.js?v=241';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=238';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=238';
-import { platform } from './platform.js?v=238';
-import * as THREE from './three.module.min.js?v=238';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=238';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=238';
-import { createOnline } from './online.js?v=238';
-import { TOUCH, initTouch } from './touch.js?v=238';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=238';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=241';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=241';
+import { platform } from './platform.js?v=241';
+import * as THREE from './three.module.min.js?v=241';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=241';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=241';
+import { createOnline } from './online.js?v=241';
+import { TOUCH, initTouch } from './touch.js?v=241';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=241';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -145,7 +145,7 @@ function showRankUp(r) {
 }
 const LITE = S.gfx === 'lite', LOW = S.gfx !== 'high';
 fxQuality.shine = !LITE;   // moving shine + sparkles on skins: on Fast and High, never on Lite
-GFX.lite = LITE;
+GFX.lite = LITE; GFX.xmas = XMAS;
 const GFX_AT_LOAD = S.gfx;   // what this page started with: a different choice only takes effect after a reload
 document.body.classList.toggle('lite', LITE); document.body.classList.toggle('low', LOW);
 // online play: role is 'none' (single player), 'host' (runs the match) or 'client' (draws what the host sends)
@@ -318,6 +318,7 @@ function drawRadarImg() {
   x.fillStyle='#fff';x.font='bold '+(unit*5.5)+'px Arial';x.textAlign='center';x.textBaseline='middle';
   for(const k of ['a','b'])x.fillText(SITES[k].name,SITES[k].center[0]*unit,(SITES[k].center[1]+.5)*unit);
 }
+const fogHex = () => (XMAS ? 0xdbe7f3 : MAP.theme.fog);   // Christmas: a cool, bright winter haze
 function applyWorld() {
   if (WORLD) disposeWorld(WORLD.group);
   WORLD = buildWorld(scene);
@@ -327,7 +328,7 @@ function applyWorld() {
   const sb = Math.max(60, Math.max(W, H) * CS * 0.68), ex = sb / 60;
   sun.target.position.set(W, 0, H); sun.position.copy(sun.target.position).addScaledVector(WORLD.sunDir, 130 * ex);
   Object.assign(sun.shadow.camera, { left: -sb, right: sb, top: sb, bottom: -sb, far: 220 * ex }); sun.shadow.camera.updateProjectionMatrix();
-  scene.fog.color.setHex(MAP.theme.fog); renderer.setClearColor(MAP.theme.fog); // Lite has no sky dome: the fog colour is the sky
+  scene.fog.color.setHex(fogHex()); renderer.setClearColor(fogHex()); // Lite has no sky dome: the fog colour is the sky
   drawRadarImg(); holdLookCache.clear();
   renderer.shadowMap.needsUpdate = true;
 }
@@ -379,6 +380,40 @@ function updateParts(dt) {
     dummy.updateMatrix(); pMesh.setMatrixAt(n, dummy.matrix); pMesh.setColorAt(n, p.c); n++;
   }
   pMesh.count = n; pMesh.instanceMatrix.needsUpdate = true; if (pMesh.instanceColor) pMesh.instanceColor.needsUpdate = true;
+}
+// falling snow in the 3D view (Christmas season): a few hundred soft white dots around the camera, one draw call. The Snow button on the hub can switch it off.
+const snow3d = XMAS ? (() => {
+  const n = LITE ? 160 : 380, box = 30, c = document.createElement('canvas'); c.width = c.height = 32; const cg = c.getContext('2d');
+  const gr = cg.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); cg.fillStyle = gr; cg.fillRect(0, 0, 32, 32);
+  const pos = new Float32Array(n * 3), vel = new Float32Array(n * 3), geo = new THREE.BufferGeometry();
+  for (let i = 0; i < n; i++) { pos[i * 3] = camera.position.x + (Math.random() - 0.5) * box * 2; pos[i * 3 + 1] = camera.position.y + (Math.random() - 0.3) * box; pos[i * 3 + 2] = camera.position.z + (Math.random() - 0.5) * box * 2; vel[i * 3] = Math.random() * 6.28; vel[i * 3 + 1] = 1.1 + Math.random() * 1.6; vel[i * 3 + 2] = 0.3 + Math.random() * 0.8; }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(c), color: 0xffffff, size: 0.17, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
+  pts.frustumCulled = false; pts.renderOrder = 5; scene.add(pts);
+  const wrap = (d, r) => (d > r ? d - 2 * r : d < -r ? d + 2 * r : d), dir = new THREE.Vector3(); let offT = 0, off = false;
+  return {
+    update(dt) {
+      offT -= dt; if (offT <= 0) { offT = 1; try { off = localStorage.getItem('hk-xmas-snow') === 'off'; } catch (e) {} }
+      pts.visible = !off; if (off) return;
+      camera.getWorldDirection(dir); const cx = camera.position.x + dir.x * box * 0.5, cy = camera.position.y + dir.y * box * 0.5, cz = camera.position.z + dir.z * box * 0.5;
+      for (let i = 0; i < n; i++) { const k = i * 3; vel[k] += dt * vel[k + 2]; pos[k] += Math.sin(vel[k]) * dt * 0.6; pos[k + 1] -= vel[k + 1] * dt; pos[k] = cx + wrap(pos[k] - cx, box); pos[k + 1] = cy + wrap(pos[k + 1] - cy, box * 0.6); pos[k + 2] = cz + wrap(pos[k + 2] - cz, box); }
+      geo.attributes.position.needsUpdate = true;
+    }
+  };
+})() : null;
+// SNOWBALL GUNS: holiday guns throw round white snowballs (same hitscan damage) and burst into a little snow puff where they land
+const SNOW_GUNS = new Set(['jingle', 'frosty']), snowballs = [], SNOWCOL = ['#ffffff', '#f2f8ff', '#d6e8ff'];
+{ const sbGeo = new THREE.SphereGeometry(0.075, 8, 6), sbMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); for (let i = 0; i < 48; i++) { const m = new THREE.Mesh(sbGeo, sbMat); m.visible = false; scene.add(m); snowballs.push({ m, a: new THREE.Vector3(), b: new THREE.Vector3(), t: 0, dur: 0 }); } }
+let sbI = 0;
+function snowball(a, b) {
+  const s = snowballs[sbI++ % snowballs.length], len = a.distanceTo(b); if (len < 0.5) return;
+  s.a.copy(a); s.b.copy(b); s.dur = Math.max(0.03, len / 140); s.t = s.dur; s.m.position.copy(a); s.m.visible = true;
+}
+function updateSnowballs(dt) {
+  for (const s of snowballs) if (s.t > 0) {
+    s.t -= dt; s.m.position.lerpVectors(s.a, s.b, 1 - Math.max(0, s.t) / s.dur);
+    if (s.t <= 0) { s.m.visible = false; burst(s.b.x, s.b.y, s.b.z, 8, 2.6, SNOWCOL, 0.08, 0.5, 7, 0.6); }   // the snow puff
+  }
 }
 // tracers
 const tracers = [];
@@ -468,6 +503,7 @@ const WD = {
   brute: { name: 'Brute', slot: 'prim', price: 1650, dmg: 31, rpm: 660, auto: true, mag: 40, res: 120, reload: 3.0, speed: 6.2, inacc: 0.8, moveInacc: 2.2, airInacc: 7, pen: 0.72, range: 0.87, recoil: 0.85, rec: 8, reward: 600, tier: 2, snd: [2400, 0.14, 1.1], acc: '#a8472e', patk: 'smg', draw: 0.4, stagger: 0.25, desc: 'Heavy SMG: slower than the Buzz but hits harder. 40 rounds. $600 per kill.' },
   ghost: { name: 'Ghost', slot: 'prim', price: 3100, dmg: 30, rpm: 700, auto: true, mag: 30, res: 90, reload: 2.4, speed: 6.4, inacc: 0.26, moveInacc: 4.2, airInacc: 10, pen: 0.66, range: 0.96, recoil: 0.7, rec: 8, reward: 300, tier: 3, snd: [1200, 0.1, 0.7], acc: '#7a5aa8', quiet: true, patk: 'ghost', first: 0.25, draw: 0.35, desc: 'Suppressed rifle: does not give your position away. Light and quick, less damage than the Raptor.' },
   breaker: { name: 'Breaker', slot: 'prim', price: 2300, dmg: 17, pellets: 8, cone: 4.2, rpm: 300, mag: 8, res: 32, reload: 3.2, shell: 0.38, speed: 6.1, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.6, recoil: 2.6, rec: 4, reward: 900, tier: 3, snd: [1350, 0.28, 1.5], acc: '#d4a02a', patk: 'cannon', stagger: 0.4, draw: 0.45, desc: 'Fast semi-auto shotgun: 8 pellets, quick follow-up shots. $900 per kill.' },
+  frosty: { name: 'Frosty Pistol', slot: 'sec', price: 600, dmg: 31, rpm: 360, mag: 14, res: 84, reload: 1.9, speed: 6.7, inacc: 0.5, moveInacc: 2.0, airInacc: 6, pen: 0.5, range: 0.86, recoil: 1.0, rec: 7, reward: 300, tier: 1, snd: [2200, 0.12, 0.9], acc: '#7fc4e8', patk: 'tap', stagger: 0.3, first: 0.5, draw: 0.24, desc: 'HOLIDAY GIFT: a snowball pistol. Each snowball shoves the target a little. Accurate taps.' },
   jingle: { name: 'Tinsel Blaster', slot: 'prim', price: 1700, dmg: 11, pellets: 6, cone: 2.5, rpm: 400, auto: true, mag: 24, res: 72, reload: 2.7, speed: 6.2, inacc: 0.4, moveInacc: 1.4, airInacc: 5, pen: 0.55, range: 0.62, recoil: 1.2, rec: 5, reward: 900, tier: 2, snd: [1500, 0.2, 1.2], acc: '#d62828', patk: 'smg', stagger: 0.25, draw: 0.4, desc: 'HOLIDAY GIFT: a full-auto shotgun. Sprays 6 pellets every shot, hold the button down. Best up close.' },
   bomb: { name: 'BOMB BLAST', hidden: true },   // not a gun: only so a bomb kill has a name (keep it LAST: online play numbers the guns by their place in this list)
 };
@@ -495,9 +531,10 @@ function showTwist() {
   setTimeout(() => { if (GS.twist === t.id && GS.state !== 'menu') banner('WILD TWIST: ' + t.name.toUpperCase(), t.desc, '#fff', 3600); }, 3300);
 }
 const SIMPLE_GUNS = new Set(['p9', 'viper', 'trio', 'buzz', 'thumper', 'carbine', 'raptor', 'longbow', 'lmg']);
+const holidayOwn = (a, id) => a.isPlayer && !MP.on && skinState.rewarded.includes('gun:' + id);   // the player starts with the holiday guns once the gift is opened
 function gunOK(id) {
   const d = WD[id]; if (!d || !d.mag) return true;   // grenades, gear and the knife are always there
-  if (id === 'jingle') return skinState.rewarded.includes('gun:jingle');   // the Tinsel Blaster is a holiday gift: only if you opened your gift
+  if (id === 'jingle' || id === 'frosty') return skinState.rewarded.includes('gun:' + id);   // the Tinsel Blaster is a holiday gift: only if you opened your gift
   const ar = MP.on && MP.cfg && MP.cfg.arsenal ? MP.cfg.arsenal : S.arsenal;
   return ar !== 'simple' || SIMPLE_GUNS.has(id);
 }
@@ -541,7 +578,7 @@ function nameTag(a, g) {
   tag.scale.set(1.3, 0.33, 1); tag.position.y = 2.2; tag.renderOrder = 999; g.add(tag); g.userData.nameTag = tag;
 }
 // What each gun looks like in a soldier's hands (the arms pose and the gun shape come from this class, see tpArms in art.js)
-const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', jingle: 'shotgun', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade' };
+const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', jingle: 'shotgun', frosty: 'pistol', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade' };
 // A soldier is a few merged meshes: 2 legs (+2 shins in Pretty/Fast), body, head (Pretty/Fast) and ONE arms+gun mesh whose shape changes with the gun in hand.
 // Lite uses straight legs and a body that already includes the head; the knees are empty groups there.
 const shieldMats = { body: new THREE.MeshLambertMaterial({ color: 0x2c3a52, flatShading: true }), rim: new THREE.MeshLambertMaterial({ color: 0x14181f, flatShading: true }), glass: new THREE.MeshBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.3 }) };
@@ -864,23 +901,24 @@ function traceShot(a, o, d, def, wid, showTracer) {
     if (h && (!best || h.t < best.t)) best = { ...h, e };
   }
   const end = _v1.copy(o).addScaledVector(d, best ? best.t : tW);
+  if (SNOW_GUNS.has(wid) && !showTracer) snowball(_v2.copy(o).addScaledVector(d, 0.8), end);
   if (showTracer) {
     const start = a.isPlayer ? _v2.copy(o).addScaledVector(fwd(a.yaw, a.pitch), 0.6).add(_v3.set(Math.cos(a.yaw) * 0.12, -0.12, -Math.sin(a.yaw) * 0.12)) : _v2.copy(o).addScaledVector(d, 0.8);
-    if (!a.isPlayer || Math.random() < 0.5) tracer(start, end);
+    if (SNOW_GUNS.has(wid)) snowball(start, end); else if (!a.isPlayer || Math.random() < 0.5) tracer(start, end);
   }
   if (best) {
     const e = best.e, sc = SIDE[e.side];
     const dmg = shotDamage(def, best.part, best.t);
     if (shieldUp(e) && shieldFaces(e, a.pos) && wid !== 'bomb') burst(end.x, end.y, end.z, 5, 3, ['#ffffff', '#ffe27a', '#bcd7ff'], 0.04, 0.25, 10);   // the shield catches it: bright sparks, not the dark team-coloured chips (those looked like black bugs floating in front of the shield)
-    else burst(end.x, end.y, end.z, best.part === 'head' ? 14 : 7, 4, ['#ffffff', '#' + sc.main.toString(16).padStart(6, '0'), '#ffe27a'], 0.06, 0.35, 10);
+    else if (!SNOW_GUNS.has(wid)) burst(end.x, end.y, end.z, best.part === 'head' ? 14 : 7, 4, ['#ffffff', '#' + sc.main.toString(16).padStart(6, '0'), '#ffe27a'], 0.06, 0.35, 10);
     damage(e, dmg, a, best.part, wid, d);
     return true;
   }
   if (def.suppress) suppressNear(a, o, d, tW);
   if (hw) {
     const n = _v3.set(hw.nx, hw.ny, hw.nz);
-    decal(end, n);
-    burst(end.x + n.x * 0.05, end.y + n.y * 0.05, end.z + n.z * 0.05, 5, 3.5, ['#e8d2a8', '#c9a676', '#fff2c0'], 0.06, 0.4, 12);
+    if (!SNOW_GUNS.has(wid)) decal(end, n);
+    if (!SNOW_GUNS.has(wid)) burst(end.x + n.x * 0.05, end.y + n.y * 0.05, end.z + n.z * 0.05, 5, 3.5, ['#e8d2a8', '#c9a676', '#fff2c0'], 0.06, 0.4, 12);
   }
   return false;
 }
@@ -1167,6 +1205,7 @@ function clearWorld() {
   for (const s of GS.smokes) for (const sp of s.sprites) { scene.remove(sp); sp.material.dispose(); }
   for (const f of GS.fires) { scene.remove(f.disc); f.disc.geometry.dispose(); f.disc.material.dispose(); } GS.nades = []; GS.smokes = []; GS.fires = []; clearDrops(); parts.length = 0; pMesh.count = 0;
   for (const tr of tracers) { tr.t = 0; tr.m.visible = false; }
+  for (const s of snowballs) { s.t = 0; s.m.visible = false; }
   decals.count = 0; dI = 0; clearPings(); MARKS.length = 0;
   for (const b of booms) { if (b.m) { scene.remove(b.m); b.m.geometry.dispose(); b.m.material.dispose(); } if (b.l) b.l.intensity = 0; } booms.length = 0;   // leftover explosion spheres (the render loop normally removes them; a headless simulation never runs it)
 }
@@ -1211,7 +1250,7 @@ function spawnAt(a, cells, used) {
 }
 function resetActorForRound(a) {
   if (a.fullReset || !a.alive) {
-    a.prim = null; a.sec = newGun('p9'); a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.armor = 0; a.helmet = false; a.kit = false; a.shield = false; a.shieldOn = false;
+    a.prim = holidayOwn(a, 'jingle') ? newGun('jingle') : null; a.sec = newGun(holidayOwn(a, 'frosty') ? 'frosty' : 'p9'); a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.armor = 0; a.helmet = false; a.kit = false; a.shield = false; a.shieldOn = false;
   } else if (a.prim) { /* survivors keep gear */ }
   a.fullReset = false; a.buyLog = [];
   a.hp = GS.twist === 'glass' ? 50 : 100; a.alive = true; a.act = null; a.blindT = 0; a.reloadT = 0; a.switchT = 0; a.rc = 0; a.scoped = 0; a.rescope = 0; a.roundKills = 0; a.crouch = false; a.crouchAmt = 0; a.tagT = 0;
@@ -1371,8 +1410,8 @@ function dmSpawn(a) {
   if (GS.duck) bestC = jitterCell(GS.duck.bases[a.squad].cell, 3);   // Capture the Duck: you come back at your own base
   a.pos.set(cellX(bestC), 0, cellZ(bestC)); a.vel.set(0, 0, 0); a.yaw = Math.random() * 6.28; a.pitch = 0;
   a.hp = 100; a.armor = 100; a.helmet = true; a.shield = false; a.shieldOn = false; a.alive = true; a.protT = 1.5; a.spawnT = GS.time; a.act = null; a.blindT = 0; a.reloadT = 0; a.rc = 0; a.scoped = 0;
-  a.sec = newGun('p9');
-  a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || 'raptor') : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow', 'brute', 'ghost', 'breaker'].filter(gunOK)));
+  a.sec = newGun(holidayOwn(a, 'frosty') ? 'frosty' : 'p9');
+  a.prim = newGun((a.isPlayer || a.remote) ? (a.dmPick || (holidayOwn(a, 'jingle') ? 'jingle' : 'raptor')) : pick(['raptor', 'raptor', 'sentinel', 'sentinel', 'carbine', 'buzz', 'chopper', 'thumper', 'scatter', 'lmg', 'dmr', 'ranger', 'longbow', 'brute', 'ghost', 'breaker'].filter(gunOK)));
   a.nades = { he: 1, flash: 1, smoke: 0, molly: 0 };
   a.slot = 'prim';
   if (GS.twist === 'glass') { a.hp = 50; a.armor = 0; a.helmet = false; }
@@ -3061,13 +3100,13 @@ function updateBoard() {
 }
 
 // buy menu
-const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker', 'jingle']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit', 'shield']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
+const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver', 'frosty']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker', 'jingle']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit', 'shield']], ['GRENADES', ['he', 'flash', 'smoke', 'molly']]];
 // Original lightweight side profiles. Inline SVG inherits each card's purchase-state color.
 function buyIcon(id) {
  const pistol='M35 20H111V29H72L65 35H55L50 53H32L39 32H31V24Z';
  const rifle='M12 27L37 21H56V18H104V22H130V25H151V30H103L96 35H77L83 51H69L60 36H49L42 49H31L34 33L12 39Z';
  const shapes={
- p9:pistol, trio:pistol+' M88 17H101V20H88Z', viper:'M28 17H119V30H71L61 37L54 55H32L40 31H28Z', tec:'M45 19H98V25H120V30H82V51H70V32H61L56 51H41L47 29Z',
+ p9:pistol, frosty:pistol, trio:pistol+' M88 17H101V20H88Z', viper:'M28 17H119V30H71L61 37L54 55H32L40 31H28Z', tec:'M45 19H98V25H120V30H82V51H70V32H61L56 51H41L47 29Z',
  revolver:'M25 23H59V18H78V21H124V28H79L72 35H57L51 53H31L39 32H25Z',duster:'M30 25H131V31H62L50 43H27L38 32Z',
  buzz:'M17 28L40 20H105V24H130V30H84V51H71V32H56L49 47H38L41 32H17Z',brute:rifle,chopper:rifle,
  thumper:'M12 30L42 22H89V24H148V29H93V35H56L39 45H14Z',scatter:'M12 29L37 22H145V28H100V34H72L65 49H52L54 33L15 42Z',breaker:rifle+' M110 31H143V36H110Z',jingle:rifle+' M110 31H143V36H110Z',
@@ -3387,7 +3426,7 @@ function frame(now) {
     return;
   }
   if (lobbyDoor) lobbyDoor.visible = false;
-  if (QC.menu) { renderer.setPixelRatio(Math.min(devicePixelRatio, 1)); renderer.setSize(innerWidth, innerHeight, false); sun.color.setHex(0xfff6ea); sun.intensity = 1.45; scene.fog.color.setHex(MAP.theme.fog); applyRung(QC.rung); }   // back from the menu: the full picture again
+  if (QC.menu) { renderer.setPixelRatio(Math.min(devicePixelRatio, 1)); renderer.setSize(innerWidth, innerHeight, false); sun.color.setHex(0xfff6ea); sun.intensity = 1.45; scene.fog.color.setHex(fogHex()); applyRung(QC.rung); }   // back from the menu: the full picture again
   if (GS.paused && !MP.on) { if (now < nextPauseDraw) return; nextPauseDraw = now + 1000 / 20 - 1; }   // behind the pause screen 20 pictures a second are plenty
   if (camera.near !== 0.05 || scene.fog.near < 20) { camera.near = 0.05; camera.far = LITE ? 125 : 700; scene.fog.near = LITE ? 22 : 28; scene.fog.far = LITE ? 105 : 175; camera.updateProjectionMatrix(); }   // back to the in-game view after the menu
   if ((!GS.paused || MP.on) && GS.state !== 'over') {
@@ -3399,7 +3438,7 @@ function frame(now) {
   const ffNow = speedUp();
   updateSpeedPrompt(ffNow);
   if (ffNow !== ffOn) { ffOn = ffNow; setFastForward(ffNow); }
-  updateParts(dt); updateBooms(dt);
+  updateParts(dt); updateBooms(dt); updateSnowballs(dt); if (snow3d) snow3d.update(dt);
   for (const t of tracers) if (t.t > 0) { t.t -= dt; if (t.t <= 0) t.m.visible = false; }
   animateActors(dt);
   updateCamera(dt); updatePings(dt);
@@ -3489,7 +3528,7 @@ function remoteShotFx(a, wid, o, d) {
   const dd = Array.isArray(d) ? V().set(+d[0] || 0, +d[1] || 0, +d[2] || 0) : d.clone();
   if (dd.lengthSq() < 0.01) return; dd.normalize();
   const hw = rayWorld(oo, dd, 220), len = hw ? hw.t : 140;
-  if (!def.melee) tracer(oo.clone().addScaledVector(dd, 0.8), oo.clone().addScaledVector(dd, len));
+  if (!def.melee) { const s0 = oo.clone().addScaledVector(dd, 0.8), e0 = oo.clone().addScaledVector(dd, len); if (SNOW_GUNS.has(wid)) snowball(s0, e0); else tracer(s0, e0); }
   a.lastShot = GS.time;
   if (a.mesh) { a.mesh.flash.visible = true; a.mesh.flashT = 0.05; a.mesh.flash.material.rotation = Math.random() * 6; }
   if (def.melee) SFX.knife(a.pos, false); else if (def.quiet) SFX.suppressed(a.pos, false); else SFX.shot(def.snd, a.pos, false);
@@ -3806,7 +3845,7 @@ function menuScene(t) {
 function stageSync() { menuSoldierSync(); }
 const hexOf = (n) => '#' + n.toString(16).padStart(6, '0');
 const gunIds = () => Object.keys(WD).filter((id) => WD[id].mag && (WD[id].slot === 'prim' || WD[id].slot === 'sec'));
-const weaponList = () => [...gunIds().filter((id) => id !== 'jingle' || skinState.rewarded.includes('gun:jingle')), 'knife'];
+const weaponList = () => [...gunIds().filter((id) => (id !== 'jingle' && id !== 'frosty') || skinState.rewarded.includes('gun:' + id)), 'knife'];
 const weaponName = (id) => (id === 'knife' ? (knives.find((k) => k.id === skinState.knife) || knives[0]).name : WD[id].name);
 const rebuildGun = (id) => { delete vmModels[id]; delete GM[id]; if (vmId === id) vmId = ''; };   // the in-hand model is rebuilt with the new skin / stickers
 const locker = document.createElement('dialog'); locker.id = 'skinLocker';
@@ -4030,7 +4069,7 @@ locker.addEventListener('cancel', (e) => { if (pendingReward || opening) e.preve
   const wClose = el('button', 'btn', 'CLOSE'); const wRow = el('div', 'row'); wRow.style.justifyContent = 'center'; wRow.append(wClose); wCard.append(wRow); weaponsP.append(wCard); document.body.appendChild(weaponsP);
   const wGrid = wCard.querySelector('#wpnGrid');
   const drawWeapons = () => {
-    wGrid.replaceChildren(...Object.keys(WD).filter((id) => id === 'knife' || (WD[id].mag && (WD[id].slot === 'prim' || WD[id].slot === 'sec'))).map((id) => {
+    wGrid.replaceChildren(...Object.keys(WD).filter((id) => id === 'knife' || (WD[id].mag && (WD[id].slot === 'prim' || WD[id].slot === 'sec') && ((id !== 'jingle' && id !== 'frosty') || skinState.rewarded.includes('gun:' + id)))).map((id) => {
       const b = el('button', 'wpn-btn' + (showcaseGun() === id ? ' on' : '')); b.innerHTML = '<b></b><small></small>'; b.firstChild.textContent = WD[id].name; b.lastChild.textContent = (id === 'knife' ? 'Melee' : WD[id].slot === 'prim' ? 'Main gun' : 'Pistol') + (id === 'knife' ? '' : ' · $' + WD[id].price);
       b.onclick = () => { skinState.showcase = id; saveFinish(); stageSync(); drawWeapons(); }; return b;
     }));
@@ -4046,6 +4085,10 @@ locker.addEventListener('cancel', (e) => { if (pendingReward || opening) e.preve
   skinsButton.textContent = 'SKINS & CRATES'; skinsButton.className = 'btn';
   $('playOnline').textContent = 'FRIENDS'; $('openSet').textContent = 'SETTINGS';
   col.append($('quickPlay'), $('play'), $('playOnline'), skinsButton, weaponsBtn, mapsBtn, $('openSet'));
+  // Back to all the games (only when the game is played from the games site, never on a game portal)
+  const ON_HUB = (/github\.io$/.test(location.hostname) && /\/games\/[^/]+\/(index\.html)?$/.test(location.pathname)) || /[?&]hub=1/.test(location.search);
+  if (ON_HUB) { const hub = el('a', 'btn hub-link', '\u2190 ALL GAMES'); hub.href = '../../'; status.prepend(hub); const ph = el('a', 'btn', 'ALL GAMES (LEAVE)'); ph.id = 'pHub'; ph.href = '../../'; $('quit').after(ph); }
+  if (XMAS) { const st = el('div', 'xl-strand'); for (let i = 0; i < 46; i++) st.append(el('i')); bar.append(st); }   // Christmas: a string of lights under the top bar
   bar.append(intro.querySelector('.logo'), col, status);
 
   const hit = el('button', 'soldier-hit');
@@ -4164,7 +4207,7 @@ MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { re
 // ================= HOLIDAY GIFT (Christmas season): a one-time popup that puts the Candy Cane Knife, the Tinsel Blaster and the Elf Suit into your inventory =================
 (function holidayGift() {
   if (!XMAS) return;
-  const force = /[?&]gift=1/.test(location.search), KEY = 'xmas-gift-1';
+  const force = /[?&]gift=1/.test(location.search), KEY = 'xmas-gift-2';
   skinState.gifts ??= [];
   if (!force && skinState.gifts.includes(KEY)) return;
   const el = document.createElement('div'); el.id = 'giftPop';
@@ -4180,7 +4223,7 @@ MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { re
   body.append(box, Object.assign(document.createElement('p'), { textContent: 'A holiday present is waiting for you.' }), btn);
   const close = () => el.remove();
   btn.onclick = () => {
-    for (const id of ['knife:candycane', 'gun:jingle']) if (!skinState.rewarded.includes(id)) skinState.rewarded.push(id);
+    for (const id of ['knife:candycane', 'gun:jingle', 'gun:frosty']) if (!skinState.rewarded.includes(id)) skinState.rewarded.push(id);
     if (!skinState.costumes.includes('elf')) skinState.costumes.push('elf');
     skinState.knife = 'candycane'; try { setKnifeStyle('candycane'); syncKnifeName(); rebuildGun('knife'); } catch (e) {}
     skinState.gifts.push(KEY); saveFinish();
@@ -4188,6 +4231,7 @@ MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { re
     const row = document.createElement('div'); row.className = 'gift-items';
     row.append(item(mkCanvas((cx) => paintKnifeIcon(cx, 'candycane')), 'Candy Cane Knife', 'Already your knife!'),
       item(mkCanvas((cx) => drawSkinIcon(cx, finishOf('candycane'))), 'Tinsel Blaster', 'A full-auto shotgun. Pick it with B in a match.'),
+      item(mkCanvas((cx) => drawSkinIcon(cx, finishOf('snowflake'))), 'Frosty Pistol', 'A snowball pistol. Pick it with B.'),
       item(mkCanvas((cx) => drawCostumeIcon(cx, 'elf')), 'Elf Suit', 'SKINS & CRATES, then COSTUMES.'));
     const ok = document.createElement('button'); ok.className = 'btn big'; ok.textContent = 'AWESOME!'; ok.onclick = close;
     body.replaceChildren(row, Object.assign(document.createElement('p'), { textContent: 'They are in your inventory now. Look for the new Holiday Cases in SKINS & CRATES too!' }), ok);

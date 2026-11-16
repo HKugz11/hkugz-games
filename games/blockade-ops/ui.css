@@ -405,3 +405,24 @@ button,input,select{font-family:var(--body)}
 .gift-items figure{margin:0;width:150px;display:flex;flex-direction:column;gap:3px}
 .gift-items canvas{width:100%;aspect-ratio:1;image-rendering:pixelated;border:1px solid #ffffff44;border-radius:6px}
 .gift-items small{color:#b8b8bd;font-size:11px}
+
+/* ===== Christmas menu: red, white, green and blue (only when the season is on) ===== */
+a.btn{text-decoration:none;text-align:center;display:inline-block}
+.hub-link{margin-right:10px;padding:7px 12px;font-size:12px}
+html.xmas .logo span{color:#ff4a4a}
+html.xmas .home-bar{position:relative;border-bottom:5px solid transparent;border-image:repeating-linear-gradient(135deg,#d62828 0 14px,#fff 14px 28px) 1}
+html.xmas .xl-strand{position:absolute;left:0;right:0;bottom:-19px;height:16px;display:flex;justify-content:space-around;pointer-events:none;z-index:2}
+html.xmas .xl-strand i{width:8px;height:12px;border-radius:50% 50% 45% 45%;background:var(--c);box-shadow:0 0 8px 2px var(--c);animation:xltw 1.6s ease-in-out infinite;margin-top:3px}
+html.xmas .xl-strand i:nth-child(4n+1){--c:#ff3b3b}html.xmas .xl-strand i:nth-child(4n+2){--c:#2fd36b;animation-delay:.4s}html.xmas .xl-strand i:nth-child(4n+3){--c:#4aa8ff;animation-delay:.8s}html.xmas .xl-strand i:nth-child(4n){--c:#ffffff;animation-delay:1.2s}
+@keyframes xltw{50%{opacity:.45}}
+html.xmas .home-col #quickPlay{background:#d62828;color:#fff}html.xmas .home-col #quickPlay:hover{background:#ff4a4a;color:#fff}
+html.xmas .home-col .btn:nth-child(4n+1){border-left-color:#d62828}html.xmas .home-col .btn:nth-child(4n+2){border-left-color:#2fa34a}html.xmas .home-col .btn:nth-child(4n+3){border-left-color:#3a8fe8}html.xmas .home-col .btn:nth-child(4n){border-left-color:#fff}
+html.xmas .home-col .btn:hover{background:#2fa34a;color:#fff;border-color:#2fa34a;box-shadow:none}
+html.xmas .home-col .btn:nth-child(4n+3):hover{background:#3a8fe8;border-color:#3a8fe8}html.xmas .home-col .btn:nth-child(4n+1):hover{background:#d62828;border-color:#d62828}html.xmas .home-col .btn:nth-child(4n):hover{background:#fff;color:#1a1a1a;border-color:#fff}
+html.xmas .match-setup,html.xmas .panel .card{border-top-color:#d62828}
+html.xmas #skinLocker{border-color:#3a8fe877;border-top-color:#d62828}
+html.xmas .home-status .coinbadge{border-color:#2fa34a99;color:#8dffb0}
+html.xmas .home-foot .linkbtn,html.xmas .home-foot #training,html.xmas .home-foot #openKeys{color:#9cc9ff}html.xmas .home-foot .linkbtn:hover{color:#ff6a6a}
+html.xmas #quickPlay{background:#d62828!important;color:#fff!important}html.xmas #quickPlay:hover{background:#ff4a4a!important}
+html.xmas .briefing{border-left-color:#d62828!important}html.xmas .briefing small{color:#ff9a9a!important}
+html.xmas #menu .card,html.xmas .home .briefing{box-shadow:0 0 0 1px #2fa34a55}
