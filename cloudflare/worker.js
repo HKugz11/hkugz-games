@@ -58,7 +58,7 @@ export class World extends DurableObject {
     });
   }
   async fetch(request) {
-    const { text, tooBig } = request.method === 'POST' ? await readText(request, 4096) : { text: '', tooBig: false };
+    const { text, tooBig } = request.method === 'POST' ? await readText(request, 16384) : { text: '', tooBig: false };
     const headers = {}; request.headers.forEach((v, k) => { headers[k] = v; });
     const out = await this.core.handle({ method: request.method, path: new URL(request.url).pathname, headers, ip: headers['x-hkf-ip'] || 'unknown', text, tooBig });
     if (this.core.dirty) {                              // something changed: save before answering

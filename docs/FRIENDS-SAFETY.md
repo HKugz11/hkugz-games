@@ -35,6 +35,16 @@ On the player's own device the browser keeps the session token in `localStorage`
 
 **How often the page talks to the server:** a page that is on screen asks "anything new?" every 5 seconds (3 seconds while the panel is open); that is also how "online" works. A tab in the background says nothing and shows as offline, **unless** the player turned on pop-up notifications: then it asks every 12 seconds so the invite can reach them, and they keep showing as online.
 
+## The vault: coins, skins and gifts (Blockade Ops)
+
+When a logged-in player moves their inventory to their account, the server also keeps, for that account: a coin number, and a list of items (skins that fit one gun or the knife, knives, costumes; stickers are NOT kept here). It also keeps a few counters (coins earned today, when the last match started), and the last 20 gifts that arrived (who sent it and which item, no text). This is what makes **gifts to friends** and a fair **market** possible: nobody can type a skin or coins into their own browser and have the server believe it.
+
+- **Gifts** go only to people on your friends list (and not if they blocked you). One item at a time, at most 3 every 10 minutes and 10 a day. The item moves out of your vault into theirs; a pop-up tells them who gave it. There is no message.
+- **Cases are opened by the server**, with the same odds the game used offline. The holiday cases only open between Nov 15 and Jan 2.
+- **Coins from matches cannot be checked.** The server cannot see a match, so it only limits it: the game must say a match started and ask for coins at least 90 seconds later, one match at a time, at most 1200 coins a time and 12000 a day per account. A determined cheater can still make up to that much; nothing more.
+- **Moving an old inventory in** happens once per account and is capped (6000 coins, 150 items, 2 of each), because the server cannot check what a browser says it owns.
+- Everything above is deleted with the account, and is part of the admin export.
+
 ## What a stranger could do
 
 Assuming the server is set up as recommended (with a **sign-up code**, see `server/README.md`):
@@ -61,6 +71,8 @@ Assuming the server is set up as recommended (with a **sign-up code**, see `serv
 9. **Room codes and in-game names are not part of this system.** After pressing Join, a player is in a normal game room: they can see the other players' in-game names (typed by each player, up to 12 characters) and, because the games connect directly (WebRTC), other players in the room can see their network address. That is how the games already worked, and the games' pages say so.
 10. **Age rules.** The sign-up form asks people to tick "I am 13 or older, or a parent or guardian said it is OK". Anyone can tick it, so it is a reminder and a record of intent, not a check. Whether a username plus friends list for under-13s counts as personal information under US children's privacy law (COPPA) is a question for an adult to settle (the FTC hotline or a lawyer), not something the code can answer.
 11. **Backups and "what if nobody looks after it".** On Cloudflare the saved data is in Cloudflare's storage; whoever runs it can save everything to one file with `node admin.js export` (that file holds everyone's scrambled passwords and friend lists, so it must be kept private and never committed; it is also how the accounts are moved to the Ubuntu server), and without a saved copy the accounts would be lost if the Cloudflare account were lost; on your own computer it is one file (`server/data/db.json`) that you can copy. If the person running it stops, the safe shutdown is: set `window.HK_FRIENDS_API = ""` in `assets/friends-config.js` (everything disappears from the site), then delete the server (`npx wrangler delete` on Cloudflare, or stop it and delete `server/data/`).
+
+12. **Vault limits are honest limits, not proof.** Because the server cannot see a match, a cheater can earn up to the daily coin cap without playing; and the one-time move of an old inventory trusts the browser up to its cap. Stickers and the free holiday gift (knife, guns, elf suit) stay in the browser and are not part of the vault, so they cannot be given away. If a friend gifts you something, it appears in the vault, and a player who has not moved their inventory yet sees a note about it and gets it as soon as they move.
 
 ## Questions to go through together
 

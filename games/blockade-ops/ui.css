@@ -431,3 +431,19 @@ html.xmas #menu .card,html.xmas .home .briefing{box-shadow:0 0 0 1px #2fa34a55}
 html.xmas .panel .card,html.xmas .briefing,html.xmas #skinLocker,html.xmas .match-setup{position:relative}
 html.xmas .panel .card::before,html.xmas .home .briefing::before,html.xmas #skinLocker::before{content:"";position:absolute;left:-3px;right:-3px;top:-11px;height:13px;pointer-events:none;background:radial-gradient(circle at 11px 13px,#fff 10px,transparent 11px) 0 0/24px 13px repeat-x,radial-gradient(circle at 23px 13px,#e9f2fb 8px,transparent 9px) 0 0/24px 13px repeat-x}
 html.xmas .home-bar::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:5px;background:#fff;opacity:.0}
+
+/* ===== ALL ITEMS tab (a CS2-style inventory grid) ===== */
+.inv-all{grid-template-columns:minmax(0,1fr) 250px}
+.inv-all .inv-left{display:flex;flex-direction:column;min-height:0}
+.all-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.all-filters{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:#1e1e21;color:#fff;border:1px solid #ffffff2a;border-radius:14px;padding:5px 12px;font-size:12px;font-weight:700}.chip.on{background:#fff;color:#111}
+.all-sortl{font-size:12px;color:#c8c8cc}.all-sort{background:#1e1e21;color:#fff;border:1px solid #ffffff2a;border-radius:6px;padding:4px 6px}
+.all-grid{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;align-content:start;padding-right:4px}
+.all-count{margin-top:6px}
+.all-side{display:flex;flex-direction:column;gap:10px}
+.all-pick{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.all-big{width:170px;height:170px;image-rendering:pixelated;border:1px solid #ffffff33;border-radius:8px;background:#00000040}
+.all-actions{display:flex;flex-direction:column;gap:8px}.gift-box2{display:flex;flex-direction:column;gap:6px;border-top:1px solid #ffffff22;padding-top:8px}
+.gift-box2 select{background:#1e1e21;color:#fff;border:1px solid #ffffff3a;border-radius:6px;padding:7px}
+@media(max-width:760px){.inv-all{grid-template-columns:1fr}}

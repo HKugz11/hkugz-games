@@ -4,7 +4,7 @@
 // The panel lives in a shadow root, so a game's own styles and key presses can't touch it (and the other way round).
 (function () {
   'use strict';
-  const GAMES = { 'blaster-arena': 'Blaster Arena', 'fort-fight': 'Fort Fight', 'core-strike': 'Core Strike' };
+  const GAMES = { 'blaster-arena': 'Blaster Arena', 'fort-fight': 'Fort Fight', 'core-strike': 'Core Strike', 'blockade-ops': 'Blockade Ops' };
   const ROOM_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}$/;
   let api = window.HK_FRIENDS_API;
   const localHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);

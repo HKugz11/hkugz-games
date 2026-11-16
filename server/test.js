@@ -273,7 +273,7 @@ test('junk requests never crash the server', async () => {
     const urls = ['/api/signup', '/api/login', '/api/poll', '/api/friend/request', '/api/friend/respond', '/api/friend/cancel', '/api/friend/remove', '/api/block', '/api/unblock', '/api/report', '/api/invite', '/api/invite/dismiss', '/api/settings', '/api/code/reset', '/api/password', '/api/account/delete'];
     for (const body of ['null', '[]', '"str"', '123', '{', '{"a":', '', '{"to":null,"from":null,"who":null,"username":null,"password":null,"at":{}}', '{"id":{}, "reason":[], "accept":"yes", "appearOffline":"x"}'])
       for (const u of urls) { const r = await s.raw('POST', u, body, u.includes('login') || u.includes('signup') ? null : a.token); assert.ok(r.status < 500, u + ' ' + body + ' -> ' + r.status); }
-    assert.equal((await s.raw('POST', '/api/poll', 'x'.repeat(5000), a.token)).status, 413);
+    assert.equal((await s.raw('POST', '/api/poll', 'x'.repeat(20000), a.token)).status, 413);
     assert.equal((await s.raw('GET', '/api/nothing')).status, 404);
     assert.equal((await s.raw('GET', '/api/poll')).status, 404);
     assert.equal((await s.post('/api/poll', {}, a.token)).status, 200, 'still alive');

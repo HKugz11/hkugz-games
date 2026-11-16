@@ -3,8 +3,9 @@
 // It takes a description of one request and gives back a description of the answer, so the same code runs in Node
 // (server.js, for the Ubuntu server or a PC) and on Cloudflare (cloudflare/worker.js). What is stored and what is not protected: docs/FRIENDS-SAFETY.md.
 const crypto = require('node:crypto');
+const CAT = require('./vault-catalog.json');   // the skins, cases and guns (made from the game's own lists by make-catalog.mjs)
 
-const GAMES = { 'blaster-arena': 'Blaster Arena', 'fort-fight': 'Fort Fight', 'core-strike': 'Core Strike' };
+const GAMES = { 'blaster-arena': 'Blaster Arena', 'fort-fight': 'Fort Fight', 'core-strike': 'Core Strike', 'blockade-ops': 'Blockade Ops' };
 const CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';           // the letters the games use for 5-letter room codes
 const ROOM_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}$/;
 const NAME_RE = /^[A-Za-z][A-Za-z0-9_]{2,15}$/;
@@ -20,6 +21,9 @@ const CORE_DEFAULTS = {
   adminToken: '',            // the secret for /admin/* (the admin tool). Empty or shorter than 20 characters = the admin part is switched off
   log: false,
   blockedNames: ['admin', 'moderator', 'hkugz', 'staff', 'support', 'official', 'system', 'root', 'owner'],
+  maxEarn: 1200, dailyEarnCap: 12000, earnMinMatchMs: 90e3,   // coins from matches: the most one match can give, the most in one day, and how long a match must last (the server can not see the match, so these limits are all there is)
+  migrateCoins: 6000, migrateItems: 150,                       // the most an old browser inventory can bring along, once
+  xmas: undefined,           // true / false to force the holiday cases on / off (tests); otherwise Nov 15 - Jan 2
   ownerNames: []             // exact names (any capitals) that may be taken even though they contain a blocked word, e.g. ["hkugz"] for whoever runs the site. Only the first person to sign up with it gets it
 };
 
@@ -138,6 +142,7 @@ function createCore(userCfg, raw) {
       incoming: requests.filter(r => r.to === u.key && users.get(r.from) && !users.get(r.from).banned).map(r => ({ from: nameOf(r.from), t: r.t })),
       outgoing: requests.filter(r => r.from === u.key && users.get(r.to)).map(r => ({ to: nameOf(r.to), t: r.t })),
       blocked: [...u.blocked].map(nameOf).filter(Boolean),
+      gifts: ((u.vault && u.vault.gifts) || []).map(g => ({ id: g.id, from: g.from, item: g.item, t: g.t })),
       invites: (invites.get(u.key) || []).filter(i => t - i.t < INVITE_MS).map(i => ({ id: i.id, from: i.from, game: i.game, gameName: GAMES[i.game], code: i.code, t: i.t })),
       now: t
     };
@@ -276,6 +281,99 @@ function createCore(userCfg, raw) {
     if (!(await verify(text(body, 'password', 1, 200), user.pw))) throw new ApiError(401, 'That password is not right.');
     removeUser(user); save(); return { ok: true };
   });
+
+  // ------------------------------------------------------------------ the VAULT: each account's coins and skins / knives / costumes live HERE, so nobody can make them up by editing their browser
+  // Stickers are NOT kept here (they stay in the player's own browser). Item names: 'skin:desert@raptor' (a skin that fits ONE gun or the knife), 'knife:karambit', 'costume:unicorn'.
+  const RAR = CAT.rarities, FIN = new Map(CAT.finishes.map(f => [f.id, f])), KNV = new Map(CAT.knives.map(k => [k.id, k])), COS = new Map(CAT.costumes.map(c => [c.id, c]));
+  const STK = new Map(CAT.stickers.map(x => [x.id, x])), CASES = new Map(CAT.cases.map(c => [c.id, c])), GUN = new Map(CAT.guns.map(g => [g.id, g]));
+  const ITEM_CAP = 400, START_COINS = 150;
+  const V = u => (u.vault || (u.vault = { coins: START_COINS, items: {}, migrated: false, earnDay: 0, earned: 0, ticket: null, gifts: [] }));
+  const nItems = v => Object.values(v.items).reduce((a, n) => a + n, 0);
+  const has = (v, id) => (v.items[id] | 0) > 0;
+  const give = (v, id) => { v.items[id] = (v.items[id] | 0) + 1; };
+  const takeOne = (v, id) => { if (--v.items[id] <= 0) delete v.items[id]; };
+  function itemOk(id) {
+    if (typeof id !== 'string' || id.length > 40) return false;
+    const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1);
+    if (kind === 'skin') { const [f, w, extra] = rest.split('@'), fin = FIN.get(f); return !!fin && !extra && fin.rp === undefined && f !== 'factory' && !!fin.rarity && (w === 'knife' || (GUN.has(w) && !GUN.get(w).holiday)); }
+    if (kind === 'knife') { const k = KNV.get(rest); return !!k && !k.gift && !!k.rarity; }
+    if (kind === 'costume') return COS.has(rest);
+    return false;
+  }
+  const xmasOn = () => { if (typeof cfg.xmas === 'boolean') return cfg.xmas; const d = new Date(now()), md = (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); return md >= 1115 || md <= 102; };
+  const rint = n => crypto.randomInt(n);
+  function wpick(list) { const tot = list.reduce((a, x) => a + x.w, 0); let r = (crypto.randomInt(1e9) / 1e9) * tot; for (const x of list) { if (r < x.w) return x; r -= x.w; } return list[list.length - 1]; }
+  function rollCase(c) {     // the same rules the game used offline: pick a rarity by the odds, then one prize of that rarity (a skin fits one random gun, or the knife)
+    const odds = Object.entries(c.odds); let r = rint(odds.reduce((a, [, p]) => a + p, 0)), rar = odds[0][0];
+    for (const [id, p] of odds) { if (r < p) { rar = id; break; } r -= p; }
+    let cand;
+    if (c.kind === 'sticker') cand = (c.pool || []).map(id => STK.get(id)).filter(x => x && x.rarity === rar).map(x => ({ kind: 'sticker', id: x.id, w: 1 }));
+    else if (c.kind === 'costume') cand = (c.pool || []).map(id => COS.get(id)).filter(x => x && x.rarity === rar).map(x => ({ kind: 'costume', id: x.id, w: 1 }));
+    else {
+      cand = (c.finishes || []).map(id => FIN.get(id)).filter(f => f && f.rarity === rar).map(f => ({ kind: 'skin', f: f.id, w: f.weight || 1 }));
+      if (c.knives) for (const k of CAT.knives) if (k.rarity === rar && !k.gift) cand.push({ kind: 'knife', id: k.id, w: 1 });
+    }
+    if (!cand.length) throw new ApiError(500, 'That case is empty right now.');
+    const p = wpick(cand); p.rarity = rar;
+    if (p.kind === 'skin') { const pool = (c.slot ? CAT.guns.filter(g => g.slot === c.slot && !g.holiday) : CAT.guns.filter(g => !g.holiday)).map(g => g.id); if (!c.slot) pool.push('knife'); p.wid = pool[rint(pool.length)]; p.id = p.f + '@' + p.wid; }
+    return p;
+  }
+  const vaultOf = u => { const v = V(u), day = Math.floor(now() / 864e5), earned = v.earnDay === day ? v.earned : 0; return { coins: v.coins, items: Object.assign({}, v.items), earnLeft: Math.max(0, cfg.dailyEarnCap - earned), migrated: !!v.migrated, xmas: xmasOn(), gifts: v.gifts.map(g => ({ id: g.id, from: g.from, item: g.item, t: g.t })) }; };
+
+  mine('POST /api/vault', ({ user }) => { limit('vault:' + user.key, 60, 60e3, 'Slow down'); return vaultOf(user); });
+
+  // an old browser inventory moves in ONCE (with a cap: the server can not check what a browser says it owns)
+  mine('POST /api/vault/migrate', ({ user, body }) => {
+    limit('vmig:' + user.key, 5, 3600e3, 'Slow down');
+    const v = V(user); if (v.migrated) throw bad('Your inventory was already moved to your account.');
+    const coins = Math.min(cfg.migrateCoins, Math.max(0, Number.isInteger(body.coins) ? body.coins : 0)), list = Array.isArray(body.items) ? body.items.slice(0, 2000) : [], per = {}; let moved = 0;
+    for (const id of list) { if (moved >= cfg.migrateItems || !itemOk(id) || (per[id] | 0) >= 2 || nItems(v) >= ITEM_CAP) continue; per[id] = (per[id] | 0) + 1; give(v, id); moved++; }
+    v.coins += coins; v.migrated = true; save(); return Object.assign(vaultOf(user), { moved, coinsMoved: coins });
+  });
+
+  // coins from matches: tell the server a match started, and after it has really run for a while, say how much you earned (never more than the limits)
+  mine('POST /api/vault/start', ({ user }) => { limit('vstart:' + user.key, 60, 3600e3, 'Slow down'); V(user).ticket = { id: crypto.randomBytes(6).toString('hex'), t: now() }; save(); return { ok: true }; });
+  mine('POST /api/vault/earn', ({ user, body }) => {
+    limit('vearn:' + user.key, 40, 3600e3, 'Slow down');
+    const v = V(user), amt = body.amount;
+    if (!Number.isInteger(amt) || amt < 1 || amt > cfg.maxEarn) throw bad('That is not a coin amount the game can give.');
+    if (!v.ticket || now() - v.ticket.t < cfg.earnMinMatchMs) throw bad('Coins come after a real match.');
+    const day = Math.floor(now() / 864e5); if (v.earnDay !== day) { v.earnDay = day; v.earned = 0; }
+    const room = cfg.dailyEarnCap - v.earned; if (room <= 0) throw bad("You reached today's coin limit. Come back tomorrow!");
+    const got = Math.min(amt, room); v.earned += got; v.coins += got; v.ticket = null; save();
+    return { coins: v.coins, got, earnLeft: cfg.dailyEarnCap - v.earned };
+  });
+
+  mine('POST /api/vault/open', ({ user, body }) => {
+    limit('vopen:' + user.key, 120, 3600e3, 'You opened a lot of cases');
+    const c = CASES.get(body.case); if (!c) throw bad('That case does not exist.');
+    if (c.holiday && !xmasOn()) throw bad('That case is only sold in the holidays.');
+    const v = V(user); if (v.coins < c.price) throw bad('Not enough coins.');
+    const p = rollCase(c); v.coins -= c.price;
+    const prize = { kind: p.kind, id: p.id, rarity: p.rarity, dupe: false, refund: 0 };
+    if (p.kind !== 'sticker') {
+      const key = (p.kind === 'skin' ? 'skin:' : p.kind === 'knife' ? 'knife:' : 'costume:') + p.id;
+      prize.item = key;
+      if (has(v, key) || nItems(v) >= ITEM_CAP) { prize.dupe = true; prize.refund = RAR[p.rarity].refund; v.coins += prize.refund; } else give(v, key);
+    }
+    save(); return { prize, coins: v.coins };
+  });
+
+  // gifts: only to a friend, one item at a time; it moves out of your vault into theirs, and they see "X gave you Y" (no messages)
+  mine('POST /api/vault/gift', ({ user, body }) => {
+    limit('vgiftf:' + user.key, 60, 600e3, 'Slow down');
+    const to = lookup(body.to), id = body.item;
+    if (!to || to === user || to.banned || !user.friends.has(to.key) || to.blocked.has(user.key)) throw bad('You can only give gifts to your friends.');
+    if (!itemOk(id)) throw bad('That can not be gifted.');
+    const v = V(user), w = V(to);
+    if (!has(v, id)) throw bad('You do not have that item.');
+    if (nItems(w) >= ITEM_CAP) throw bad(to.name + ' has no room for more items.');
+    limit('vgift:' + user.key, 10, 24 * 3600e3, 'You sent a lot of gifts today'); limit('vgiftb:' + user.key, 3, 600e3, 'You are sending gifts very fast');   // only real gifts count towards these
+    takeOne(v, id); give(w, id);
+    w.gifts.push({ id: crypto.randomBytes(6).toString('hex'), from: user.name, item: id, t: now() }); while (w.gifts.length > 20) w.gifts.shift();
+    save(); return Object.assign(vaultOf(user), { ok: true });
+  });
+  mine('POST /api/vault/gift/dismiss', ({ user, body }) => { const v = V(user); if (typeof body.id === 'string') { v.gifts = v.gifts.filter(g => g.id !== body.id); save(); } return { ok: true }; });
 
   // ------------------------------------------------------------------ admin (only with the secret from the settings, used by admin.js)
   const adminRoutes = {

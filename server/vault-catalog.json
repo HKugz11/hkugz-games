@@ -1,0 +1,772 @@
+{
+ "v": 1,
+ "rarities": {
+  "common": {
+   "refund": 25
+  },
+  "rare": {
+   "refund": 50
+  },
+  "epic": {
+   "refund": 100
+  },
+  "legendary": {
+   "refund": 200
+  }
+ },
+ "finishes": [
+  {
+   "id": "factory",
+   "rarity": null,
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "rift",
+   "rarity": null,
+   "weight": 1,
+   "rp": 0,
+   "holiday": false
+  },
+  {
+   "id": "tidal",
+   "rarity": null,
+   "weight": 1,
+   "rp": 100,
+   "holiday": false
+  },
+  {
+   "id": "ember",
+   "rarity": null,
+   "weight": 1,
+   "rp": 300,
+   "holiday": false
+  },
+  {
+   "id": "polar",
+   "rarity": null,
+   "weight": 1,
+   "rp": 600,
+   "holiday": false
+  },
+  {
+   "id": "desert",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "carbon",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "candy",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "dragon",
+   "rarity": "rare",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "snow",
+   "rarity": "rare",
+   "weight": 0.45,
+   "holiday": false
+  },
+  {
+   "id": "frost",
+   "rarity": "rare",
+   "weight": 0.45,
+   "holiday": false
+  },
+  {
+   "id": "ivory",
+   "rarity": "rare",
+   "weight": 0.45,
+   "holiday": false
+  },
+  {
+   "id": "toxic",
+   "rarity": "epic",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "ghost",
+   "rarity": "epic",
+   "weight": 0.45,
+   "holiday": false
+  },
+  {
+   "id": "polarcamo",
+   "rarity": "epic",
+   "weight": 0.45,
+   "holiday": false
+  },
+  {
+   "id": "gold",
+   "rarity": "legendary",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "galaxy",
+   "rarity": "legendary",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "pearl",
+   "rarity": "legendary",
+   "weight": 0.45,
+   "holiday": false
+  },
+  {
+   "id": "urban",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "forest",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "sunset",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "ocean",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "tiger",
+   "rarity": "rare",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "cobra",
+   "rarity": "rare",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "plasma",
+   "rarity": "epic",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "magma",
+   "rarity": "epic",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "obsidian",
+   "rarity": "epic",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "aurora",
+   "rarity": "legendary",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "prism",
+   "rarity": "legendary",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "diamondice",
+   "rarity": "legendary",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "candycane",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": true
+  },
+  {
+   "id": "gingerbread",
+   "rarity": "common",
+   "weight": 1,
+   "holiday": true
+  },
+  {
+   "id": "holly",
+   "rarity": "rare",
+   "weight": 1,
+   "holiday": true
+  },
+  {
+   "id": "ornament",
+   "rarity": "rare",
+   "weight": 1,
+   "holiday": true
+  },
+  {
+   "id": "snowflake",
+   "rarity": "epic",
+   "weight": 1,
+   "holiday": true
+  },
+  {
+   "id": "northernlights",
+   "rarity": "legendary",
+   "weight": 1,
+   "holiday": true
+  }
+ ],
+ "knives": [
+  {
+   "id": "combat",
+   "rarity": null,
+   "gift": false
+  },
+  {
+   "id": "karambit",
+   "rarity": "legendary",
+   "gift": false
+  },
+  {
+   "id": "machete",
+   "rarity": "legendary",
+   "gift": false
+  },
+  {
+   "id": "dagger",
+   "rarity": "legendary",
+   "gift": false
+  },
+  {
+   "id": "candycane",
+   "rarity": null,
+   "gift": true
+  }
+ ],
+ "costumes": [
+  {
+   "id": "bunny",
+   "rarity": "common",
+   "holiday": false
+  },
+  {
+   "id": "cow",
+   "rarity": "common",
+   "holiday": false
+  },
+  {
+   "id": "banana",
+   "rarity": "rare",
+   "holiday": false
+  },
+  {
+   "id": "shark",
+   "rarity": "rare",
+   "holiday": false
+  },
+  {
+   "id": "dino",
+   "rarity": "epic",
+   "holiday": false
+  },
+  {
+   "id": "unicorn",
+   "rarity": "legendary",
+   "holiday": false
+  },
+  {
+   "id": "elf",
+   "rarity": "common",
+   "holiday": true
+  },
+  {
+   "id": "reindeer",
+   "rarity": "rare",
+   "holiday": true
+  },
+  {
+   "id": "snowman",
+   "rarity": "epic",
+   "holiday": true
+  }
+ ],
+ "stickers": [
+  {
+   "id": "star",
+   "rarity": "common"
+  },
+  {
+   "id": "heart",
+   "rarity": "common"
+  },
+  {
+   "id": "smiley",
+   "rarity": "common"
+  },
+  {
+   "id": "lightning",
+   "rarity": "rare"
+  },
+  {
+   "id": "flame",
+   "rarity": "rare"
+  },
+  {
+   "id": "skull",
+   "rarity": "rare"
+  },
+  {
+   "id": "diamond",
+   "rarity": "epic"
+  },
+  {
+   "id": "cat",
+   "rarity": "epic"
+  },
+  {
+   "id": "crown",
+   "rarity": "legendary"
+  }
+ ],
+ "cases": [
+  {
+   "id": "street",
+   "kind": "skin",
+   "price": 100,
+   "odds": {
+    "common": 55,
+    "rare": 30,
+    "epic": 12,
+    "legendary": 3
+   },
+   "finishes": [
+    "desert",
+    "carbon",
+    "candy",
+    "urban",
+    "forest",
+    "sunset",
+    "ocean",
+    "dragon",
+    "tiger",
+    "cobra",
+    "toxic",
+    "plasma",
+    "magma",
+    "obsidian",
+    "gold",
+    "galaxy",
+    "aurora",
+    "prism",
+    "diamondice"
+   ],
+   "knives": true,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "white",
+   "kind": "skin",
+   "price": 250,
+   "odds": {
+    "rare": 62,
+    "epic": 30,
+    "legendary": 8
+   },
+   "finishes": [
+    "snow",
+    "frost",
+    "ivory",
+    "ghost",
+    "polarcamo",
+    "pearl"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "camo",
+   "kind": "skin",
+   "price": 80,
+   "odds": {
+    "common": 60,
+    "rare": 30,
+    "epic": 10
+   },
+   "finishes": [
+    "desert",
+    "urban",
+    "forest",
+    "tiger",
+    "cobra",
+    "polarcamo",
+    "obsidian"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "neon",
+   "kind": "skin",
+   "price": 200,
+   "odds": {
+    "common": 40,
+    "rare": 30,
+    "epic": 22,
+    "legendary": 8
+   },
+   "finishes": [
+    "candy",
+    "sunset",
+    "ocean",
+    "dragon",
+    "tiger",
+    "toxic",
+    "plasma",
+    "magma",
+    "aurora",
+    "galaxy",
+    "prism"
+   ],
+   "knives": true,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "pistol",
+   "kind": "skin",
+   "price": 80,
+   "odds": {
+    "common": 60,
+    "rare": 28,
+    "epic": 10,
+    "legendary": 2
+   },
+   "finishes": [
+    "desert",
+    "carbon",
+    "candy",
+    "urban",
+    "forest",
+    "sunset",
+    "ocean",
+    "dragon",
+    "tiger",
+    "cobra",
+    "toxic",
+    "plasma",
+    "gold",
+    "galaxy"
+   ],
+   "knives": false,
+   "slot": "sec",
+   "holiday": false
+  },
+  {
+   "id": "main",
+   "kind": "skin",
+   "price": 150,
+   "odds": {
+    "common": 50,
+    "rare": 30,
+    "epic": 15,
+    "legendary": 5
+   },
+   "finishes": [
+    "desert",
+    "carbon",
+    "candy",
+    "urban",
+    "forest",
+    "sunset",
+    "ocean",
+    "dragon",
+    "tiger",
+    "cobra",
+    "toxic",
+    "plasma",
+    "magma",
+    "obsidian",
+    "gold",
+    "galaxy",
+    "aurora",
+    "prism"
+   ],
+   "knives": false,
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "goldcase",
+   "kind": "skin",
+   "price": 500,
+   "odds": {
+    "rare": 45,
+    "epic": 35,
+    "legendary": 20
+   },
+   "finishes": [
+    "dragon",
+    "tiger",
+    "cobra",
+    "toxic",
+    "plasma",
+    "magma",
+    "obsidian",
+    "gold",
+    "galaxy",
+    "aurora",
+    "prism",
+    "diamondice"
+   ],
+   "knives": true,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "costume",
+   "kind": "costume",
+   "price": 200,
+   "odds": {
+    "common": 45,
+    "rare": 30,
+    "epic": 18,
+    "legendary": 7
+   },
+   "pool": [
+    "bunny",
+    "cow",
+    "banana",
+    "shark",
+    "dino",
+    "unicorn"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "holiday",
+   "kind": "skin",
+   "price": 60,
+   "odds": {
+    "common": 45,
+    "rare": 35,
+    "epic": 15,
+    "legendary": 5
+   },
+   "finishes": [
+    "candycane",
+    "gingerbread",
+    "holly",
+    "ornament",
+    "snowflake",
+    "northernlights"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": true
+  },
+  {
+   "id": "holidaycos",
+   "kind": "costume",
+   "price": 120,
+   "odds": {
+    "common": 50,
+    "rare": 35,
+    "epic": 15
+   },
+   "pool": [
+    "elf",
+    "reindeer",
+    "snowman"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": true
+  },
+  {
+   "id": "stick",
+   "kind": "sticker",
+   "price": 50,
+   "odds": {
+    "common": 70,
+    "rare": 22,
+    "epic": 7,
+    "legendary": 1
+   },
+   "pool": [
+    "star",
+    "heart",
+    "smiley",
+    "lightning",
+    "flame",
+    "skull",
+    "diamond",
+    "cat",
+    "crown"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "foil",
+   "kind": "sticker",
+   "price": 150,
+   "odds": {
+    "rare": 50,
+    "epic": 38,
+    "legendary": 12
+   },
+   "pool": [
+    "star",
+    "heart",
+    "smiley",
+    "lightning",
+    "flame",
+    "skull",
+    "diamond",
+    "cat",
+    "crown"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": false
+  }
+ ],
+ "guns": [
+  {
+   "id": "p9",
+   "slot": "sec",
+   "holiday": false
+  },
+  {
+   "id": "viper",
+   "slot": "sec",
+   "holiday": false
+  },
+  {
+   "id": "buzz",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "thumper",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "raptor",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "sentinel",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "longbow",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "tec",
+   "slot": "sec",
+   "holiday": false
+  },
+  {
+   "id": "revolver",
+   "slot": "sec",
+   "holiday": false
+  },
+  {
+   "id": "chopper",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "scatter",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "carbine",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "ranger",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "dmr",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "lmg",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "trio",
+   "slot": "sec",
+   "holiday": false
+  },
+  {
+   "id": "duster",
+   "slot": "sec",
+   "holiday": false
+  },
+  {
+   "id": "brute",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "ghost",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "breaker",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
+   "id": "frosty",
+   "slot": "sec",
+   "holiday": true
+  },
+  {
+   "id": "jingle",
+   "slot": "prim",
+   "holiday": true
+  }
+ ]
+}

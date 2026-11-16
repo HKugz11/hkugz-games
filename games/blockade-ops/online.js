@@ -3,8 +3,8 @@
 //   * Everyone else is a CLIENT: they move and aim on their own machine, send what they shoot, and
 //     draw the match from the snapshots the host sends 20 times a second.
 //   * Data goes peer-to-peer (WebRTC through PeerJS). PeerJS Cloud is only used to introduce players.
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=249';
-import { platform } from './platform.js?v=249';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=253';
+import { platform } from './platform.js?v=253';
 
 export function createOnline(X) {
   const { GS, MP, S, WD, $ } = X;
@@ -420,6 +420,9 @@ export function createOnline(X) {
     if (MP.on) { X.toast('Finish this match first, then join your friend'); return; }
     X.initAudio(S.vol); openPanel(); $('onCode').value = code; join();
   }
+  // Friends on the games site read window.HKRoom to invite you to your room; a friend's invite opens this page as ?join=CODE (harmless anywhere else)
+  window.HKRoom = { game: 'blockade-ops', get code() { return L ? L.code : ''; } };
+  { const jc = cleanCode(new URLSearchParams(location.search).get('join') || ''); if (jc.length === 5) setTimeout(() => joinFromInvite(jc), 900); }
   platform.whenReady().then(async () => {
     if (!platform.active) return;
     document.body.classList.add('cgi'); $('onHost').textContent = 'CREATE ROOM';

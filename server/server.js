@@ -52,7 +52,7 @@ function createApp(userCfg) {
     if (req.method === 'POST') {
       text = await new Promise(resolve => {
         let n = 0; const chunks = [];
-        req.on('data', c => { n += c.length; if (n > 4096) tooBig = true; else chunks.push(c); });
+        req.on('data', c => { n += c.length; if (n > 16384) tooBig = true; else chunks.push(c); });
         req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8'))); req.on('error', () => resolve(''));
       });
     }
