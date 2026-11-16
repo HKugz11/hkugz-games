@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=246';
+import { displayWeapon, createHomeStage } from './showcase.js?v=247';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage } from './showcase.js?v=246';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=246';
-import { platform } from './platform.js?v=246';
-import * as THREE from './three.module.min.js?v=246';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=246';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=246';
-import { createOnline } from './online.js?v=246';
-import { TOUCH, initTouch } from './touch.js?v=246';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=246';
+import { createCrateStage, createPreviewStage } from './showcase.js?v=247';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=247';
+import { platform } from './platform.js?v=247';
+import * as THREE from './three.module.min.js?v=247';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=247';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=247';
+import { createOnline } from './online.js?v=247';
+import { TOUCH, initTouch } from './touch.js?v=247';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=247';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -688,6 +688,7 @@ const knifeOwned = (k) => k.id === 'combat' || skinState.rewarded.includes('knif
 if (!knives.find((k) => k.id === skinState.knife && knifeOwned(k))) skinState.knife = 'combat';
 const syncKnifeName = () => { WD.knife.name = (knives.find((k) => k.id === skinState.knife) || knives[0]).name; };
 setKnifeStyle(skinState.knife); syncKnifeName();
+const COIN_MULT = 3.5;   // every coin you EARN from a match is multiplied by this
 const COIN = '<span class="coin" role="img" aria-label="coins"></span>';
 function refreshCoins() { for (const e of document.querySelectorAll('.coin-n')) e.textContent = skinState.coins | 0; }
 function addCoins(n) { skinState.coins = Math.max(0, (skinState.coins | 0) + n); saveFinish(); refreshCoins(); }
@@ -1391,8 +1392,8 @@ function endMatch() {
       $('endRank').innerHTML = rankEndHTML(r);
       if (r.m === 3 || (r.m > 3 && rankInfo(r.after).step > rankInfo(r.before).step)) setTimeout(() => showRankUp(r), 900);   // moved up (or just finished the placements): the RANK UP screen
     }
-    if (GS.mode === 'comp') { const n = (win ? 120 : draw ? 80 : 60) + P.kills * 3; addCoins(n); $('endRank').innerHTML += '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
-    if (GS.mode === 'dm' && !GS.tutorial) { const n = (win ? 100 : draw ? 70 : 50) + P.kills * 2; addCoins(n); $('endRank').innerHTML = '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
+    if (GS.mode === 'comp') { const n = Math.round(((win ? 120 : draw ? 80 : 60) + P.kills * 3) * COIN_MULT); addCoins(n); $('endRank').innerHTML += '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
+    if (GS.mode === 'dm' && !GS.tutorial) { const n = Math.round(((win ? 100 : draw ? 70 : 50) + P.kills * 2) * COIN_MULT); addCoins(n); $('endRank').innerHTML = '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
     SFX.fanfare(win);
   }
   $('endTitle').textContent = title; $('endTitle').style.color = title === 'DEFEAT' ? '#ff6a5a' : title === 'DRAW' ? '#ddd' : '#ffd04a';
