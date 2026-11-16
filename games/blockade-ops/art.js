@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=247';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=247';
+import * as THREE from './three.module.min.js?v=249';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=249';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -785,7 +785,7 @@ export function costumeKit(id, side = 0) {
       break;
     case 'reindeer': K.tint = 0xa86a3a;
       for (const s of [-1, 1]) { h(.04, .2, .04, s * .12, .42, 0, 0x5a3a1e); h(.1, .04, .04, s * .17, .5, 0, 0x5a3a1e); h(.04, .1, .04, s * .22, .55, 0, 0x5a3a1e); h(.07, .1, .05, s * .28, .22, .02, 0x8a5a2a); }   // antlers + ears
-      h(.09, .09, .06, 0, 0, -.26, 0xe53935); bd(.1, .1, .1, 0, .7, .36, 0xf4efe4);   // red nose + fluffy tail
+      h(.08, .07, .06, 0, -.075, -.262, 0xe53935); bd(.1, .1, .1, 0, .7, .36, 0xf4efe4);   // red nose + fluffy tail
       break;
     case 'snowman': K.tint = 0xf6f9fc;
       h(.06, .06, .18, 0, -.01, -.3, 0xff8a2a);                                            // carrot nose

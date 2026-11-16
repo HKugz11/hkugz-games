@@ -3,8 +3,8 @@
 //   * Everyone else is a CLIENT: they move and aim on their own machine, send what they shoot, and
 //     draw the match from the snapshots the host sends 20 times a second.
 //   * Data goes peer-to-peer (WebRTC through PeerJS). PeerJS Cloud is only used to introduce players.
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=247';
-import { platform } from './platform.js?v=247';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=249';
+import { platform } from './platform.js?v=249';
 
 export function createOnline(X) {
   const { GS, MP, S, WD, $ } = X;
