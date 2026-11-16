@@ -2,6 +2,7 @@
 import { THREE, V3, scene, toon, clamp, lerp, rnd, angDiff, burst, ring, sfx, skid, W, QL, TAU, INK } from './core.js?v=3';
 import { nearest, pointAt, SHOULDER, KERB } from './track.js?v=3';
 import { RAINBOW } from './profile.js?v=3';
+import { santaHat, xmasOn } from '../../assets/xmas-hat.js?v=1';
 
 export const CLASSES = [
   { key: 'kart:balanced', id: 'balanced', name: 'Balanced', top: 44, acc: 1.0, turn: 1.0, drift: 1.0, mass: 1, trick: 1, desc: 'Good at everything.' },
@@ -58,6 +59,7 @@ const HM = new Map(); const hm = c => { let m = HM.get(c); if (!m) { m = toon(c)
 const hp = (g, geo, c, x, y, z, rot) => { const m = new THREE.Mesh(geo, hm(c)); m.position.set(x, y, z); if (rot) m.rotation.set(rot[0], rot[1], rot[2]); g.add(m); return m; };
 export function makeHat(id) {
   if (!id || id === 'none') return null; const g = new THREE.Group(); g.position.set(0, 1.58, -.55);
+  if (id === 'santa') { const s = santaHat(THREE, toon, .36); if (!s) return null; s.position.y = .12; g.add(s); return g; }
   if (id === 'cone') { hp(g, new THREE.ConeGeometry(.32, .75, 10), 0xff4fa8, 0, .72, 0); hp(g, new THREE.SphereGeometry(.1, 8, 6), 0xffd34e, 0, 1.12, 0); hp(g, new THREE.TorusGeometry(.27, .04, 6, 14), 0xffd34e, 0, .5, 0, [Math.PI / 2, 0, 0]); }
   else if (id === 'ears') { for (const sd of [-1, 1]) { hp(g, new THREE.ConeGeometry(.16, .36, 4), 0x2a2140, sd * .24, .52, 0, [0, 0, -sd * .25]); hp(g, new THREE.ConeGeometry(.09, .22, 4), 0xff8ad0, sd * .24, .5, .06, [0, 0, -sd * .25]); } }
   else if (id === 'prop') { hp(g, new THREE.CylinderGeometry(.3, .34, .16, 12), 0x4a6aff, 0, .42, 0); hp(g, new THREE.CylinderGeometry(.03, .03, .26, 6), 0xdddddd, 0, .6, 0); const bl = new THREE.Group(); bl.position.y = .74; for (const c of [0xff4a4a, 0xffd31a]) { const b = hp(bl, Bx(.95, .03, .15), c, 0, 0, 0); if (c === 0xffd31a) b.rotation.y = Math.PI / 2; } g.add(bl); g.userData.spin = bl; }
@@ -76,7 +78,7 @@ export function makeKartModel(color, clsId = 'balanced', hatId = 'none') {
   const bubble = new THREE.Mesh(G.bubble, bubbleMat); bubble.position.y = 1.1; bubble.visible = false; g.add(bubble);
   const aura = new THREE.Mesh(G.bubble, starMat2); aura.position.y = 1.1; aura.scale.setScalar(.95); aura.visible = false; g.add(aura);
   const blob = new THREE.Mesh(G.blob, blobMat); blob.rotation.x = -Math.PI / 2; blob.position.y = .05; g.add(blob);
-  const hat = makeHat(hatId); if (hat) g.add(hat);
+  const hat = makeHat(hatId === 'none' && xmasOn() ? 'santa' : hatId); if (hat) g.add(hat);
   return { g, mat, wheels, flame, bubble, aura, body, blob, hat, hatSpin: hat && hat.userData.spin };
 }
 

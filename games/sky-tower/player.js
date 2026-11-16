@@ -2,6 +2,7 @@
 import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU } from './core.js?v=7';
 import { world, moveEntity, pushOut } from './physics.js?v=7';
 import { JUMP } from './gen.js?v=7';
+import { santaHat, xmasOn } from '../../assets/xmas-hat.js?v=1';
 
 // ---------------------------------------------------------------- the avatar (merged parts with shared geometry)
 const dark = toon(0x2a2140), vcol = toon(0xffffff, { vertexColors: true }); dark.userData.shared = vcol.userData.shared = true;
@@ -25,6 +26,7 @@ export function makeAvatar(color) {
   const a = new THREE.Mesh(G.shellA, mat), b = new THREE.Mesh(G.shellB, vcol); a.castShadow = b.castShadow = QL.shadow > 0; body.add(a, b, new THREE.Mesh(G.eyes, eyeM));
   const legL = new THREE.Group(), legR = new THREE.Group(); for (const [lg, x] of [[legL, -.15], [legR, .15]]) { lg.add(new THREE.Mesh(G.leg, dark)); lg.position.set(x, .5, 0); body.add(lg); }
   const armL = new THREE.Group(), armR = new THREE.Group(); for (const [ag, x] of [[armL, -.36], [armR, .36]]) { ag.add(new THREE.Mesh(G.arm, mat)); ag.position.set(x, 1.12, 0); body.add(ag); }
+  const hat = santaHat(THREE, toon, .3); if (hat) { hat.position.set(0, 1.58, 0); body.add(hat); }   // Christmas season only
   return { g, body, legL, legR, armL, armR, mat, eyeM };
 }
 

@@ -1,5 +1,6 @@
 // PUTT PARTY - core: renderer, quality settings, toon look, sky, effects, audio and small helpers.
 import * as THREE from './three.module.min.js';
+import { makeXmasSnow } from '../../assets/xmas-snow3d.js?v=1';
 export { THREE };
 export const V3 = THREE.Vector3;
 export const $ = id => document.getElementById(id);
@@ -30,6 +31,7 @@ renderer.setPixelRatio(BASE_PR); renderer.shadowMap.enabled = QL.shadow > 0; ren
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
 export const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0xbfe9ff, 120, 420);
 export const camera = new THREE.PerspectiveCamera(42, 1, .5, 1400); scene.add(camera);
+const XS = makeXmasSnow(THREE, scene, camera, { box: 50, size: .6, fx: QL.fx });   // Christmas snow (only in the season)
 export const VIEW = { top: 0, bottom: 0 };   // screen space the HUD takes at the top and bottom: the map is centred in what is left
 export function resize() {
   const w = innerWidth, h = innerHeight; renderer.setPixelRatio(BASE_PR * R.scale); renderer.setSize(w, h, false); camera.aspect = w / h;
@@ -91,6 +93,7 @@ export function beam(a, b, color = 0xffffff, w = .25, life = .18) {
   m.material.color.set(color); m.material.opacity = 1; m.visible = true; m.position.copy(a); _d.subVectors(b, a); const len = Math.max(.01, _d.length()); m.lookAt(b); m.scale.set(w, w, len); FX.beams.push({ m, life, max: life, w });
 }
 export function updateFX(dt) {
+  if (XS) XS.update(dt);
   let n = 0;
   for (let i = FX.parts.length - 1; i >= 0; i--) { const p = FX.parts[i]; p.life -= dt; if (p.life <= 0) { FX.parts[i] = FX.parts[FX.parts.length - 1]; FX.parts.pop(); } }
   for (const p of FX.parts) {

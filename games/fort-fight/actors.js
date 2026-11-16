@@ -2,6 +2,7 @@
 import { THREE, V3, scene, toon, outline, INK, QL, GFX, burst, tracer, ring, sfx, sfxAt, rnd, clamp, pick, W, TAU, hex, disposeObj, camera, angDiff } from './core.js?v=10';
 import { world, moveEntity, unstuck, rayActor, rayBoxT } from './physics.js?v=10';
 import { MATS, MAT_IDS, COST, placePiece, slotFromPose, canPlace, damagePiece, pieces, slotPose } from './pieces.js?v=10';
+import { santaHat, xmasOn } from '../../assets/xmas-hat.js?v=1';
 
 export const WEAPONS = [
   { id: 'pick', name: 'Pickaxe', melee: true, dmg: 22, sdmg: 55, rate: .5, reach: 3.3 },
@@ -52,6 +53,7 @@ export function makeRig(color, opts = {}) {
   const mat = toon(color), eyeM = new THREE.MeshBasicMaterial({ color: opts.eye || 0x2ee6ff });
   const shellA = new THREE.Mesh(G.shellA, mat), shellB = new THREE.Mesh(G.shellB, vcol); shellA.castShadow = shellB.castShadow = cast; body.add(shellA, shellB, new THREE.Mesh(G.eyes, eyeM));
   if (QL.edges) { body.add(new THREE.Mesh(G.hullA, INK), new THREE.Mesh(G.hullB, INK)); }
+  const hat = santaHat(THREE, toon, .3); if (hat) { hat.position.set(0, 1.58, 0); body.add(hat); }   // Christmas season only
   const legL = new THREE.Group(), legR = new THREE.Group(); for (const [lg, x] of [[legL, -.15], [legR, .15]]) { lg.add(new THREE.Mesh(G.leg, dark)); lg.position.set(x, .5, 0); body.add(lg); }
   const armL = new THREE.Group(); armL.position.set(-.36, 1.12, 0); armL.add(new THREE.Mesh(G.armL, mat)); body.add(armL);
   const arm = new THREE.Group(); arm.position.set(.36, 1.12, -.02); arm.add(new THREE.Mesh(G.sleeve, mat)); const hold = new THREE.Group(); hold.position.set(0, 0, -.1); arm.add(hold); body.add(arm);

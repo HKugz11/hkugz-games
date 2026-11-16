@@ -1,5 +1,6 @@
 // WOBBLE DASH - core: renderer, quality settings, toon look, sky, effects, audio and small helpers.
 import * as THREE from './three.module.min.js';
+import { makeXmasSnow } from '../../assets/xmas-snow3d.js?v=1';
 export { THREE };
 export const V3 = THREE.Vector3;
 export const $ = id => document.getElementById(id);
@@ -31,6 +32,7 @@ renderer.setPixelRatio(BASE_PR); renderer.shadowMap.enabled = QL.shadow > 0; ren
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
 export const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0xbfe9ff, 60, 320);
 export const camera = new THREE.PerspectiveCamera(S.fov, 1, .1, 1200); camera.rotation.order = 'YXZ'; scene.add(camera);
+const XS = makeXmasSnow(THREE, scene, camera, { box: 36, size: .32, fx: QL.fx });   // Christmas snow (only in the season)
 export function resize() { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(BASE_PR * R.scale); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
@@ -82,6 +84,7 @@ export function ring(pos, color = 0xffffff, r = 1.2, life = .4, flat = true) {
   const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .9, side: THREE.DoubleSide, depthWrite: false })); m.position.copy(pos); if (flat) m.rotation.x = -Math.PI / 2; else m.lookAt(camera.position); scene.add(m); FX.rings.push({ m, r, life, max: life });
 }
 export function updateFX(dt) {
+  if (XS) XS.update(dt);
   let n = 0;
   for (let i = FX.parts.length - 1; i >= 0; i--) { const p = FX.parts[i]; p.life -= dt; if (p.life <= 0) { FX.parts[i] = FX.parts[FX.parts.length - 1]; FX.parts.pop(); } }
   for (const p of FX.parts) {

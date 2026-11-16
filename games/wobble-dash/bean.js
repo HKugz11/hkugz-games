@@ -1,6 +1,7 @@
 // WOBBLE DASH - the racers: wobbly toon beans with a tight platformer controller (run, jump, dive), plus the follow camera.
 import { THREE, V3, scene, toon, QL, clamp, lerp, angDiff, sfx, burst, camera, S, TAU, W } from './core.js?v=15';
 import { world, moveEntity, pushOut } from './physics.js?v=15';
+import { santaHat, xmasOn } from '../../assets/xmas-hat.js?v=1';
 
 export const MOVE = { speed: 9, sprint: 1.28, jump: 11.5, g: 32, dive: 12.5 };
 const dark = toon(0x2a2140), white = toon(0xffffff); dark.userData.shared = white.userData.shared = true;
@@ -26,6 +27,7 @@ export function makeBean(color, tuft = 0) {
   const armMat = toon(color); const legL = new THREE.Group(), legR = new THREE.Group(), armL = new THREE.Group(), armR = new THREE.Group();
   for (const [lg, x] of [[legL, -.2], [legR, .2]]) { lg.add(new THREE.Mesh(G.leg, dark)); lg.position.set(x, .46, 0); body.add(lg); }
   for (const [ag, x] of [[armL, -.5], [armR, .5]]) { ag.add(new THREE.Mesh(G.arm, armMat)); ag.position.set(x, 1.15, 0); body.add(ag); }
+  const hat = santaHat(THREE, toon, .44); if (hat) { hat.position.set(0, 1.36, 0); body.add(hat); }   // Christmas season only
   return { g, body, bm, legL, legR, armL, armR, armMat };
 }
 

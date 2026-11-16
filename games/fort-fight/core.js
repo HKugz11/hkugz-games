@@ -1,5 +1,6 @@
 // FORT FIGHT - core: renderer, quality settings, toon look, sky, effects, audio and small helpers.
 import * as THREE from './three.module.min.js';
+import { makeXmasSnow } from '../../assets/xmas-snow3d.js?v=1';
 export { THREE };
 export const V3 = THREE.Vector3;
 export const $ = id => document.getElementById(id);
@@ -30,6 +31,7 @@ renderer.autoClear = false; renderer.setPixelRatio(BASE_PR); renderer.shadowMap.
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
 export const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0xbfe9ff, 60, 220);
 export const camera = new THREE.PerspectiveCamera(S.fov, 1, .1, 700); camera.rotation.order = 'YXZ'; scene.add(camera);
+const XS = makeXmasSnow(THREE, scene, camera, { box: 40, size: .32, fx: QL.fx });   // Christmas snow (only in the season)
 export function resize() { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(BASE_PR * R.scale); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
@@ -79,6 +81,7 @@ export function ring(pos, color = 0xffffff, r = 1.2, life = .4) {
   const m = new THREE.Mesh(new THREE.RingGeometry(.7, 1, 24), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .9, side: THREE.DoubleSide, depthWrite: false })); m.position.copy(pos); m.lookAt(camera.position); scene.add(m); FX.rings.push({ m, r, life, max: life });
 }
 export function updateFX(dt) {
+  if (XS) XS.update(dt);
   for (let i = FX.parts.length - 1; i >= 0; i--) {
     const p = FX.parts[i], u = p.userData; u.life -= dt; if (u.life <= 0) { p.visible = false; FX.free.push(p); FX.parts.splice(i, 1); continue; }
     u.vy -= u.grav * dt; p.position.x += u.vx * dt; p.position.y += u.vy * dt; p.position.z += u.vz * dt; if (p.position.y < .05) { p.position.y = .05; u.vy *= -.35; u.vx *= .7; u.vz *= .7; } p.rotation.x += u.rx * dt; p.rotation.y += u.ry * dt; p.scale.multiplyScalar(1 - dt * .5);

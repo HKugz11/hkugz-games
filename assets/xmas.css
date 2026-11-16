@@ -43,3 +43,24 @@ html.xmas .screen h1.xl-title { filter: drop-shadow(0 5px 0 #a8141f) drop-shadow
 .xl-hatwrap { display: block; width: fit-content; margin: 0 auto; position: relative; }
 .xl-hat { position: absolute; left: -12%; top: -24%; width: 62%; aspect-ratio: 30 / 26; transform: rotate(-14deg); pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 26'%3E%3Cpath d='M4 20C5 9 13 3 23 3c-1 4-1 9 3 17z' fill='%23d6202c'/%3E%3Cpath d='M4 20C5 9 13 3 23 3c-4 3-8 8-9 17z' fill='%23a8141f' opacity='.35'/%3E%3Crect x='2' y='18' width='26' height='7' rx='3.5' fill='%23fff'/%3E%3Ccircle cx='24' cy='4' r='3.6' fill='%23fff'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* little trees on the snowy edge of the hero and next to the section titles */
+.xmas .hero2::before { content: ""; position: absolute; left: 0; right: 0; bottom: 26px; height: 54px; pointer-events: none; z-index: 0; opacity: .95;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52'%3E%3Crect x='17' y='42' width='6' height='10' fill='%237a4a24'/%3E%3Cpath d='M20 14 3 44h34z' fill='%23127a38'/%3E%3Cpath d='M20 5 8 30h24z' fill='%231a9a48'/%3E%3Cpath d='M20 0l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z' fill='%23ffd23f'/%3E%3Ccircle cx='15' cy='24' r='2.2' fill='%23e0262f'/%3E%3Ccircle cx='25' cy='33' r='2.2' fill='%23ffd23f'/%3E%3Ccircle cx='13' cy='38' r='2.2' fill='%233fa7ff'/%3E%3Ccircle cx='24' cy='20' r='1.8' fill='%233fa7ff'/%3E%3C/svg%3E") 0 100% / 41px 54px repeat-x;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 41px, transparent 41px 185px); mask: repeating-linear-gradient(90deg, #000 0 41px, transparent 41px 185px); }
+.xmas .section h2::after { content: ""; display: inline-block; width: 26px; height: 33px; margin-left: 10px; vertical-align: -5px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52'%3E%3Crect x='17' y='42' width='6' height='10' fill='%237a4a24'/%3E%3Cpath d='M20 14 3 44h34z' fill='%23127a38'/%3E%3Cpath d='M20 5 8 30h24z' fill='%231a9a48'/%3E%3Cpath d='M20 0l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z' fill='%23ffd23f'/%3E%3Ccircle cx='15' cy='24' r='2.2' fill='%23e0262f'/%3E%3Ccircle cx='25' cy='33' r='2.2' fill='%23ffd23f'/%3E%3Ccircle cx='13' cy='38' r='2.2' fill='%233fa7ff'/%3E%3C/svg%3E") center / contain no-repeat; }
+/* a snowy ground strip with a few trees above the footer */
+.xmas .gcard:nth-child(4n+1) .gtags::after { content: ""; display: inline-block; width: 16px; height: 20px; margin-left: 2px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52'%3E%3Crect x='17' y='42' width='6' height='10' fill='%237a4a24'/%3E%3Cpath d='M20 14 3 44h34z' fill='%23127a38'/%3E%3Cpath d='M20 5 8 30h24z' fill='%231a9a48'/%3E%3Ccircle cx='15' cy='24' r='2.6' fill='%23e0262f'/%3E%3Ccircle cx='25' cy='33' r='2.6' fill='%23ffd23f'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* the big tree near the bottom of the page: "A new game a day!" */
+.xl-treebox { display: none; }
+.xmas .xl-treebox { display: block; text-align: center; padding: 34px 20px 8px; background: radial-gradient(ellipse 340px 90px at 50% 100%, #fff 60%, transparent 62%); margin-top: 10px; }
+.xl-bigtree { display: block; margin: 0 auto; max-width: 62vw; height: auto; filter: drop-shadow(0 8px 14px rgba(8, 60, 80, .25)); }
+.xl-bigtree .orn circle { animation: xl-twinkle 1.6s ease-in-out infinite; }
+.xl-bigtree .orn circle:nth-child(3n) { animation-delay: .5s; } .xl-bigtree .orn circle:nth-child(3n+1) { animation-delay: 1s; }
+.xl-treecap { display: inline-block; margin: 14px auto 6px; padding: 9px 26px; border-radius: 999px; background: repeating-linear-gradient(-45deg, #d6202c 0 12px, #fff 12px 24px); border: 3px solid #fff; box-shadow: 0 4px 0 rgba(0, 0, 0, .18); position: relative; font-size: 22px; font-weight: 900; letter-spacing: .02em; color: transparent; }
+.xl-treecap::before { content: "A new game a day!"; position: absolute; inset: 3px 7px; border-radius: 999px; background: #fff; color: #d6202c; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .xl-bigtree .orn circle { animation: none; } }
+.xmas .foot .brand b { color: #ffd23f; }
