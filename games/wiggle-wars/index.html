@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Wiggle Wars</title>
+<script src="../../assets/playtimer.js"></script>
+<script src="../../assets/hksettings.js"></script>
+<meta name="description" content="Steer a glowing worm, eat the dots to grow huge and trap the other worms. Boost, dodge and climb the leaderboard. Free, runs in your browser, on Chromebooks and on phones.">
+<style>
+  :root { --y: #ffd34e; --c: #2ee6ff; --p: #ff4fa8; }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0720; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff; overscroll-behavior: none; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hide { display: none !important; }
+  .hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+  .hud > * { position: absolute; }
+  #score { left: 16px; bottom: 16px; font-weight: 900; text-shadow: 0 2px 0 rgba(0,0,0,.6); background: rgba(10,6,24,.5); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 6px 14px; line-height: 1.15; }
+  #score small { display: block; font-size: 11px; letter-spacing: .16em; opacity: .75; } #score b { font-size: 28px; color: var(--y); } #score span { font-size: 12px; opacity: .8; margin-left: 8px; }
+  #lb { right: 12px; top: 12px; width: 190px; background: rgba(10,6,24,.5); border: 2px solid rgba(255,255,255,.18); border-radius: 14px; padding: 8px 10px; font-size: 13px; font-weight: 800; text-shadow: 0 1px 0 rgba(0,0,0,.6); }
+  #lb h4 { margin: 0 0 4px; font-size: 11px; letter-spacing: .2em; opacity: .7; text-align: center; }
+  #lb div { display: flex; gap: 6px; white-space: nowrap; line-height: 1.5; } #lb div i { font-style: normal; opacity: .6; width: 20px; text-align: right; flex: none; } #lb div span { flex: 1; overflow: hidden; text-overflow: ellipsis; } #lb div em { font-style: normal; opacity: .9; } #lb .me { color: var(--y); } #lb .gap { opacity: .5; justify-content: center; line-height: .7; }
+  #mini { right: 12px; bottom: 12px; width: 120px; height: 120px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); background: rgba(10,6,24,.5); }
+  #toasts { left: 50%; top: 14%; transform: translateX(-50%); text-align: center; width: 90%; }
+  .toast { font-weight: 900; font-size: 20px; text-shadow: 0 3px 0 rgba(0,0,0,.6); animation: tst 2.2s ease-out forwards; margin: 2px 0; } .toast.big { font-size: 28px; color: var(--y); }
+  @keyframes tst { 0% { opacity: 0; transform: translateY(14px) scale(.8); } 10% { opacity: 1; transform: translateY(0) scale(1.05); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px); } }
+  #edge { inset: 0; box-shadow: inset 0 0 80px 20px rgba(255,70,110,.5); opacity: 0; transition: opacity .2s; } #edge.on { opacity: 1; }
+  #boostBtn { right: 22px; bottom: 150px; width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe48a, #ff9a1a); border: 4px solid #fff; box-shadow: 0 6px 0 rgba(120,50,0,.6); font-weight: 900; font-size: 15px; color: #5a2600; display: grid; place-items: center; pointer-events: auto; touch-action: none; letter-spacing: .06em; } #boostBtn.down { transform: translateY(4px); box-shadow: 0 2px 0 rgba(120,50,0,.6); filter: brightness(1.15); }
+  #stick { width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 3px solid rgba(255,255,255,.55); background: rgba(255,255,255,.12); } #stick i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255,255,255,.7); }
+  a.back { position: fixed; left: 18px; top: 14px; z-index: 9; color: #fff; opacity: .65; font-size: 13px; text-decoration: none; }
+  /* screens */
+  .screen { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); place-items: start center; overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, rgba(60,30,120,.38), rgba(8,4,20,.66)); z-index: 5; text-align: center; padding: 20px; }
+  #dead, #pause { background: rgba(8,4,20,.6); place-items: center; }
+  .screen .box { max-width: 760px; width: 100%; margin: auto; }
+  h1 { font-size: clamp(40px, 9vw, 88px); margin: 0; line-height: .95; letter-spacing: -.02em; font-family: "Apple Sans", "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif; font-weight: 900; background: linear-gradient(180deg, #ffffff, #d4f8ff 52%, #7cecff); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 #4a1fc2) drop-shadow(0 0 26px rgba(66,215,241,.55)); }
+  .sub { opacity: .88; font-size: 17px; margin: 10px 0 14px; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; align-items: center; }
+  button { font: inherit; font-weight: 800; font-size: 17px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.3); background: linear-gradient(180deg, #a77bff, #7a3bff); border: 0; border-radius: 14px; padding: 11px 24px; cursor: pointer; box-shadow: 0 5px 0 #3a1a9a, inset 0 1px 0 rgba(255,255,255,.4); }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #3a1a9a; } button.alt { background: linear-gradient(180deg, #7cecff, #20b8e8); box-shadow: 0 5px 0 #0a6a88; color: #04202a; } button.big { font-size: 26px; padding: 14px 42px; }
+  .grp { margin: 12px 0; } .grp h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .22em; opacity: .65; }
+  #skins { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; max-width: 640px; margin: 0 auto; }
+  .skin { padding: 6px 4px 4px; border-radius: 14px; background: rgba(255,255,255,.1); border: 3px solid transparent; box-shadow: none; font-size: 12px; text-shadow: none; } .skin canvas { display: block; width: 100%; height: 30px; } .skin.sel { border-color: #fff; background: rgba(255,255,255,.22); box-shadow: 0 0 14px rgba(124,236,255,.6); }
+  input[type=text] { font: inherit; font-weight: 800; padding: 11px 14px; border-radius: 12px; border: 3px solid rgba(255,255,255,.3); background: rgba(10,6,24,.6); color: #fff; width: 200px; text-align: center; user-select: text; -webkit-user-select: text; }
+  label.chk { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 14px; cursor: pointer; } label.chk input { width: 18px; height: 18px; }
+  details { margin: 8px 0; } details summary { cursor: pointer; opacity: .75; font-weight: 700; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 12px 0; font-size: 14px; text-align: left; } .keys div { background: rgba(255,255,255,.08); padding: 8px 12px; border-radius: 10px; } .keys b { color: var(--y); }
+  .fine { font-size: 12px; opacity: .55; max-width: 620px; margin: 6px auto 10px; line-height: 1.5; }
+  #best { font-weight: 800; opacity: .9; } #best b { color: var(--y); }
+  #deadBox { max-width: 460px; } #deadBy { font-size: 20px; margin: 10px 0; font-weight: 800; } #deadBy b { color: #ff8aa8; } #deadStats { font-size: 18px; line-height: 1.7; } #deadStats b { color: var(--y); } .nb { color: #6aff9a; font-weight: 900; }
+  @media (max-width: 700px) { #lb { width: 150px; font-size: 11.5px; padding: 6px 8px; } #mini { width: 84px; height: 84px; right: 8px; bottom: 8px; } #boostBtn { width: 84px; height: 84px; right: 14px; bottom: 112px; } #score b { font-size: 22px; } .toast { font-size: 16px; } .toast.big { font-size: 22px; } }
+  @media (max-height: 640px) { .screen { padding: 10px 14px; } h1 { font-size: clamp(32px, 9vh, 56px); } .sub { font-size: 14px; margin: 6px 0 8px; } button.big { font-size: 22px; padding: 10px 32px; } .grp { margin: 6px 0; } }
+</style>
+<link rel="icon" type="image/svg+xml" href="../../assets/logo.svg"><link rel="icon" type="image/png" sizes="512x512" href="../../assets/logo.png"><link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#0b0720">
+<meta property="og:type" content="website"><meta property="og:site_name" content="HKugz Games">
+<meta property="og:title" content="Wiggle Wars - free browser game">
+<meta property="og:description" content="Steer a glowing worm, eat the dots to grow huge and trap the other worms. Boost, dodge and climb the leaderboard. Free, runs in your browser, on Chromebooks and on phones.">
+<meta property="og:url" content="https://hkugz11.github.io/hkugz-games/games/wiggle-wars/"><meta property="og:image" content="https://hkugz11.github.io/hkugz-games/assets/thumbs/wiggle-wars.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../assets/xmas.css?v=2"><script src="../../assets/xmas.js?v=2" data-mode="game"></script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div class="hud hide" id="hud">
+  <div id="score"><small>YOUR LENGTH</small><b id="scoreN">10</b><span id="rankT"></span></div>
+  <div id="lb"></div>
+  <canvas id="mini" width="240" height="240"></canvas>
+  <div id="toasts"></div>
+  <div id="edge"></div>
+  <div id="boostBtn" class="hide">BOOST</div>
+  <div id="stick" class="hide"><i></i></div>
+</div>
+
+<div class="screen" id="menu">
+  <a class="back" href="../../">&larr; All games</a>
+  <div class="box">
+    <img src="../../assets/logo.svg" alt="HKugz Games logo" style="display:block;margin:0 auto 6px;width:clamp(44px,10vh,80px);height:clamp(44px,10vh,80px);filter:drop-shadow(0 3px 10px rgba(0,0,0,.45))"><h1 class="xl-title">WIGGLE<br>WARS</h1>
+    <p class="sub">Eat the glowing dots to grow. Make other worms bump into you, but don't bump into them!</p>
+    <div class="grp"><h3>PICK YOUR WORM</h3><div id="skins"></div></div>
+    <div class="row"><input type="text" id="pname" maxlength="14" placeholder="Your name" autocomplete="off"><button class="big" id="play">PLAY!</button></div>
+    <div class="row"><label class="chk"><input type="checkbox" id="lite"> Lite graphics (for slow computers)</label></div>
+    <p id="best">Your best length: <b id="bestN">0</b></p>
+    <details><summary>How to play</summary>
+    <div class="keys">
+      <div><b>Mouse</b> steer: your worm follows the pointer</div><div><b>Click &amp; hold</b> or <b>Space</b> / <b>Shift</b> boost (uses a little length and leaves a trail of dots)</div>
+      <div><b>A / D</b> or <b>Arrows</b> steer left and right</div><div><b>Phone / tablet</b> drag on the screen to steer, hold the BOOST button</div>
+      <div><b>Tip:</b> cut in front of a worm so it bumps into you</div><div><b>Tip:</b> when a worm bumps and pops, it drops lots of dots. Grab them!</div>
+      <div><b>Tip:</b> the edge of the arena is soft. It just slides you along</div><div><b>P</b> or <b>Esc</b> pause</div>
+    </div></details>
+    <p class="fine">An original worm game, not affiliated with any game company. Everything is saved only in this browser.</p>
+  </div>
+</div>
+<div class="screen hide" id="pause"><div class="box" style="max-width:420px"><h1 style="font-size:52px">PAUSED</h1><div class="row"><button class="big" id="resume">RESUME</button></div><div class="row"><button class="alt" id="quit">Quit to menu</button></div></div></div>
+<div class="screen hide" id="dead"><div class="box" id="deadBox">
+  <h1 style="font-size:52px">OOPS!</h1>
+  <div id="deadBy"></div>
+  <div id="deadStats"></div>
+  <div class="row"><button class="big" id="again">PLAY AGAIN</button></div>
+  <div class="row"><button class="alt" id="toMenu">Change worm</button></div>
+</div></div>
+<script type="module" src="game.js?v=1"></script>
+</body>
+</html>
