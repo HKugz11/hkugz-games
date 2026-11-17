@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=255';
+import { displayWeapon, createHomeStage } from './showcase.js?v=283';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=255';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=255';
-import { platform } from './platform.js?v=255';
-import * as THREE from './three.module.min.js?v=255';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=255';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=255';
-import { createOnline } from './online.js?v=255';
-import { TOUCH, initTouch } from './touch.js?v=255';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=255';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=283';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=283';
+import { platform } from './platform.js?v=283';
+import * as THREE from './three.module.min.js?v=283';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=283';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=283';
+import { createOnline } from './online.js?v=283';
+import { TOUCH, initTouch } from './touch.js?v=283';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=283';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -490,7 +490,7 @@ const WD = {
   chopper: { name: 'Chopper', slot: 'prim', price: 1400, dmg: 24, rpm: 800, auto: true, mag: 50, res: 100, reload: 3.4, speed: 6.3, inacc: 0.75, moveInacc: 2.4, airInacc: 7, pen: 0.7, range: 0.88, recoil: 0.55, rec: 9, reward: 300, tier: 2, snd: [3100, 0.09, 0.8], acc: '#556b8a', patk: 'sweep', bloom: 0.06, draw: 0.4, desc: '50 rounds, sweeps wide when you hold it down. Strong while moving.' },
   scatter: { name: 'Scatter', slot: 'prim', price: 1800, dmg: 18, pellets: 6, cone: 4.8, rpm: 240, mag: 8, res: 32, reload: 3.2, shell: 0.4, speed: 6.2, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.55, recoil: 2.8, rec: 3.5, reward: 900, tier: 2, snd: [1400, 0.3, 1.5], acc: '#6a7a3a', patk: 'cannon', stagger: 0.35, draw: 0.45, desc: 'Semi-auto shotgun, wide spread. Fires fast up close, loads shell by shell.' },
   carbine: { name: 'Carbine', slot: 'prim', price: 2050, dmg: 31, rpm: 900, burst: 3, burstGap: 0.2, mag: 25, res: 90, reload: 2.4, speed: 6.2, inacc: 0.28, moveInacc: 4.6, airInacc: 10, pen: 0.68, range: 0.96, recoil: 0.9, rec: 6, reward: 300, tier: 3, snd: [2300, 0.12, 0.9], acc: '#6a6e75', patk: 'burst', first: 0.6, draw: 0.4, desc: 'Three-round bursts. Cheap, accurate, great at range.' },
-  ranger: { name: 'Ranger', slot: 'prim', price: 1750, dmg: 88, rpm: 48, mag: 10, res: 30, reload: 2.6, speed: 6.4, inacc: 4, scopedInacc: 0.05, moveInacc: 7, airInacc: 12, pen: 0.9, range: 0.995, recoil: 3.2, rec: 2.5, scope: true, zoomLv: 1, settle: 0.15, reward: 300, tier: 3, snd: [1400, 0.3, 1.6], acc: '#7a5a34', patk: 'cannon', stagger: 0.35, draw: 0.45, desc: 'Light bolt sniper: fast to move, fast to scope.' },
+  ranger: { name: 'AWP', slot: 'prim', price: 2000, dmg: 150, rpm: 44, mag: 7, res: 30, reload: 3.0, speed: 6.0, inacc: 4, scopedInacc: 0.05, moveInacc: 7, airInacc: 12, pen: 0.98, range: 0.995, recoil: 3.6, rec: 2.5, scope: true, zoomLv: 1, settle: 0.2, reward: 100, tier: 4, snd: [1400, 0.3, 1.6], acc: '#d9a23a', patk: 'cannon', stagger: 0.35, draw: 0.45, desc: 'The AWP: one shot to the body takes anyone down. Hits through thin walls.' },
   dmr: { name: 'Marksman', slot: 'prim', price: 3000, dmg: 68, rpm: 190, mag: 12, res: 36, reload: 3.1, speed: 5.8, inacc: 3, scopedInacc: 0.06, moveInacc: 8, airInacc: 13, pen: 0.88, range: 0.99, recoil: 2.4, rec: 4, scope: true, zoomLv: 1, settle: 0.22, reward: 300, tier: 4, snd: [1500, 0.25, 1.5], acc: '#4e5f43', patk: 'cannon', stagger: 0.3, draw: 0.6, desc: 'Semi-auto sniper: two body shots kill, quick follow-up.' },
   lmg: { name: 'Hammer LMG', slot: 'prim', price: 5200, dmg: 32, rpm: 750, auto: true, spin: 0.28, mag: 100, res: 200, reload: 5.8, speed: 4.9, inacc: 0.5, moveInacc: 7, airInacc: 12, pen: 0.8, range: 0.95, recoil: 1.1, rec: 4, bloom: 0.04, suppress: true, reward: 300, tier: 4, snd: [1700, 0.2, 1.4], acc: '#4a4f3a', patk: 'lmg', draw: 0.9, desc: 'Winds up before it roars, 100 rounds. Misses still rattle enemies.' },
   he: { name: 'HE Grenade', nade: true, price: 300, speed: 6.9, reward: 300, max: 1, col: '#4caf50', desc: 'Boom. Big damage in a small area.' },
@@ -509,7 +509,7 @@ const WD = {
 };
 for (const k in WD) if (WD[k].mag) WD[k].pat = pattern(WD[k], k);
 const fireMode = (d) => (d.burst ? 'BURST' : d.shell && d.rpm < 100 ? 'PUMP' : d.scope && d.rpm < 100 ? 'BOLT' : d.auto ? (d.spin ? 'AUTO · SPIN-UP' : 'AUTO') : 'SEMI');
-// Simple mode keeps 9 guns (a pistol upgrade, an SMG, a shotgun, three rifles, a sniper); Pro mode has all of them
+// Simple mode keeps 10 guns (a pistol upgrade, an SMG, a shotgun, three rifles, two snipers); Pro mode has all of them
 // WILD TWISTS: a rule bender for a whole match (solo only). Quick Play picks one at random; Custom Match has a WILD TWIST setting.
 const TWISTS = [
   { id: 'moon', name: 'Moon Gravity', desc: 'You jump super high and fall slowly.' },
@@ -530,7 +530,7 @@ function showTwist() {
   twistTag.textContent = 'WILD TWIST: ' + t.name.toUpperCase(); twistTag.classList.remove('hidden');
   setTimeout(() => { if (GS.twist === t.id && GS.state !== 'menu') banner('WILD TWIST: ' + t.name.toUpperCase(), t.desc, '#fff', 3600); }, 3300);
 }
-const SIMPLE_GUNS = new Set(['p9', 'viper', 'trio', 'buzz', 'thumper', 'carbine', 'raptor', 'longbow', 'lmg']);
+const SIMPLE_GUNS = new Set(['p9', 'viper', 'trio', 'buzz', 'thumper', 'carbine', 'raptor', 'longbow', 'ranger', 'lmg']);
 const holidayOwn = (a, id) => a.isPlayer && !MP.on && skinState.rewarded.includes('gun:' + id);   // the player starts with the holiday guns once the gift is opened
 function gunOK(id) {
   const d = WD[id]; if (!d || !d.mag) return true;   // grenades, gear and the knife are always there
@@ -682,13 +682,15 @@ vmScene.environment = ENV;
 const skinSaveKey = 'cs.finishes1';
 let skinState = {selected:'factory',rewarded:[]};
 try { const saved=JSON.parse(localStorage.getItem(skinSaveKey)); if(saved && Array.isArray(saved.rewarded)) skinState=saved; } catch {}
+const PORTAL = false;   // build_portal.py sets this to true in the CrazyGames build: no Christmas stuff at all, even from an older save
+if (PORTAL) { skinState.rewarded = skinState.rewarded.filter((id) => !['knife:candycane', 'gun:jingle', 'gun:frosty'].includes(id)); skinState.costumes = (skinState.costumes || []).filter((c) => !['elf', 'reindeer', 'snowman'].includes(c)); if (['elf', 'reindeer', 'snowman'].includes(skinState.costume)) skinState.costume = ''; }
 if (skinState.coins === undefined) skinState.coins = 150 + 100 * (skinState.crates | 0);   // start with 150 coins
 const CRATE_PRICE = 100;
 const knifeOwned = (k) => k.id === 'combat' || skinState.rewarded.includes('knife:' + k.id);
 if (!knives.find((k) => k.id === skinState.knife && knifeOwned(k))) skinState.knife = 'combat';
 const syncKnifeName = () => { WD.knife.name = (knives.find((k) => k.id === skinState.knife) || knives[0]).name; };
 setKnifeStyle(skinState.knife); syncKnifeName();
-const coinMult = () => { const d = new Date().getDay(); return d === 1 || d === 5 ? 3 : 2; };   // every coin you EARN from a match is multiplied: 2x, and 3x on Mondays and Fridays
+const coinMult = () => 5;   // every coin you EARN from a match is multiplied: 5x, every day
 const COIN = '<span class="coin" role="img" aria-label="coins"></span>';
 function refreshCoins() { for (const e of document.querySelectorAll('.coin-n')) e.textContent = skinState.coins | 0; }
 function earnCoins(n) {   // coins from a finished match
@@ -704,7 +706,7 @@ if (!skinState.ver) {   // older saves: the skins you had go onto your main gun
   if (skinState.selected && skinState.selected !== 'factory') skinState.equip[w0] = skinState.selected;
   skinState.ver = 2;
 }
-const ownsSkin = (f, wid) => f.id === 'factory' || skinState.rewarded.includes(f.id) && f.rp !== undefined || (f.rp !== undefined ? RANK.m >= 3 && RANK.peak >= f.rp : skinState.skins.includes(f.id + '@' + wid));
+const ownsSkin = (f, wid) => (!f.weapon || f.weapon === wid) && (f.id === 'factory' || skinState.rewarded.includes(f.id) && f.rp !== undefined || (f.rp !== undefined ? RANK.m >= 3 && RANK.peak >= f.rp : skinState.skins.includes(f.id + '@' + wid)));
 const unlocked = (f) => ownsSkin(f, showcaseGun());
 const equippedFor = (wid) => finishes.find((f) => f.id === skinState.equip[wid] && f.id !== 'factory' && ownsSkin(f, wid)) || finishes[0];
 const equipped = () => equippedFor(showcaseGun());
@@ -717,7 +719,7 @@ function buildVM(id) {
   const ac = new THREE.Color(WD[id].acc || WD[id].col || '#ffb13d'), hsl = {}; ac.getHSL(hsl); ac.setHSL(hsl.h, hsl.s * 0.3, Math.min(hsl.l, 0.3));   // standard issue is dull gunmetal, never bright
   const b = buildGun(id, ac.getHex());
   if (GS.twist === 'junk' && WD[id].mag) junkify(b, id.length * 7 + id.charCodeAt(0));
-  else if (WD[id].mag || id === 'knife') { applyFinish(b.finishMesh, equippedFor(id), id === 'knife' ? 'knife' : undefined); if (id !== 'knife') applyStickers(b.finishMesh, skinState.applied[id]); }
+  else if (WD[id].mag || id === 'knife') { applyFinish(b.finishMesh, equippedFor(id), id === 'knife' ? 'knife' : undefined, id); if (id !== 'knife') applyStickers(b.finishMesh, skinState.applied[id]); }
   GM[id] = b;
   const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   fl.scale.setScalar(0.28); fl.visible = false; b.mz.add(fl);
@@ -1398,8 +1400,8 @@ function endMatch() {
       $('endRank').innerHTML = rankEndHTML(r);
       if (r.m === 3 || (r.m > 3 && rankInfo(r.after).step > rankInfo(r.before).step)) setTimeout(() => showRankUp(r), 900);   // moved up (or just finished the placements): the RANK UP screen
     }
-    if (GS.mode === 'comp') { const n = Math.round(((win ? 120 : draw ? 80 : 60) + P.kills * 3) * coinMult()); earnCoins(n); $('endRank').innerHTML += '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + (coinMult() > 2 ? ' (3x coin day!)' : '') + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
-    if (GS.mode === 'dm' && !GS.tutorial) { const n = Math.round(((win ? 100 : draw ? 70 : 50) + P.kills * 2) * coinMult()); earnCoins(n); $('endRank').innerHTML = '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + (coinMult() > 2 ? ' (3x coin day!)' : '') + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
+    if (GS.mode === 'comp') { const n = Math.round(((win ? 120 : draw ? 80 : 60) + P.kills * 3) * coinMult()); earnCoins(n); $('endRank').innerHTML += '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + ' (5x coins!)' + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
+    if (GS.mode === 'dm' && !GS.tutorial) { const n = Math.round(((win ? 100 : draw ? 70 : 50) + P.kills * 2) * coinMult()); earnCoins(n); $('endRank').innerHTML = '<div style="margin-top:10px;font-weight:700;color:#fff">+' + n + ' ' + COIN + ' (5x coins!)' + ' &middot; spend them on skin crates (SKINS &amp; CRATES on the menu)</div>'; }
     SFX.fanfare(win);
   }
   $('endTitle').textContent = title; $('endTitle').style.color = title === 'DEFEAT' ? '#ff6a5a' : title === 'DRAW' ? '#ddd' : '#ffd04a';
@@ -2508,7 +2510,7 @@ function lock() {
 const uiOpen = () => mapOpen || !$('buy').classList.contains('hidden') || !$('end').classList.contains('hidden') || GS.state === 'menu' || GS.state === 'over';
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
-  if (locked) { softLock = false; ignoreMouseUntil = GS.time + 0.08; lastMag = 0; }
+  if (locked) { softLock = false; ignoreMouseUntil = performance.now() + 80; lastMag = 0; }
   if (!locked && softLock) return;
   if (locked) { $('clickLock').classList.add('hidden'); $('pause').classList.add('hidden'); GS.paused = false; }
   else if (!uiOpen() && !DEBUG) pauseGame();
@@ -2534,9 +2536,10 @@ document.addEventListener('mousemove', (e) => {
   const P = GS.player; if (!P || GS.paused || uiOpen()) return;
   if (!P.alive) return;
   if (document.pointerLockElement === canvas) {
-    if (GS.time < ignoreMouseUntil) return;
+    if (performance.now() < ignoreMouseUntil) return;   // real time (game time can stand still right at the start of a match)
     const mag = Math.abs(e.movementX) + Math.abs(e.movementY);
-    if (mag > 220 && mag > 4 * lastMag + 60) { lastMag = Math.min(lastMag, 60); return; }
+    // only throw away the rare fake jump of more than a screen and a half (a real fast flick on a slow frame is never that big; the old limit of 220 threw real turns away, so the view could not catch up with the mouse)
+    if (mag > Math.max(1600, innerWidth * 1.5) && mag > 6 * lastMag + 400) { return; }
     lastMag = mag;
   } else if (!softLock && !DEBUG) return;
   if (padMode && document.pointerLockElement !== canvas) return;   // using the controller: a loose mouse doesn't turn the view until it is clicked
@@ -3904,13 +3907,13 @@ const mkCanvas = (draw) => { const cv = document.createElement('canvas'); cv.wid
 const finishOf = (id) => finishes.find((f) => f.id === id);
 // the skins this weapon can wear: standard issue, the rank skins (every gun), and the case skins you rolled FOR THIS gun
 const caseNameOf = (f) => (cases.find((c) => c.finishes && c.finishes.includes(f.id)) || { name: 'a case' }).name;
-const skinsFor = (wid) => { const rk = (f) => (f.id === 'factory' ? 0 : ownsSkin(f, wid) ? 1 : 2); return finishes.slice().sort((a, b) => rk(a) - rk(b)); };   // every skin: yours first, then the ones still locked
+const skinsFor = (wid) => { const rk = (f) => (f.id === 'factory' ? 0 : ownsSkin(f, wid) ? 1 : 2); return finishes.filter(f => !f.weapon || f.weapon === wid).sort((a, b) => rk(a) - rk(b)); };   // every skin: yours first, then the ones still locked
 const countSkins = (wid) => skinState.skins.filter((k) => k.endsWith('@' + wid)).length;
 function preview() {
   const f = finishOf(selF) || finishes[0], rar = f.rarity && rarities[f.rarity];
   lq('#invName').textContent = weaponName(selW) + (f.id === 'factory' ? '' : ' | ' + f.name); lq('#invName').style.color = rar ? hexOf(rar.color) : '';
   const own = ownsSkin(f, selW), act = equippedFor(selW).id === f.id;
-  lq('#invRule').textContent = f.id === 'factory' ? 'Standard issue' : (rar ? rar.name + ' · ' : '') + (f.rp !== undefined ? 'Rank reward: works on every gun' : own ? 'Only fits this ' + (selW === 'knife' ? 'knife' : 'gun') : 'Locked. Found in the ' + caseNameOf(f) + '. A skin you roll fits one random gun.');
+  lq('#invRule').textContent = f.id === 'factory' ? 'Standard issue' : (rar ? rar.name + ' · ' : '') + (f.rp !== undefined ? 'Rank reward: works on every gun' : own ? 'Only fits this ' + (selW === 'knife' ? 'knife' : 'gun') : 'Locked. Found in the ' + caseNameOf(f) + (f.weapon ? '. Only fits the AWP.' : '. A skin you roll fits one random gun.'));
   const adOK = f.rp !== undefined && platform.canReward;
   invEquip.textContent = act ? 'EQUIPPED' : own ? 'EQUIP' : adOK ? 'WATCH AD TO UNLOCK' : 'LOCKED';
   invEquip.disabled = pendingReward || act || (!own && !adOK);
@@ -4002,11 +4005,18 @@ function rollCase(c) {
     if (c.kind === 'skin') { cand = fl.map((f) => ({ f, w: f.weight || 1 })); if (c.knives) for (const k of knives.filter((k) => k.rarity === rar)) cand.push({ k, w: 1 }); }   // legendary knives drop from the normal cases
     else { cand = fl.map((f) => ({ f, wid: 'knife', w: f.weight || 1 })); for (const k of knives.filter((k) => k.rarity === rar)) cand.push({ k, w: 1 }); }
   }
-  const p = { ...wpick(cand), r: rar }; if (p.f && !p.wid) p.wid = pick(c.slot ? gunIds().filter((id) => WD[id].slot === c.slot) : [...gunIds(), 'knife']); return p;   // a case skin fits ONE random gun
+  const p = { ...wpick(cand), r: rar }; if (p.f && !p.wid) p.wid = p.f.weapon || pick(c.slot ? gunIds().filter((id) => WD[id].slot === c.slot) : [...gunIds(), 'knife']); return p;   // a case skin fits ONE random gun
+}
+function caseAvailable(c) {
+  if (!c.seasonal) return !c.holiday || XMAS;
+  const today = new Date();
+  const monthDay = (today.getMonth() + 1) * 100 + today.getDate();
+  return monthDay >= 1115 || monthDay <= 102;
 }
 function drawCases() {
   const c = cases.find((x) => x.id === selCase) || cases[0];
-  caseList.replaceChildren(...cases.filter((x) => !x.holiday || XMAS).map((x) => {
+  if (!caseAvailable(c)) { selCase = cases[0].id; drawCases(); return; }
+  caseList.replaceChildren(...cases.filter(caseAvailable).map((x) => {
     const b = document.createElement('button'); b.className = 'case-btn' + (x.id === c.id ? ' on' : ''); b.innerHTML = '<b></b><small></small>'; b.firstChild.textContent = x.name; b.lastChild.innerHTML = x.price + ' ' + COIN;
     b.onclick = () => { if (opening) return; selCase = x.id; resultEl.classList.add('hidden'); crateStage?.reset(); crateStage?.setTint(x.tint); drawCases(); }; return b;
   }));
@@ -4238,6 +4248,7 @@ function vaultOffer(v0) {
 
 crateBtn.onclick = () => {
   const c = cases.find((x) => x.id === selCase) || cases[0];
+  if (!caseAvailable(c)) { selCase = cases[0].id; drawCases(); return; }
   if (opening || pendingReward) return;
   if (vaultOn) { vaultOpen(c); return; }
   if ((skinState.coins | 0) < c.price) { skinStatus.textContent = 'Not enough coins. Finish matches to earn more.'; return; }
@@ -4279,7 +4290,7 @@ if (previewStage) {   // drag (mouse or finger) to turn the weapon, wheel / pinc
 function openLocker(tab) { selW = showcaseGun(); selF = equippedFor(selW).id; lq('.inv-tabs button[data-t="' + tab + '"]').click(); drawCollection(); skinStatus.textContent = ''; locker.showModal(); }
 skinsButton.onclick = () => openLocker('inv');
 $('closeSkins').onclick = () => { if (!pendingReward && !opening) locker.close(); };
-locker.addEventListener('close', () => { previewStage?.stop(); crateStage?.stop(); costStage?.stop(); });
+locker.addEventListener('close', () => { previewStage?.stop(); crateStage?.stop(); costStage?.stop(); allStage?.stop(); });
 locker.addEventListener('cancel', (e) => { if (pendingReward || opening) e.preventDefault(); });
 
 // ---- HOME SCREEN: the real Sandstone map is the backdrop, my soldier (the in-game model, with my gun + skin) stands in front of it.

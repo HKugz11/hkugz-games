@@ -34,12 +34,12 @@ test('quick sell: the rarer the more, only your own items, many at once', async 
   try {
     const a = await s.user('Sally', ['skin:desert@raptor', 'skin:dragon@p9', 'skin:gold@buzz', 'knife:karambit', 'costume:cow', 'costume:unicorn'], 0);
     const c0 = (await vault(s, a)).coins; assert.equal(c0, 150);
-    const one = await s.post('/api/vault/sell', { item: 'skin:desert@raptor' }, a.token); assert.equal(one.status, 200); assert.equal(one.json.got, 20, 'common'); assert.equal(one.json.coins, 170); assert.equal(one.json.items['skin:desert@raptor'], undefined);
+    const one = await s.post('/api/vault/sell', { item: 'skin:desert@raptor' }, a.token); assert.equal(one.status, 200); assert.equal(one.json.got, 35, 'common'); assert.equal(one.json.coins, 185); assert.equal(one.json.items['skin:desert@raptor'], undefined);
     assert.equal((await s.post('/api/vault/sell', { item: 'skin:desert@raptor' }, a.token)).status, 400, 'already sold');
     assert.equal((await s.post('/api/vault/sell', { item: 'skin:diamondice@raptor' }, a.token)).status, 400, 'not yours');
     assert.equal((await s.post('/api/vault/sell', { item: 'gun:jingle' }, a.token)).status, 400, 'not sellable');
     const bulk = await s.post('/api/vault/sell', { items: ['skin:dragon@p9', 'skin:gold@buzz', 'knife:karambit', 'costume:cow', 'costume:unicorn'] }, a.token);
-    assert.equal(bulk.status, 200); assert.equal(bulk.json.sold, 5); assert.equal(bulk.json.got, 45 + 300 + 300 + 20 + 300, 'rare 45 + three legendaries 300 + common 20: wait, gold and karambit and unicorn are legendary');
+    assert.equal(bulk.status, 200); assert.equal(bulk.json.sold, 5); assert.equal(bulk.json.got, 80 + 525 + 525 + 35 + 525, 'rare 45 + three legendaries 300 + common 20: wait, gold and karambit and unicorn are legendary');
     assert.deepEqual(bulk.json.items, {});
     const dup = await s.user('Dupe', ['skin:desert@raptor']);
     assert.equal((await s.post('/api/vault/sell', { items: ['skin:desert@raptor', 'skin:desert@raptor'] }, dup.token)).status, 400, 'all or nothing: you only have one');
@@ -53,7 +53,7 @@ test('market: list, browse, buy with a fee, cancel, and the price band', async (
   try {
     const a = await s.user('Seller1', ['skin:gold@buzz', 'skin:desert@raptor', 'knife:karambit'], 0), b = await s.user('Buyer1', [], 6000);
     const bad = (price, item = 'skin:gold@buzz') => s.post('/api/market/list', { item, price }, a.token);
-    assert.equal((await bad(299)).status, 400, 'below the lowest price for a legendary (300)'); assert.equal((await bad(6001)).status, 400, 'above 20x'); assert.equal((await bad(1.5)).status, 400); assert.equal((await bad('500')).status, 400);
+    assert.equal((await bad(524)).status, 400, 'below the lowest price for a legendary (525)'); assert.equal((await bad(10501)).status, 400, 'above 20x'); assert.equal((await bad(1.5)).status, 400); assert.equal((await bad('500')).status, 400);
     assert.equal((await bad(500, 'skin:diamondice@raptor')).status, 400, 'you do not own it'); assert.equal((await bad(500, 'gun:jingle')).status, 400);
     const l = await bad(1000); assert.equal(l.status, 200); assert.equal(l.json.items['skin:gold@buzz'], undefined, 'the item is held by the market now');
     assert.equal((await s.post('/api/market/list', { item: 'skin:desert@raptor', price: 100 }, a.token)).status, 200);
@@ -94,12 +94,20 @@ test('market: a banned seller disappears from the market and deleting an account
   const s = await boot();
   try {
     const a = await s.user('Badguy', ['skin:gold@buzz'], 0), b = await s.user('Watcher', [], 0), c = await s.user('Leaver', ['skin:dragon@p9'], 0);
-    await s.post('/api/market/list', { item: 'skin:gold@buzz', price: 400 }, a.token); await s.post('/api/market/list', { item: 'skin:dragon@p9', price: 60 }, c.token);
+    await s.post('/api/market/list', { item: 'skin:gold@buzz', price: 600 }, a.token); await s.post('/api/market/list', { item: 'skin:dragon@p9', price: 100 }, c.token);
     assert.equal((await s.post('/api/market/browse', {}, b.token).then(r => r.json)).total, 2);
     const adm = (p, body) => fetch('http://127.0.0.1:' + s.app.server.address().port + p, { method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-token': s.app.adminToken }, body: JSON.stringify(body) });
     assert.equal((await adm('/admin/ban', { name: 'Badguy' })).status, 200);
     assert.equal((await s.post('/api/market/browse', {}, b.token).then(r => r.json)).total, 1, 'banned seller hidden');
     assert.equal((await s.post('/api/account/delete', { password: 'purple-giraffe-77' }, c.token)).status, 200);
     assert.equal((await s.post('/api/market/browse', {}, b.token).then(r => r.json)).total, 0, 'deleted account listings are removed');
+  } finally { await s.close(); }
+});
+
+test('Northern Lights fits every gun (and the knife) and a skin made for one gun would fit only that gun', async () => {
+  const s = await boot({ xmas: true });
+  try {
+    const ch = await s.user('Collector'); await s.post('/api/vault/migrate', { coins: 0, items: ['skin:northernlights@raptor', 'skin:northernlights@ranger', 'skin:northernlights@knife'] }, ch.token);
+    const v = await vault(s, ch); assert.equal(v.items['skin:northernlights@raptor'], 1); assert.equal(v.items['skin:northernlights@ranger'], 1); assert.equal(v.items['skin:northernlights@knife'], 1);
   } finally { await s.close(); }
 });

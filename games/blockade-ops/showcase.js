@@ -1,7 +1,7 @@
 // Small 3D stages that live in their own little canvases: the home-screen soldier + weapon, and the skin-crate opening.
-import * as THREE from './three.module.min.js?v=255';
-import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=255';
-import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=255';
+import * as THREE from './three.module.min.js?v=283';
+import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=283';
+import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=283';
 
 function makeStage(canvas, fov, camPos, lookAt) {
   let r;
@@ -45,7 +45,7 @@ export function displayWeapon(item, accent) {
   if (item.knife) { const prev = KNIFE_STYLE; setKnifeStyle(item.knife); b = buildGun('knife', accent); setKnifeStyle(prev); }
   else b = buildGun(item.gun, accent);
   for (const c of b.g.children) if (c.material === sleeveMat) c.visible = false;
-  if (item.finish) applyFinish(b.finishMesh, item.finish, item.knife ? 'knife' : undefined);
+  if (item.finish) applyFinish(b.finishMesh, item.finish, item.knife ? 'knife' : undefined, item.gun);
   if (item.stickers) applyStickers(b.finishMesh, item.stickers);
   b.g.userData.grip = new THREE.Vector3(...(b.grip || (item.knife ? [0, -.004, .082] : [0, -.08, .065])));
   b.g.userData.fore = b.fore && new THREE.Vector3(...b.fore);
@@ -98,8 +98,7 @@ export function createHomeStage(canvas) {
     if (soldier) soldier.rotation.y = t * 0.5;
     if (gun) { gun.rotation.y = t * 0.9; gun.position.y = 1.15 + Math.sin(t * 1.6) * 0.05; }
   };
-  st.start();
-  return st;
+  return st;   // not started here: a hidden stage that keeps drawing forces the page to re-measure itself every frame (that was the jerk at the start of a match)
 }
 
 // ---------------------------------------------------------------- skin crate: shake + glow, lid pop + light burst, the prize floats out and spins

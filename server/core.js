@@ -21,7 +21,7 @@ const CORE_DEFAULTS = {
   adminToken: '',            // the secret for /admin/* (the admin tool). Empty or shorter than 20 characters = the admin part is switched off
   log: false,
   blockedNames: ['admin', 'moderator', 'hkugz', 'staff', 'support', 'official', 'system', 'root', 'owner'],
-  maxEarn: 1200, dailyEarnCap: 12000, earnMinMatchMs: 90e3,   // coins from matches: the most one match can give, the most in one day, and how long a match must last (the server can not see the match, so these limits are all there is)
+  maxEarn: 2500, dailyEarnCap: 40000, earnMinMatchMs: 90e3,   // coins from matches: the most one match can give, the most in one day, and how long a match must last (the server can not see the match, so these limits are all there is)
   marketDays: 14,            // a listing nobody buys comes back to its owner after this many days
   migrateCoins: 6000, migrateItems: 150,                       // the most an old browser inventory can bring along, once
   xmas: undefined,           // true / false to force the holiday cases on / off (tests); otherwise Nov 15 - Jan 2
@@ -297,7 +297,7 @@ function createCore(userCfg, raw) {
   function itemOk(id) {
     if (typeof id !== 'string' || id.length > 40) return false;
     const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1);
-    if (kind === 'skin') { const [f, w, extra] = rest.split('@'), fin = FIN.get(f); return !!fin && !extra && fin.rp === undefined && f !== 'factory' && !!fin.rarity && (w === 'knife' || (GUN.has(w) && !GUN.get(w).holiday)); }
+    if (kind === 'skin') { const [f, w, extra] = rest.split('@'), fin = FIN.get(f); return !!fin && !extra && fin.rp === undefined && f !== 'factory' && !!fin.rarity && (fin.weapon ? w === fin.weapon : (w === 'knife' || (GUN.has(w) && !GUN.get(w).holiday))); }   // a skin made for one gun (Northern Lights = the AWP) fits only that gun
     if (kind === 'knife') { const k = KNV.get(rest); return !!k && !k.gift && !!k.rarity; }
     if (kind === 'costume') return COS.has(rest);
     return false;
@@ -317,7 +317,7 @@ function createCore(userCfg, raw) {
     }
     if (!cand.length) throw new ApiError(500, 'That case is empty right now.');
     const p = wpick(cand); p.rarity = rar;
-    if (p.kind === 'skin') { const pool = (c.slot ? CAT.guns.filter(g => g.slot === c.slot && !g.holiday) : CAT.guns.filter(g => !g.holiday)).map(g => g.id); if (!c.slot) pool.push('knife'); p.wid = pool[rint(pool.length)]; p.id = p.f + '@' + p.wid; }
+    if (p.kind === 'skin') { const pool = (c.slot ? CAT.guns.filter(g => g.slot === c.slot && !g.holiday) : CAT.guns.filter(g => !g.holiday)).map(g => g.id); if (!c.slot) pool.push('knife'); p.wid = FIN.get(p.f).weapon || pool[rint(pool.length)]; p.id = p.f + '@' + p.wid; }
     return p;
   }
   const vaultOf = u => { const v = V(u), day = Math.floor(now() / 864e5), earned = v.earnDay === day ? v.earned : 0; return { coins: v.coins, items: Object.assign({}, v.items), earnLeft: Math.max(0, cfg.dailyEarnCap - earned), migrated: !!v.migrated, xmas: xmasOn(), market: { fee: MKT.fee, maxMult: MKT.maxMult }, sales: (v.sales || []).map(x => ({ id: x.id, item: x.item, net: x.net, t: x.t })), gifts: v.gifts.map(g => ({ id: g.id, from: g.from, item: g.item, t: g.t })) }; };

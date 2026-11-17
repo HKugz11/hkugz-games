@@ -16,11 +16,11 @@ if (guns.length < 15) throw new Error('Found only ' + guns.length + ' guns in ga
 const cat = {
   v: 1,
   rarities: Object.fromEntries(Object.entries(skins.rarities).map(([k, r]) => [k, { refund: r.refund, sell: r.sell }])),
-  finishes: skins.finishes.map(f => ({ id: f.id, rarity: f.rarity || null, weight: f.weight || 1, rp: f.rp === undefined ? undefined : f.rp, holiday: !!f.holiday })),
+  finishes: skins.finishes.map(f => ({ id: f.id, rarity: f.rarity || null, weight: f.weight || 1, rp: f.rp === undefined ? undefined : f.rp, holiday: !!f.holiday, weapon: f.weapon || undefined })),
   knives: skins.knives.map(k => ({ id: k.id, rarity: k.rarity || null, gift: !!k.gift })),
   costumes: skins.costumes.map(c => ({ id: c.id, rarity: c.rarity, holiday: !!c.holiday })),
   stickers: skins.stickers.map(s => ({ id: s.id, rarity: s.rarity })),
-  cases: skins.cases.map(c => ({ id: c.id, kind: c.kind, price: c.price, odds: c.odds, finishes: c.finishes, pool: c.pool, knives: !!c.knives, slot: c.slot || null, holiday: !!c.holiday })),
+  cases: skins.cases.map(c => ({ id: c.id, kind: c.kind, price: c.price, odds: c.odds, finishes: c.finishes, pool: c.pool, knives: !!c.knives, slot: c.slot || null, holiday: !!(c.holiday || c.seasonal) })),
   guns
 };
 fs.writeFileSync(path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), 'vault-catalog.json'), JSON.stringify(cat, null, 1));

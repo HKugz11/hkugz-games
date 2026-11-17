@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=255';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=255';
+import * as THREE from './three.module.min.js?v=283';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=283';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -28,7 +28,17 @@ function pix(size, draw) {
   t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = GFX.lite ? 1 : 4;
   return t;
 }
-const speckle = (x, S, base, amt, x0 = 0, y0 = 0, w = S, h = S) => { for (let j = y0; j < y0 + h; j++) for (let i = x0; i < x0 + w; i++) { x.fillStyle = rgb(base, Math.round((rnd() - 0.5) * amt)); x.fillRect(i, j, 1, 1); } };
+// fast version: one little picture of noise drawn in one go (it used to be one canvas call PER pixel, which made loading slow). Same random numbers, same look.
+let spkC = null, spkX = null;
+const speckle = (x, S, base, amt, x0 = 0, y0 = 0, w = S, h = S) => {
+  w = Math.ceil(w); h = Math.ceil(h); if (!(w > 0 && h > 0)) return;
+  if (!spkC) { spkC = cv(1); spkX = spkC.getContext('2d'); }
+  if (spkC.width !== w || spkC.height !== h) { spkC.width = w; spkC.height = h; }
+  const im = spkX.createImageData(w, h), d = im.data, b0 = base[0], b1 = base[1], b2 = base[2]; let p = 0;
+  for (let n = w * h; n > 0; n--) { const k = Math.round((rnd() - 0.5) * amt); d[p++] = b0 + k; d[p++] = b1 + k; d[p++] = b2 + k; d[p++] = 255; }
+  spkX.putImageData(im, 0, 0);
+  const sm = x.imageSmoothingEnabled; x.imageSmoothingEnabled = false; x.drawImage(spkC, x0, y0, w, h); x.imageSmoothingEnabled = sm;
+};
 
 export const TEX = {};
 const WALL_STYLE = { sandstone: 'Blocks', warehouse: 'Panels', courtyard: 'Blocks', harbor: 'Panels', canyon: 'Blocks', frostbase: 'Panels', oldtown: 'Brick', ruins: 'Blocks', downtown: 'Brick', lab: 'Panels', manor: 'Brick' };   // the wall texture of each map (see makeTextures)
@@ -932,12 +942,27 @@ export function buildGun(id, acc) {
       b(.036, .08, .16, 0, 0, .26, C.metal); b(.056, .1, .05, 0, -.01, .37, C.dark);
       spec = { sy: 0.115, mz: [0, 0.03, -0.72], grip: [0, -0.08, 0.075], fore: [0, -0.075, -0.3], ads: [-0.4, 1.4] }; break;
     case 'ranger':
-      // Ranger: slim bolt-action scout rifle, wood stock, small scope
-      b(.05, .08, .5, 0, 0, -.05, C.wood); b(.05, .1, .26, 0, -.04, .28, C.wood, .05); cz(.014, .6, 0, .03, -.55, C.dark);
-      cz(.02, .2, 0, .1, -.1, C.dark); tz(.03, .022, .05, 0, .1, -.22, C.dark); b(.03, .04, .02, 0, .07, -.17, C.metal); b(.03, .04, .02, 0, .07, -.03, C.metal);
-      b(.04, .01, .01, .04, .04, .06, C.light); parts.push([GEO.box, m4(.065, .04, .06, .02, .02, .02), C.light]);
-      b(.04, .04, .1, 0, -.05, -.06, C.dark); b(.044, .085, .052, 0, -.07, .09, C.wood, -.3);
-      spec = { sy: 0.13, mz: [0, 0.03, -0.85], grip: [0, -0.07, 0.06], fore: [0, -0.06, -0.3], ads: null }; break;
+      const W = 0x4b6a3c;   // olive polymer stock
+      // AWP (id 'ranger'): long bolt-action sniper: thumbhole stock with a cheek riser, muzzle brake, big scope with accent rings, box magazine, bolt handle with a knob, folded bipod
+      b(.052, .08, .34, 0, 0, -.03, C.body);                                  // receiver
+      b(.044, .04, .1, 0, .055, .05, C.body); b(.054, .02, .06, 0, .015, .03, C.dark);   // bolt shroud, ejection port
+      cz(.02, .72, 0, .02, -.53, C.dark);                                    // long barrel
+      for (let z = -.36; z > -.84; z -= .07) cz(.026, .016, 0, .02, z, C.light, 10);   // barrel fins
+      for (let i = 0; i < 3; i++) b(.054, .014, .02, 0, .024, -.15 + i * .04, C.dark);   // receiver vents
+      cz(.026, .1, 0, .02, -.93, C.metal, 8); b(.058, .012, .02, 0, .02, -.91, C.dark); b(.058, .012, .02, 0, .02, -.95, C.dark);   // muzzle brake with slots
+      b(.056, .07, .34, 0, -.025, -.11, W);                              // forend
+      b(.058, .032, .3, 0, .004, .28, W); b(.056, .03, .3, 0, -.075, .28, W); b(.06, .11, .1, 0, -.035, .38, W); b(.05, .03, .18, 0, .035, .3, W); b(.062, .13, .028, 0, -.035, .44, C.dark);   // thumbhole stock (top rail, bottom rail, rear block), cheek riser, butt pad
+      b(.044, .085, .052, 0, -.075, .12, W, -.3); b(.014, .014, .09, 0, -.075, .03, C.dark);   // grip, trigger guard
+      b(.04, .06, .075, 0, -.085, -.03, C.dark); b(.042, .012, .077, 0, -.1, -.03, A);              // box magazine with an accent band
+      b(.01, .01, .24, .034, -.062, -.17, C.metal); b(.01, .01, .24, -.034, -.062, -.17, C.metal);   // folded bipod
+      cz(.026, .34, 0, .12, -.05, C.dark); b(.034, .05, .04, 0, .075, -.15, C.metal); b(.034, .05, .04, 0, .075, -.04, C.metal);   // scope tube + mounts
+      tz(.04, .026, .09, 0, .12, -.265, C.dark); cz(.043, .014, 0, .12, -.314, A);                   // objective bell + accent lip
+      tz(.026, .036, .07, 0, .12, .155, C.dark); cz(.039, .014, 0, .12, .198, C.dark);               // eyepiece
+      cz(.0285, .03, 0, .12, -.13, A); cz(.0285, .03, 0, .12, .04, A);                               // accent rings
+      b(.028, .03, .028, 0, .155, -.07, C.metal); b(.03, .028, .028, .04, .12, -.07, C.metal);       // turrets
+      b(.05, .012, .012, .04, .03, .09, C.metal); cz(.017, .03, .072, .03, .09, C.light, 8);          // bolt handle + knob
+      { const ln = new THREE.Mesh(new THREE.CircleGeometry(0.04, 16), new THREE.MeshBasicMaterial({ color: C.lens })); ln.position.set(0, 0.12, -0.3215); ln.rotation.y = Math.PI; extra.push(ln); }
+      spec = { sy: 0.12, mz: [0, 0.02, -0.99], grip: [0, -0.075, 0.12], fore: [0, -0.05, -0.2], ads: null }; break;
     case 'dmr':
       // Marksman: semi-auto sniper, long fluted barrel, 4x scope
       b(.07, .09, .3, 0, -.01, 0, C.body); b(.068, .07, .34, 0, .06, -.06, C.body); b(.03, .014, .48, 0, .1, -.12, C.dark);

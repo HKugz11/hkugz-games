@@ -3,19 +3,19 @@
  "rarities": {
   "common": {
    "refund": 25,
-   "sell": 20
+   "sell": 35
   },
   "rare": {
    "refund": 50,
-   "sell": 45
+   "sell": 80
   },
   "epic": {
    "refund": 100,
-   "sell": 110
+   "sell": 190
   },
   "legendary": {
    "refund": 200,
-   "sell": 300
+   "sell": 525
   }
  },
  "finishes": [
@@ -574,12 +574,12 @@
   {
    "id": "holiday",
    "kind": "skin",
-   "price": 60,
+   "price": 160,
    "odds": {
-    "common": 45,
+    "common": 35,
     "rare": 35,
     "epic": 15,
-    "legendary": 5
+    "legendary": 15
    },
    "finishes": [
     "candycane",

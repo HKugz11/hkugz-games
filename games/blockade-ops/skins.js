@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=255';
+import * as THREE from './three.module.min.js?v=283';
 
 // CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
 export const XMAS = (() => {
@@ -57,7 +57,7 @@ export const finishes = [
   { id: 'holly', name: 'Holly Jolly', rule: 'Found in the Holiday Case', rarity: 'rare', holiday: true, theme: th(0x1f6b3a, 0x144d28, 0x2a8048, 0x144d28, 0xd4a82a, 0xffe08a, 0x0a2a14), fx: { mode: 6, cell: 14, c: [0, 0xd7262f, 0, 0], glow: 0 } },
   { id: 'ornament', name: 'Ornament', rule: 'Found in the Holiday Case', rarity: 'rare', holiday: true, theme: th(0xc62828, 0x1f8a4c, 0xe6b422, 0x1f8a4c, 0xffd45a, 0xfff0a0, 0x5a1010), fx: { mode: 1, cell: 6, c: [0xc62828, 0x1f8a4c, 0xe6b422, 0], glow: 0.15, glowCol: 0xffd45a, spark: 0xffe08a, gloss: true } },
   { id: 'snowflake', name: 'Snowflake', rule: 'Found in the Holiday Case', rarity: 'epic', holiday: true, theme: th(0x7fb8e8, 0x3f7fb8, 0x9ad0f2, 0x2f6b9a, 0xe6f8ff, 0xffffff, 0x1c4766), fx: { mode: 10, cell: 18, c: [0xffffff, 0, 0, 0], glow: 0.4, glowCol: 0xa8e0ff, shine: 1, spark: 0xe8fbff, gloss: true } },
-  { id: 'northernlights', name: 'Northern Lights', rule: 'Found in the Holiday Case', rarity: 'legendary', holiday: true, theme: th(0x0b1e2e, 0x061018, 0x10304a, 0x061018, 0x7affd0, 0xd8fff0, 0x03080e), fx: { mode: 11, cell: 16, c: [0x3af0a0, 0x7a5aff, 0x40c8ff, 0], glow: 0.8, glowCol: 0x40ffc0, shine: 1, spark: 0xb8fff0 } }
+  { id: 'northernlights', name: 'Northern Lights', rule: 'Found in the Holiday Case', rarity: 'legendary', holiday: true, theme: th(0x2a6a8a, 0x0c1a2c, 0x2a6a8a, 0xece5cf, 0xefe8d4, 0xfffaf0, 0x14264a), fx: { mode: 11, cell: 16, c: [0x22c48a, 0x7a52e8, 0x2f8fe0, 0x22b8b8], gloss: true, knot: true } },
 ];
 
 // the whiteout set also changes the soldier's uniform on the menu
@@ -92,7 +92,26 @@ vec3 fxE = vec3(0.0);
   else if (m > 7.5 && m < 8.5) { float ice = step(0.72, fxH); col = mix(col, uC0, paint * ice * 0.85); }
   else if (m > 8.5 && m < 9.5) { vec3 irid = 0.55 + 0.45 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + (vObj.z * 1.4 + vObj.y * 0.9) * 0.7 + uTime * 0.12)); col = mix(col, irid, paint * 0.28); }
   else if (m > 9.5 && m < 10.5) { vec2 fq = fract(vec2(vObj.z, vObj.y) * uCell * 0.5) - 0.5; float ax = min(abs(fq.x), abs(fq.y)), mxv = max(abs(fq.x), abs(fq.y)); float flake = max(step(ax, 0.07) * step(mxv, 0.4), step(abs(abs(fq.x) - abs(fq.y)), 0.07) * step(mxv, 0.28)); vec2 cid = floor(vec2(vObj.z, vObj.y) * uCell * 0.5); flake *= step(0.55, fract(sin(dot(cid, vec2(12.9898, 78.233))) * 43758.5453)); col = mix(col, uC0, paint * flake); }
-  else if (m > 10.5) { float wv = 0.5 + 0.5 * sin(vObj.z * uCell * 0.4 + vObj.y * 5.0 + uTime * 0.9); vec3 au = mix(uC0, uC1, wv); au = mix(au, uC2, step(0.7, 0.5 + 0.5 * sin(vObj.z * uCell * 0.9 - uTime * 0.6))); col = mix(col, au, paint * 0.8); fxE += au * paint * uGlow * 0.5; }
+  else if (m > 10.5) {
+    // Northern Lights: woven white knotwork on aurora colours. The paint goes green -> teal -> blue -> violet from muzzle to butt; two sets of wavy strands cross over and under each other (white on the paint, aurora-coloured on the cream parts), each with a thin dark outline.
+    vec2 kp = vec2(vObj.z, vObj.y + vObj.x * 0.15) * uCell * 1.25;
+    float ka = sin(kp.x + sin(kp.y) * 1.4), kb = sin(kp.y + sin(kp.x) * 1.4);
+    float la = abs(ka), lb = abs(kb);
+    float par = mod(floor(kp.x / 3.14159) + floor(kp.y / 3.14159), 2.0), overA = step(par, 0.5);
+    float aIn = step(la, 0.17), bIn = step(lb, 0.17), aOut = step(la, 0.27), bOut = step(lb, 0.27);
+    float tg = clamp((vObj.z + 0.285) / 0.71, 0.0, 0.999) * 3.0;
+    vec3 pal = tg < 1.0 ? mix(uC0, uC3, tg) : (tg < 2.0 ? mix(uC3, uC2, tg - 1.0) : mix(uC2, uC1, tg - 2.0));
+    float cream = step(4.5, vRole) * (1.0 - step(5.5, vRole)), dkr = step(5.5, vRole);
+    vec3 base = cream > 0.5 ? col : (dkr > 0.5 ? mix(col, pal * 0.25, 0.6) : pal);
+    vec3 cl = cream > 0.5 ? vec3(0.40, 0.38, 0.29) : vec3(0.86, 0.82, 0.68);
+    vec3 ol = cream > 0.5 ? vec3(0.72, 0.68, 0.55) : vec3(0.02, 0.05, 0.12);
+    vec3 k0 = base;
+    float uO = mix(aOut, bOut, overA), uI = mix(aIn, bIn, overA), oO = mix(bOut, aOut, overA), oI = mix(bIn, aIn, overA);
+    k0 = mix(k0, ol, uO); k0 = mix(k0, cl, uI); k0 = mix(k0, ol, oO); k0 = mix(k0, cl, oI);
+    float butt = step(0.335, vObj.z), zig = step(0.5, fract(vObj.y * 22.0 + abs(fract(vObj.z * 60.0) - 0.5) * 2.2));
+    k0 = mix(k0, mix(col, vec3(0.68, 0.64, 0.51), zig * 0.45), butt);   // butt pad: zig-zag bands instead of knots
+    col = mix(col, k0, mix(1.0, 0.6, dkr));
+  }
   if (uOutline > 0.5) { float ol = max(step(fract(vObj.y * uCell * 0.5), 0.07), step(fract(vObj.z * uCell * 0.5), 0.06)); col = mix(col, uC3, ol * paint * 0.75); }
   if (uRivet > 0.5) { float dt2 = step(0.86, fract(vObj.x * 18.0)) * step(0.86, fract(vObj.z * 18.0)); col = mix(col, uC3, dt2 * paint); }
   diffuseColor.rgb = col;
@@ -118,7 +137,7 @@ function matFor(f, shiny) {
 }
 
 // ---------------------------------------------------------------- split a gun into themed parts (by colour + where the triangle sits on the gun)
-function buildThemed(geo, f, kind) {
+function buildThemed(geo, f, kind, gid) {
   const P = geo.attributes.position, N = geo.attributes.normal, C = geo.attributes.color, T = f.theme, tri = P.count / 3;
   const roleHex = [T.body, T.barrel, T.stock, T.grip, T.metal, T.edge, T.dark], tmp = new THREE.Color();
   const mk = () => ({ pos: [], nor: [], col: [], role: [] }), A = mk(), B = mk();   // A = painted (matte), B = shiny metal + edges
@@ -131,6 +150,10 @@ function buildThemed(geo, f, kind) {
     if (lum > 0.55) role = 5; else if (sat > 0.28 && r > b) role = 2; else if (lum > 0.3) role = 4; else if (lum < 0.12) role = 6;
     else role = (cy < -0.05 && Math.abs(cz) < 0.22) ? 3 : cz < -0.26 ? 1 : cz > 0.16 ? 2 : 0;
     if (role === 6 && cy < -0.05 && Math.abs(cz) < 0.22) role = 3;   // dark bits low on the gun = grip / magazine
+    if (f.fx.knot && gid === 'ranger') {   // the AWP: painted receiver, stock and forend; cream barrel, magazine and butt pad; dark scope tube with cream caps
+      if (cz > 0.335) role = 5; else if (cy > 0.088 && cz > -0.34 && cz < 0.22) role = 5;
+      else if (cz < -0.285) role = 5; else if (cy < -0.066 && cz > -0.1 && cz < 0.07) role = 5; else if (role >= 4 && cy < 0.09) role = 0;
+    }
     if (kind === 'knife') role = cz < -0.015 ? (lum > 0.75 ? 0 : 5) : ((cz > 0.14 && sat > 0.3) || cz < 0.03) ? 4 : 3;   // knife: blade = painted with the skin, spine + edge = shiny, guard + pommel = metal, grip = painted
     const ny = N.getY(i0), shade = ny > 0.5 ? 1.08 : ny < -0.5 ? 0.72 : 0.92, dst = role >= 4 ? B : A;
     tmp.setHex(roleHex[role]).multiplyScalar(shade);
@@ -140,23 +163,23 @@ function buildThemed(geo, f, kind) {
   geo.computeBoundingBox();
   return { matte: build(A) || build(B), shiny: A.pos.length ? build(B) : null, box: geo.boundingBox.clone() };
 }
-function makeSparks(box, hex) {
-  const n = 16, pos = new Float32Array(n * 3), s = box.getSize(new THREE.Vector3());
+function makeSparks(box, hex, sparkN) {
+  const n = sparkN || 16, pos = new Float32Array(n * 3), s = box.getSize(new THREE.Vector3());
   for (let i = 0; i < n; i++) { pos[i * 3] = box.min.x + Math.random() * s.x; pos[i * 3 + 1] = box.min.y - 0.02 + Math.random() * (s.y + 0.1); pos[i * 3 + 2] = box.min.z + Math.random() * s.z; }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const p = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.022, color: hex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   p.userData = { top: box.max.y + 0.08, bot: box.min.y - 0.02 }; p.frustumCulled = false; SPARKS.add(p); return p;
 }
-export function applyFinish(mesh, finish, kind) {
+export function applyFinish(mesh, finish, kind, gid) {
   if (!mesh) return;
   const ud = mesh.userData; ud.base ??= { geometry: mesh.geometry, material: mesh.material };
   for (const k of ud.fxKids || []) { mesh.remove(k); if (k.geometry && k.geometry !== ud.base.geometry && !k.isPoints) k.geometry.dispose(); }
   ud.fxKids = [];
   if (!finish || !finish.theme) { mesh.geometry = ud.base.geometry; mesh.material = ud.base.material; return; }
-  ud.themed ??= {}; const sp = (ud.themed[finish.id + (kind || '')] ??= buildThemed(ud.base.geometry, finish, kind));
+  ud.themed ??= {}; const sp = (ud.themed[finish.id + (kind || '') + (finish.fx.knot ? gid || '' : '')] ??= buildThemed(ud.base.geometry, finish, kind, gid));
   mesh.geometry = sp.matte; mesh.material = matFor(finish, false);
   if (sp.shiny) { const k = new THREE.Mesh(sp.shiny, matFor(finish, true)); mesh.add(k); ud.fxKids.push(k); }
-  if (finish.fx.spark && fxQuality.shine) { const p = makeSparks(sp.box, finish.fx.spark); mesh.add(p); ud.fxKids.push(p); }
+  if (finish.fx.spark && fxQuality.shine) { const p = makeSparks(sp.box, finish.fx.spark, finish.fx.sparkN); mesh.add(p); ud.fxKids.push(p); }
 }
 
 // ---------------------------------------------------------------- the soldier's uniform on the menu (whiteout skins turn it white)
@@ -196,7 +219,7 @@ export function drawSkinIcon(cx, f) {
     else if (fx.mode === 7) { for (let yy = y; yy < y + h; yy += 5) for (let xx = x; xx < x + w; xx += 5) if (((xx - x) / 5 + (yy - y) / 5) % 2 === 0) { cx.fillStyle = '#ffffff14'; cx.fillRect(xx, yy, 5, 5); } }
     else if (fx.mode === 8) { cx.fillStyle = c(0, '#fff'); for (let yy = y; yy < y + h; yy += 6) for (let xx = x; xx < x + w; xx += 6) if (rnd() > 0.7) cx.fillRect(xx, yy, 6, 6); }
     else if (fx.mode === 10) { cx.fillStyle = c(0, '#fff'); for (let yy = y; yy < y + h; yy += 9) for (let xx = x; xx < x + w; xx += 9) if (rnd() > 0.55) { cx.fillRect(xx + 3, yy, 2, 8); cx.fillRect(xx, yy + 3, 8, 2); cx.fillRect(xx + 1, yy + 1, 2, 2); cx.fillRect(xx + 5, yy + 5, 2, 2); } }
-    else if (fx.mode === 11) { cx.globalAlpha = 0.65; for (let xx = x; xx < x + w; xx += 5) { cx.fillStyle = [c(0, '#3fa'), c(1, '#75f'), c(2, '#4cf')][Math.floor(xx / 5 + Math.sin(xx * 0.2) * 1.4 + 9) % 3]; cx.fillRect(xx, y, 5, h); } cx.globalAlpha = 1; }
+    else if (fx.mode === 11) { drawKnot(cx, x, y, w, h, 7, '#f3f7ff', '#123055'); }
     else if (fx.mode === 9) { const gr = cx.createLinearGradient(x, y, x + w, y + h); gr.addColorStop(0, '#ffd6f0aa'); gr.addColorStop(0.5, '#d6f0ffaa'); gr.addColorStop(1, '#fff6d6aa'); cx.fillStyle = gr; cx.fillRect(x, y, w, h); }
     if (fx.outline) { cx.strokeStyle = hx(fx.c[3] || 0x9aa5b0); cx.lineWidth = 1; cx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }
     if (fx.rivet) { cx.fillStyle = hx(fx.c[3] || 0xcccccc); for (let xx = x + 4; xx < x + w - 2; xx += 10) cx.fillRect(xx, y + 3, 2, 2); }
@@ -218,13 +241,30 @@ export const knives = [
 
 // crate drop odds (percent), the colour of each rarity, and the coins you get back for a duplicate
 export const rarities = {
-  common: { name: 'Common', pct: 55, color: 0xb8c2cc, refund: 25, sell: 20 },
-  rare: { name: 'Rare', pct: 30, color: 0x4aa3ff, refund: 50, sell: 45 },
-  epic: { name: 'Epic', pct: 12, color: 0xb45cff, refund: 100, sell: 110 },
-  legendary: { name: 'Legendary', pct: 3, color: 0xffc247, refund: 200, sell: 300 }
+  common: { name: 'Common', pct: 55, color: 0xb8c2cc, refund: 25, sell: 35 },
+  rare: { name: 'Rare', pct: 30, color: 0x4aa3ff, refund: 50, sell: 80 },
+  epic: { name: 'Epic', pct: 12, color: 0xb45cff, refund: 100, sell: 190 },
+  legendary: { name: 'Legendary', pct: 3, color: 0xffc247, refund: 200, sell: 525 }
 };
 
 // ---------------------------------------------------------------- inventory card: a square of the skin itself, edge to edge, like wrapping paper
+// Woven knotwork for the flat pictures (Northern Lights): vertical and horizontal wavy strands that cross over and under, each with a dark outline. Same maths as the 3D shader.
+function drawKnot(cx, x0, y0, w, h, sc, line, edge) {
+  const P = Math.PI * sc, i0 = Math.floor(x0 / P), i1 = Math.ceil((x0 + w) / P), j0 = Math.floor(y0 / P), j1 = Math.ceil((y0 + h) / P);
+  for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) {
+    const cxp = i * P, cyp = j * P, over = (i + j) % 2 === 0 ? 'A' : 'B';
+    cx.save(); cx.beginPath(); cx.rect(cxp, cyp, P, P); cx.clip(); cx.lineJoin = 'round'; cx.lineCap = 'round';
+    const strands = (vertical) => {
+      for (let n = (vertical ? i : j) - 1; n <= (vertical ? i : j) + 2; n++) {
+        cx.beginPath();
+        for (let t = (vertical ? cyp : cxp) - 2; t <= (vertical ? cyp : cxp) + P + 2; t += 2) { const o = sc * (n * Math.PI - 1.4 * Math.sin(t / sc)); vertical ? (t === cyp - 2 ? cx.moveTo(o, t) : cx.lineTo(o, t)) : (t === cxp - 2 ? cx.moveTo(t, o) : cx.lineTo(t, o)); }
+        cx.strokeStyle = edge; cx.lineWidth = sc * 0.62; cx.stroke(); cx.strokeStyle = line; cx.lineWidth = sc * 0.3; cx.stroke();
+      }
+    };
+    if (over === 'A') { strands(false); strands(true); } else { strands(true); strands(false); }
+    cx.restore();
+  }
+}
 export function drawSkinSwatch(cx, f) {
   const W = 128, hx = (n) => '#' + (typeof n === 'number' ? n.toString(16).padStart(6, '0') : n.slice(1)), T = f.theme, fx = f.fx || { mode: 0, c: [] }, c = (i, d) => hx(fx.c && fx.c[i] ? fx.c[i] : d);
   cx.clearRect(0, 0, W, W);
@@ -241,7 +281,12 @@ export function drawSkinSwatch(cx, f) {
   else if (m === 7) { for (let y = 0; y < W; y += 8) for (let x = 0; x < W; x += 8) { cx.fillStyle = ((x + y) / 8) % 2 ? '#ffffff16' : '#00000030'; cx.fillRect(x, y, 8, 8); } }
   else if (m === 8) { for (let y = 0; y < W; y += 8) for (let x = 0; x < W; x += 8) if (rnd() > 0.68) { cx.fillStyle = c(0, '#fff'); cx.fillRect(x, y, 8, 8); } }
   else if (m === 10) { cx.fillStyle = c(0, '#fff'); for (let y = 0; y < W; y += 22) for (let x = 0; x < W; x += 22) if (rnd() > 0.45) { cx.fillRect(x + 8, y, 5, 20); cx.fillRect(x, y + 8, 20, 5); cx.fillRect(x + 3, y + 3, 4, 4); cx.fillRect(x + 14, y + 14, 4, 4); cx.fillRect(x + 14, y + 3, 4, 4); cx.fillRect(x + 3, y + 14, 4, 4); } }
-  else if (m === 11) { cx.globalAlpha = 0.75; for (let x = 0; x < W; x += 6) { const t = Math.sin(x * 0.11) + Math.sin(x * 0.05 + 1); cx.fillStyle = t > 0.7 ? c(2, '#4cf') : t > -0.3 ? c(0, '#3fa') : c(1, '#75f'); cx.fillRect(x, 0, 6, W); } cx.globalAlpha = 1; for (let k = 0; k < 20; k++) { cx.fillStyle = '#fff'; cx.fillRect((rnd() * W) | 0, (rnd() * W) | 0, 2, 2); } }
+  else if (m === 11) {
+    const gradient = cx.createLinearGradient(0, 0, W, 0);
+    ['#22C48A', '#22B8B8', '#2F8FE0', '#7A52E8'].forEach((color, i) => gradient.addColorStop(i / 3, color));
+    cx.fillStyle = gradient; cx.fillRect(0, 0, W, W);
+    drawKnot(cx, 0, 0, W, W, 12, '#f3f7ff', '#123055');
+  }
   else if (m === 9) { const g = cx.createLinearGradient(0, 0, W, W); g.addColorStop(0, '#ffd6f0'); g.addColorStop(0.35, '#d6ecff'); g.addColorStop(0.65, '#fff3d6'); g.addColorStop(1, '#e3d6ff'); cx.fillStyle = g; cx.fillRect(0, 0, W, W); }
   if (fx.outline) { cx.strokeStyle = hx(fx.c[3] || 0x9aa5b0); cx.lineWidth = 2; for (let k = 16; k < W; k += 32) { cx.beginPath(); cx.moveTo(0, k); cx.lineTo(W, k); cx.moveTo(k, 0); cx.lineTo(k, W); cx.stroke(); } }
   if (fx.rivet) { cx.fillStyle = hx(fx.c[3] || 0xcccccc); for (let y = 8; y < W; y += 24) for (let x = 8; x < W; x += 24) cx.fillRect(x, y, 3, 3); }
@@ -271,9 +316,9 @@ export const cases = [
     knives: true, finishes: ['dragon', 'tiger', 'cobra', 'toxic', 'plasma', 'magma', 'obsidian', 'gold', 'galaxy', 'aurora', 'prism', 'diamondice'], odds: { rare: 45, epic: 35, legendary: 20 } },
   { id: 'costume', kind: 'costume', name: 'Costume Case', price: 200, tint: 0xb64cd6, sub: 'Silly outfits for your soldier: Bunny Pajamas, Moo Cow, Banana, Shark Hoodie, Dino Onesie and the legendary Unicorn Onesie!',
     pool: ['bunny', 'cow', 'banana', 'shark', 'dino', 'unicorn'], odds: { common: 45, rare: 30, epic: 18, legendary: 7 } },
-  { id: 'holiday', kind: 'skin', holiday: true, name: 'Holiday Case', price: 60, tint: 0xc62828, sub: 'Six holiday skins: Candy Cane, Gingerbread, Holly Jolly, Ornament, Snowflake and the legendary Northern Lights. Each fits one random gun. Only here until Jan 2!',
-    finishes: ['candycane', 'gingerbread', 'holly', 'ornament', 'snowflake', 'northernlights'], odds: { common: 45, rare: 35, epic: 15, legendary: 5 } },
-  { id: 'holidaycos', kind: 'costume', holiday: true, name: 'Holiday Costume Case', price: 120, tint: 0x1f8a4c, sub: 'Christmas outfits for your soldier: Elf Suit, Reindeer Suit and the epic Snowman. Only here until Jan 2!',
+  { id: 'holiday', kind: 'skin', seasonal: true, name: 'Holiday Case', price: 160, tint: 0xc62828, sub: 'Six holiday skins: Candy Cane, Gingerbread, Holly Jolly, Ornament, Snowflake and the legendary Northern Lights. Each fits one random gun. Available Nov 15 through Jan 2.',
+    finishes: ['candycane', 'gingerbread', 'holly', 'ornament', 'snowflake', 'northernlights'], odds: { common: 35, rare: 35, epic: 15, legendary: 15 } },
+  { id: 'holidaycos', kind: 'costume', holiday: true, name: 'Holiday Costume Case', price: 120, tint: 0x1f8a4c, sub: 'Christmas outfits for your soldier: Elf Suit, Reindeer Suit and the epic Snowman.',
     pool: ['elf', 'reindeer', 'snowman'], odds: { common: 50, rare: 35, epic: 15 } },
   { id: 'stick', kind: 'sticker', name: 'Sticker Pack', price: 50, tint: 0xff8fc4, sub: 'One sticker. You use it once, on one gun, and it stays there.',
     pool: ['star', 'heart', 'smiley', 'lightning', 'flame', 'skull', 'diamond', 'cat', 'crown'], odds: { common: 70, rare: 22, epic: 7, legendary: 1 } },
