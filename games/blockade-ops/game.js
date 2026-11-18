@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=298';
+import { displayWeapon, createHomeStage } from './showcase.js?v=300';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=298';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=298';
-import { platform } from './platform.js?v=298';
-import * as THREE from './three.module.min.js?v=298';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=298';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=298';
-import { createOnline } from './online.js?v=298';
-import { TOUCH, initTouch } from './touch.js?v=298';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=298';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=300';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=300';
+import { platform } from './platform.js?v=300';
+import * as THREE from './three.module.min.js?v=300';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=300';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=300';
+import { createOnline } from './online.js?v=300';
+import { TOUCH, initTouch } from './touch.js?v=300';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=300';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -4459,6 +4459,21 @@ addEventListener('mousemove', (e) => { if (GS.tutorial) tutLook += Math.abs(e.mo
 // menu music starts with the first click on the page (browsers need a click first)
 addEventListener('pointerdown', () => { if (GS.state === 'menu') { initAudio(S.vol); setMusic(true); } });
 
+// SECRET CODE (games site only, never in the CrazyGames build): on the main menu type  n o r t h e r n  to get the Northern Lights AWP in your own inventory.
+// (If you are logged in, your skins live on the server and this can not add one: it says so.)
+if (!PORTAL) {
+  let codeBuf = '';
+  addEventListener('keydown', (e) => {
+    if (GS.state !== 'menu' || e.ctrlKey || e.altKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '') || e.key.length !== 1) return;
+    codeBuf = (codeBuf + e.key.toLowerCase()).slice(-8);
+    if (codeBuf !== 'northern') return;
+    codeBuf = '';
+    const t = document.createElement('div'); t.style.cssText = 'position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:99999;background:#14161b;color:#fff;border:2px solid #ffc247;border-radius:10px;padding:14px 22px;font:700 17px system-ui,sans-serif;text-align:center;max-width:80vw';
+    if (vaultOn) t.textContent = 'You are logged in, so your skins live on the server. Log out of the friends panel first, then type the code again.';
+    else { const k = 'northernlights@ranger'; if (!skinState.skins.includes(k)) skinState.skins.push(k); skinState.equip.ranger = 'northernlights'; saveFinish(); try { rebuildGun('ranger'); stageSync(); } catch (err) { } t.textContent = 'Northern Lights AWP unlocked and equipped!'; }
+    document.body.appendChild(t); setTimeout(() => t.remove(), 4500);
+  });
+}
 if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, showRankUp, saveRank, toggleMap, MARKS, shieldUp, buy, damage, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, QC, RUNGS, applyRung, qualityTick, GPUQ, GPU_NAME, WEAK_GPU, drawFrame, blitMat, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
 
 MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { return W * CS; }, get worldH() { return H * CS; }, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,

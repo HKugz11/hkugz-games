@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=298';
+import * as THREE from './three.module.min.js?v=300';
 
 // CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
 export const XMAS = (() => {

@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=298';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=298';
+import * as THREE from './three.module.min.js?v=300';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=300';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -497,7 +497,7 @@ export function buildWorld(root) {
     x.font='bold 24px Arial'; x.textBaseline='middle'; x.fillText(text,9,25,52);
     const t=staticTexture(cc);
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), lam({ map: t, polygonOffset: true, polygonOffsetFactor: -2 }));
-    m.position.set(cx * CS + 1 + dx * 1.01, 2.4, cz * CS + 1 + dz * 1.01); m.rotation.y = Math.atan2(dx, dz); m.receiveShadow = true; scene.add(m);
+    m.position.set(cx * CS + 1 + dx * 1.01, 3.3, cz * CS + 1 + dz * 1.01);   // high on the wall (crates and platforms are 2 m tall, so they never cover a sign) m.rotation.y = Math.atan2(dx, dz); m.receiveShadow = true; scene.add(m);
   };
   for (const [cx, cz, dx, dz, text, bg] of MAP.signs) sign(cx, cz, dx, dz, text, bg);
   return { sunDir, group: scene, sky: GFX.lite ? sky : null };
