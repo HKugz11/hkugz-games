@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=286';
+import * as THREE from './three.module.min.js?v=287';
 
 // CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
 export const XMAS = (() => {
@@ -285,7 +285,7 @@ export function drawSkinSwatch(cx, f) {
   else if (m === 8) { for (let y = 0; y < W; y += 8) for (let x = 0; x < W; x += 8) if (rnd() > 0.68) { cx.fillStyle = c(0, '#fff'); cx.fillRect(x, y, 8, 8); } }
   else if (m === 10) { cx.fillStyle = c(0, '#fff'); for (let y = 0; y < W; y += 22) for (let x = 0; x < W; x += 22) if (rnd() > 0.45) { cx.fillRect(x + 8, y, 5, 20); cx.fillRect(x, y + 8, 20, 5); cx.fillRect(x + 3, y + 3, 4, 4); cx.fillRect(x + 14, y + 14, 4, 4); cx.fillRect(x + 14, y + 3, 4, 4); cx.fillRect(x + 3, y + 14, 4, 4); } }
   else if (m === 12) { cx.globalAlpha = 0.75; for (let x = 0; x < W; x += 6) { const t = Math.sin(x * 0.11) + Math.sin(x * 0.05 + 1); cx.fillStyle = t > 0.7 ? c(2, '#4cf') : t > -0.3 ? c(0, '#3fa') : c(1, '#75f'); cx.fillRect(x, 0, 6, W); } cx.globalAlpha = 1; for (let k = 0; k < 20; k++) { cx.fillStyle = '#fff'; cx.fillRect((rnd() * W) | 0, (rnd() * W) | 0, 2, 2); } }
-  else if (m === 11) drawSkinIcon(cx, f);   // Northern Lights: the little gun picture with its knotwork (Hyrum's pick)
+  else if (m === 11) { const au = finishes.find((x) => x.id === 'aurora'); drawSkinSwatch(cx, au); return; }   // Northern Lights card: the blocky teal / violet tile with the little crosses (Hyrum's pick)
   else if (m === 9) { const g = cx.createLinearGradient(0, 0, W, W); g.addColorStop(0, '#ffd6f0'); g.addColorStop(0.35, '#d6ecff'); g.addColorStop(0.65, '#fff3d6'); g.addColorStop(1, '#e3d6ff'); cx.fillStyle = g; cx.fillRect(0, 0, W, W); }
   if (fx.outline) { cx.strokeStyle = hx(fx.c[3] || 0x9aa5b0); cx.lineWidth = 2; for (let k = 16; k < W; k += 32) { cx.beginPath(); cx.moveTo(0, k); cx.lineTo(W, k); cx.moveTo(k, 0); cx.lineTo(k, W); cx.stroke(); } }
   if (fx.rivet) { cx.fillStyle = hx(fx.c[3] || 0xcccccc); for (let y = 8; y < W; y += 24) for (let x = 8; x < W; x += 24) cx.fillRect(x, y, 3, 3); }
