@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=301';
+import { displayWeapon, createHomeStage } from './showcase.js?v=302';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=301';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=301';
-import { platform } from './platform.js?v=301';
-import * as THREE from './three.module.min.js?v=301';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=301';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=301';
-import { createOnline } from './online.js?v=301';
-import { TOUCH, initTouch } from './touch.js?v=301';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=301';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=302';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=302';
+import { platform } from './platform.js?v=302';
+import * as THREE from './three.module.min.js?v=302';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=302';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=302';
+import { createOnline } from './online.js?v=302';
+import { TOUCH, initTouch } from './touch.js?v=302';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=302';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -3876,7 +3876,7 @@ locker.innerHTML = `<header><h2>INVENTORY</h2><span class="coinbadge">${COIN}<b 
 <nav class="inv-tabs"><button class="on" data-t="inv">MY GUNS</button><button data-t="all">ALL ITEMS</button><button data-t="market">MARKET</button><button data-t="crate">CASES &amp; PACKS</button><button data-t="cost">COSTUMES</button></nav>
 <section class="inv-pane inv3" data-p="inv"><div class="wlist"></div>
 <div class="inv-left"><h3>Skins for this weapon</h3><div class="finish-list"></div><small class="fine none-note"></small><div class="knife-box"><h3>Knife style</h3><div class="knife-list"></div></div>
-<div class="stk-box"><h3>Stickers on this gun <small>(pick one from your bag, then click the gun picture where you want it. Click a sticker below to peel it off.)</small></h3><div class="slots"></div><div class="stk-list"></div></div></div>
+<div class="stk-box"><h3>Stickers on this gun <small>(pick one from your bag, then click the gun picture where you want it. Click a sticker below to peel it off: it goes back to your bag.)</small></h3><div class="slots"></div><div class="stk-list"></div></div></div>
 <aside class="inv-side"><canvas id="invStage"></canvas><b id="invName"></b><small id="invRule"></small><button class="btn go" id="invEquip">EQUIP</button><small class="fine">A skin you roll fits ONE gun. Skins and stickers only change looks, never power.</small></aside></section>
 <section class="inv-pane inv-all hidden" data-p="all"><div class="inv-left"><div class="all-bar"><div class="all-filters"></div><label class="all-sortl">Sort <select class="all-sort"><option value="rar">Best first</option><option value="gun">By gun</option><option value="name">A to Z</option></select></label></div><div class="all-grid"></div><div class="all-bulk"></div><small class="fine all-count"></small></div><aside class="inv-side all-side"><div class="all-pick"><canvas class="all-stage"></canvas><canvas class="all-big" width="128" height="128"></canvas><b class="all-name">Pick an item</b><small class="all-sub"></small></div><div class="all-actions"></div></aside></section>
 <section class="inv-pane inv-all inv-market hidden" data-p="market"><div class="inv-left"><div class="all-bar"><div class="mk-filters all-filters"></div><div class="mk-sel"><select class="mk-rar"><option value="">Any rarity</option><option value="common">Common</option><option value="rare">Rare</option><option value="epic">Epic</option><option value="legendary">Legendary</option></select> <select class="mk-sort"><option value="low">Cheapest</option><option value="high">Most expensive</option><option value="new">Newest</option></select></div></div><div class="mk-grid all-grid"></div><small class="fine mk-count"></small><h3 class="mk-mine-h">Your listings</h3><div class="mk-mine all-grid"></div></div><aside class="inv-side all-side"><div class="all-pick"><canvas class="mk-big all-big" width="128" height="128"></canvas><b class="mk-name">Pick a listing</b><small class="mk-sub"></small></div><div class="mk-actions all-actions"></div></aside></section>
@@ -3969,8 +3969,8 @@ function drawCollection() {
   // stickers: 3 slots on the selected gun, and the stickers in your bag (each can be used once)
   const on = (skinState.applied[selW] || []);
   const idOf = (it) => (typeof it === 'string' ? it : it.id);
-  slotsEl.replaceChildren(...[0, 1, 2, 3].map((i) => { const d = document.createElement('button'); d.className = 'slot' + (on[i] ? ' full' : ''); if (on[i]) { d.appendChild(mkCanvas((cx) => drawSticker(cx, idOf(on[i]), 128))); d.title = 'Click to peel this sticker off (it is gone)'; d.onclick = () => { skinState.applied[selW].splice(i, 1); saveFinish(); rebuildGun(selW); stageSync(); drawCollection(); skinStatus.textContent = 'Sticker peeled off.'; }; } else d.textContent = '+'; return d; }),
-    Object.assign(document.createElement('button'), { className: 'btn scrape', textContent: 'SCRAPE ALL', title: 'Take all stickers off this gun (they are gone)', disabled: !on.length, onclick: () => { skinState.applied[selW] = []; saveFinish(); rebuildGun(selW); stageSync(); drawCollection(); skinStatus.textContent = 'Stickers scraped off.'; } }));
+  slotsEl.replaceChildren(...[0, 1, 2, 3].map((i) => { const d = document.createElement('button'); d.className = 'slot' + (on[i] ? ' full' : ''); if (on[i]) { d.appendChild(mkCanvas((cx) => drawSticker(cx, idOf(on[i]), 128))); d.title = 'Click to peel this sticker off (it goes back to your bag)'; d.onclick = () => { const gone = skinState.applied[selW].splice(i, 1)[0], gid = idOf(gone); skinState.stickers[gid] = (skinState.stickers[gid] | 0) + 1; saveFinish(); rebuildGun(selW); stageSync(); drawCollection(); skinStatus.textContent = 'Sticker peeled off and back in your bag.'; }; } else d.textContent = '+'; return d; }),
+    Object.assign(document.createElement('button'), { className: 'btn scrape', textContent: 'SCRAPE ALL', title: 'Take all stickers off this gun (they go back to your bag)', disabled: !on.length, onclick: () => { for (const it of skinState.applied[selW] || []) { const gid = idOf(it); skinState.stickers[gid] = (skinState.stickers[gid] | 0) + 1; } skinState.applied[selW] = []; saveFinish(); rebuildGun(selW); stageSync(); drawCollection(); skinStatus.textContent = 'Stickers scraped off and back in your bag.'; } }));
   const bag = stickers.filter((s) => (skinState.stickers[s.id] | 0) > 0);
   if (armed && !bag.some((s) => s.id === armed)) armed = null;
   stkList.replaceChildren(...(bag.length ? bag.map((s) => {
