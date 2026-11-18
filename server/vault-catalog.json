@@ -5,25 +5,25 @@
    "refund": 25,
    "sell": 35,
    "hrefund": 5,
-   "hsell": 10
+   "hsell": 15
   },
   "rare": {
    "refund": 50,
    "sell": 80,
    "hrefund": 10,
-   "hsell": 20
+   "hsell": 35
   },
   "epic": {
    "refund": 100,
    "sell": 190,
    "hrefund": 20,
-   "hsell": 30
+   "hsell": 70
   },
   "legendary": {
    "refund": 200,
    "sell": 525,
    "hrefund": 40,
-   "hsell": 45
+   "hsell": 120
   }
  },
  "finishes": [
@@ -203,7 +203,7 @@
    "id": "borealis",
    "rarity": "legendary",
    "weight": 1,
-   "holiday": false
+   "holiday": true
   },
   {
    "id": "prism",
@@ -465,7 +465,6 @@
     "plasma",
     "magma",
     "aurora",
-    "borealis",
     "galaxy",
     "prism"
    ],
@@ -602,7 +601,8 @@
     "holly",
     "ornament",
     "snowflake",
-    "northernlights"
+    "northernlights",
+    "borealis"
    ],
    "knives": false,
    "slot": null,

@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=287';
+import { displayWeapon, createHomeStage } from './showcase.js?v=296';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=287';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=287';
-import { platform } from './platform.js?v=287';
-import * as THREE from './three.module.min.js?v=287';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=287';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=287';
-import { createOnline } from './online.js?v=287';
-import { TOUCH, initTouch } from './touch.js?v=287';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=287';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=296';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=296';
+import { platform } from './platform.js?v=296';
+import * as THREE from './three.module.min.js?v=296';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=296';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=296';
+import { createOnline } from './online.js?v=296';
+import { TOUCH, initTouch } from './touch.js?v=296';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=296';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -74,6 +74,7 @@ function rankDelta(res, margin, mvp, perf = 1) {
   if (res === 'win') d *= Math.max(0, Math.min(1.3, (perf - 0.2) / 0.7));   // carried to a win: 0 RP below perf 0.2, full RP at 0.9, a bonus for a big game
   else if (res === 'loss') d *= perf < 0.3 ? 1.25 : perf < 0.8 ? 1 : perf < 1.2 ? 0.8 : 0.6;   // a good game softens a loss, doing nothing makes it hurt more
   else d = Math.round(Math.max(-6, Math.min(8, (perf - 0.8) * 10)));
+  d += Math.min(50, Math.max(0, ((GS.player && GS.player.kills) || 0) - 8) * 2);   // a big kill game is worth a lot more: +2 RP for every kill after the 8th (up to +50)
   if (RANK.m < 3) d = d > 0 ? d * 2 : d * 0.5;   // placement matches: wins count double, losses half
   if (d > 0 && GS.rankMates > 0) d *= 0.8;   // friends on your own team make winning easier, so a win is worth a bit less
   return Math.round(d * (rc.length === 'duper' ? 1.5 : rc.length === 'long' ? 1.25 : 1));
@@ -727,6 +728,14 @@ function buildVM(id) {
   return b.g;
 }
 let vmCur = null, vmId = '';
+// Knife slash: a short wind-up (blade back and up), a fast sweep across and forward, then an easy return. u runs 0 to 1 over the swing.
+const smoothT = (t) => t * t * (3 - 2 * t);
+function knifeSwing(u) {
+  let k;   // 1 = wind-up pose, -1 = strike pose, 0 = rest
+  if (u < 0.2) k = smoothT(u / 0.2); else if (u < 0.5) k = 1 - 2 * smoothT((u - 0.2) / 0.3); else k = -(1 - smoothT(Math.min(1, (u - 0.5) / 0.5)));
+  const w = Math.max(k, 0), s = Math.max(-k, 0);
+  return { px: 0.05 * w - 0.11 * s, py: 0.03 * w - 0.03 * s, pz: 0.05 * w - 0.14 * s, rx: 0.25 * w - 0.5 * s, ry: 0.35 * w - 0.6 * s, rz: -0.3 * w + 0.4 * s };
+}
 const VMS = { sh: 0, ads: 0, spr: 0, kick: 0, bob: 0, swayX: 0, swayY: 0, inspect: 0, slash: 0, flashT: 0, land: 0 };
 function vmSet() {
   const P = GS.player; if (!P) return;
@@ -3024,7 +3033,7 @@ function updateHUD() {
   if (def.mag) { setText('mag', w.mag); setText('res', `/ ${w.res > 900 ? '∞' : w.res}`); $('ammo').classList.toggle('low', w.mag <= Math.ceil(def.mag * 0.25)); }
   else if (def.nade) { setText('mag', viewA.nades[w.id]); setText('res', ''); $('ammo').classList.remove('low'); }
   else { setText('mag', '—'); setText('res', ''); $('ammo').classList.remove('low'); }
-  const inv = [['1', viewA.prim && WD[viewA.prim.id].name, 'prim'], ['2', viewA.sec && WD[viewA.sec.id].name, 'sec'], ['3', 'Combat Knife', 'knife'],
+  const inv = [['1', viewA.prim && WD[viewA.prim.id].name, 'prim'], ['2', viewA.sec && WD[viewA.sec.id].name, 'sec'], ['3', WD.knife.name, 'knife'],
   ['4', hasNade(viewA) ? ['he', 'flash', 'smoke', 'molly'].filter((n) => viewA.nades[n]).map((n) => WD[n].name + (viewA.nades[n] > 1 ? ' x' + viewA.nades[n] : '')).join(' · ') : '', 'nade'], ['5', viewA.shield ? 'Ballistic Shield' : '', 'shield']];
   setHTML('inv', inv.filter((r) => r[1]).map((r) => `<div class="${(viewA.shieldOn ? 'shield' : viewA.slot) === r[2] ? 'on' : ''}"><b>${r[0]}</b>${r[1]}</div>`).join('') + (viewA.kit ? '<div>Defuse kit</div>' : ''));
   // action bar
@@ -3280,7 +3289,7 @@ function updateCamera(dt) {
   const bobA = P.onGround ? Math.min(1, sp / 6) : 0;
   VMS.kick = Math.max(0, VMS.kick - dt * 7);
   VMS.swayX *= Math.exp(-dt * 8); VMS.swayY *= Math.exp(-dt * 8);
-  VMS.land = Math.max(0, VMS.land - dt * 4); VMS.slash = Math.max(0, VMS.slash - dt * 3.2);
+  VMS.land = Math.max(0, VMS.land - dt * 4); VMS.slash = Math.max(0, VMS.slash - dt * (def.melee ? 2.3 : 3.2));
   if (VMS.flashT > 0) { VMS.flashT -= dt; if (VMS.flashT <= 0) vmCur.userData.fl.visible = false; }
   muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt * 120);
   const sw = clamp(P.switchT / 0.4, 0, 1);
@@ -3289,12 +3298,12 @@ function updateCamera(dt) {
   const knife = def.melee, nade = def.nade, gm = GM[curW(P).id];
   // base pose [x, y, z, yaw, roll, pitch]: pistols angled in toward the crosshair like Krunker, rifles low so you only see barrel + sights
   const POSE = nade ? [0.2, -0.19, -0.38, 0.07, 0, 0] : knife ? [0.12, -0.085, -0.3, 0.2, 0.0, 0.12] : def.slot === 'sec' ? [0.095, -0.12, -0.36, 0.1, 0.04, 0.04] : [0.17, -0.16, -0.42, 0.14, 0, 0.0];
-  const bx = POSE[0], by = POSE[1], bz = POSE[2];
+  const bx = POSE[0], by = POSE[1], bz = POSE[2], ks = knife ? knifeSwing(1 - VMS.slash) : null;
   VMS.ads += ((P.ads ? 1 : 0) - VMS.ads) * Math.min(1, dt * 14);
   VMS.spr += ((P.sprint && sp > 3 ? 1 : 0) - VMS.spr) * Math.min(1, dt * 9);
   const A = VMS.ads, Rr = VMS.spr;
-  vmRoot.position.set(bx + VMS.swayX + Math.sin(VMS.bob) * 0.012 * bobA + (knife ? 0.04 : 0), by + VMS.swayY - Math.abs(Math.cos(VMS.bob)) * 0.01 * bobA - sw * 0.25 - rl * 0.08 - VMS.land * 0.03 + (P.crouch ? 0.01 : 0), bz + VMS.kick * 0.07);
-  vmRoot.rotation.set(POSE[5] + VMS.kick * (def.scope ? 0.25 : 0.1) - rl * 0.6 + (knife || nade ? -VMS.slash * 0.9 : 0), POSE[3] + (insp > 0 ? Math.sin(insp * Math.PI) * 1.1 : 0) + (knife ? VMS.slash * 0.8 : 0), POSE[4] + rl * 0.5 + (insp > 0 ? Math.sin(insp * Math.PI * 2) * 0.35 : 0));
+  vmRoot.position.set(bx + VMS.swayX + Math.sin(VMS.bob) * 0.012 * bobA + (knife ? 0.04 : 0) + (ks ? ks.px : 0), by + VMS.swayY - Math.abs(Math.cos(VMS.bob)) * 0.01 * bobA - sw * 0.25 - rl * 0.08 - VMS.land * 0.03 + (P.crouch ? 0.01 : 0) + (ks ? ks.py : 0), bz + VMS.kick * 0.07 + (ks ? ks.pz : 0));
+  vmRoot.rotation.set(POSE[5] + VMS.kick * (def.scope ? 0.25 : 0.1) - rl * 0.6 + (nade ? -VMS.slash * 0.9 : 0) + (ks ? ks.rx : 0), POSE[3] + (insp > 0 ? Math.sin(insp * Math.PI) * 1.1 : 0) + (ks ? ks.ry : 0), POSE[4] + rl * 0.5 + (ks ? ks.rz : 0) + (insp > 0 ? Math.sin(insp * Math.PI * 2) * 0.35 : 0));
   if (A > 0.001 && ironSights(P)) { // Aim style "Iron sights": slide the gun to the middle of the screen
     vmRoot.position.x += (0 - vmRoot.position.x) * A;
     vmRoot.position.y += (-gm.sy - vmRoot.position.y) * A;
@@ -3713,9 +3722,9 @@ menuBox.append(intro, setup);
 for (const el of [menuBox.querySelector('.logo'), menuBox.querySelector('.tag'), $('launchActions'), $('rankBadge'), $('best'), $('padNote')]) intro.appendChild(el);
 for (const id of ['play', 'playOnline', 'openKeys', 'openSet']) $('launchActions').appendChild($(id));
 $('play').textContent = 'CUSTOM SOLO MATCH'; $('playOnline').textContent = 'PLAY WITH FRIENDS'; $('openKeys').textContent = 'CONTROLS';
-// QUICK PLAY: one click -> a short solo Team Deathmatch vs hard bots (instant-ish respawn, first team to 40; Competitive bomb rounds stay under CUSTOM MATCH).
+// QUICK PLAY: one click -> a short solo Competitive match (plant / defuse bomb rounds, first to 5) vs hard bots. Team Deathmatch is under CUSTOM MATCH.
 const quick = document.createElement('button'); quick.className = 'btn go'; quick.id = 'quickPlay';
-quick.innerHTML = '<span><b>QUICK PLAY</b><small>Team Deathmatch vs bots. Starts right away.</small></span>';
+quick.innerHTML = '<span><b>QUICK PLAY</b><small>Bomb rounds vs bots. Starts right away.</small></span>';
 $('launchActions').prepend(quick);
 // Simple menu: the match-setup panel stays folded until CUSTOM MATCH is pressed (first press opens it, second press starts).
 setup.classList.add('folded');
@@ -3729,7 +3738,7 @@ function showNextQP() {
   const m = MAP_LIST.find((x) => x.id === qpNext()), t = document.getElementById('qpBriefMap'), p = document.getElementById('qpBriefInfo');
   if (t && m) t.textContent = m.name; if (p && m) p.textContent = m.blurb ? m.blurb.charAt(0).toUpperCase() + m.blurb.slice(1) : 'Desert streets';
 }
-quick.onclick = () => { quickTwist = true; Object.assign(S, { mode: 'dm', diff: 'hard', length: 'short', side: 'random', arsenal: 'simple', ranked: 'on', bomb: 'random', speed: 'on', tMine: 5, tFoe: 5 }); S.map = qpNext(); qpAdvance(S.map); showNextQP();
+quick.onclick = () => { quickTwist = true; Object.assign(S, { mode: 'comp', diff: 'hard', length: 'short', side: 'random', arsenal: 'simple', ranked: 'on', bomb: 'random', speed: 'on', tMine: 5, tFoe: 5 }); S.map = qpNext(); qpAdvance(S.map); showNextQP();
   syncSeg(); updateBriefing(); initAudio(S.vol); startMatch(); showMapPop(MAP_LIST.find((m) => m.id === S.map).name); };
 let mapPop = null;
 function showMapPop(name) {
@@ -3907,7 +3916,7 @@ const mkCanvas = (draw) => { const cv = document.createElement('canvas'); cv.wid
 const finishOf = (id) => finishes.find((f) => f.id === id);
 // the skins this weapon can wear: standard issue, the rank skins (every gun), and the case skins you rolled FOR THIS gun
 const caseNameOf = (f) => (cases.find((c) => c.finishes && c.finishes.includes(f.id)) || { name: 'a case' }).name;
-const skinsFor = (wid) => { const rk = (f) => (f.id === 'factory' ? 0 : ownsSkin(f, wid) ? 1 : 2); return finishes.filter(f => !f.weapon || f.weapon === wid).sort((a, b) => rk(a) - rk(b)); };   // every skin: yours first, then the ones still locked
+const skinsFor = (wid) => { const rk = (f) => (f.id === 'factory' ? 0 : f.rp !== undefined ? 1 : 2 + (({ legendary: 4, epic: 3, rare: 2, common: 1 })[f.rarity] | 0)); return finishes.filter((f) => !f.weapon || f.weapon === wid).map((f, i) => [f, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map((x) => x[0]); };   // the SAME order for every gun: Factory, rank rewards, then Common to Legendary
 const countSkins = (wid) => skinState.skins.filter((k) => k.endsWith('@' + wid)).length;
 function preview() {
   const f = finishOf(selF) || finishes[0], rar = f.rarity && rarities[f.rarity];
@@ -4367,7 +4376,7 @@ locker.addEventListener('cancel', (e) => { if (pendingReward || opening) e.preve
   const footR = el('div', 'foot-r'); footR.append($('best'), $('padNote'));
   foot.append(footL, footR);
   const briefing = el('aside','lobby-brief');
-  briefing.append(el('small','','MATCH BRIEF'), el('h2','','Sandstone'), el('p','','Desert streets'), el('p','obj','Team Deathmatch. Eliminate the other team: first to 40 wins. You respawn in a couple of seconds.'), col.querySelector('#quickPlay'));
+  briefing.append(el('small','','MATCH BRIEF'), el('h2','','Sandstone'), el('p','','Desert streets'), el('p','obj','Plant or defuse the bomb, or wipe out the other team. First to 5 rounds wins. Buy guns between rounds with B.'), col.querySelector('#quickPlay'));
   briefing.querySelector('h2').id = 'qpBriefMap'; briefing.querySelector('p').id = 'qpBriefInfo';
   home.append(bar, briefing, hit, foot); menuBox.replaceChildren(home); showNextQP();   // the brief shows the map Quick Play will pick next
   document.querySelectorAll('.seg').forEach((s) => s.addEventListener('click', () => setTimeout(stageSync, 0)));

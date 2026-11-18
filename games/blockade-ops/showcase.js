@@ -1,7 +1,7 @@
 // Small 3D stages that live in their own little canvases: the home-screen soldier + weapon, and the skin-crate opening.
-import * as THREE from './three.module.min.js?v=287';
-import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=287';
-import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=287';
+import * as THREE from './three.module.min.js?v=296';
+import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=296';
+import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=296';
 
 function makeStage(canvas, fov, camPos, lookAt) {
   let r;
@@ -14,7 +14,7 @@ function makeStage(canvas, fov, camPos, lookAt) {
   const st = { r, scene, cam, w: 0, h: 0, active: false, last: 0, update() {} };
   const fit = () => {
     const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return false;
-    if (w !== st.w || h !== st.h) { st.w = w; st.h = h; r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    if (w !== st.w || h !== st.h) { st.w = w; st.h = h; r.setPixelRatio(Math.min(Math.max(window.devicePixelRatio || 1, 2), 3)); /* always at least 2x: the little previews stay sharp */ r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
     return true;
   };
   let frameId;
@@ -126,7 +126,9 @@ export function createPreviewStage(canvas) {
   let w = null, grp = null;
   st.setItem = (item, accent, hex) => {
     rot = Math.PI / 2; if (grp) { st.scene.remove(grp); freeWeapon(grp.children[0]); }
-    w = displayWeapon(item, accent); grp = new THREE.Group(); grp.add(w); w.position.z = 0.3; grp.scale.setScalar(item.knife ? 2.8 : 1.9); st.scene.add(grp);
+    w = displayWeapon(item, accent); grp = new THREE.Group(); grp.add(w); w.position.z = 0.3;
+    { w.position.set(0, 0, 0); grp.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(w.userData.mesh || w), sz = bb.getSize(new THREE.Vector3()); w.position.sub(bb.getCenter(new THREE.Vector3())); grp.scale.setScalar(Math.min(3.6, Math.max(1.1, 1.7 / Math.max(sz.z, sz.y * 1.6, 0.2)))); }   // centred, so it turns around its middle   // every gun fills the picture (short ones are no longer tiny)
+    st.scene.add(grp);
     halo.material.color.setHex(hex || 0xff8a2a);
   };
   const ray = new THREE.Raycaster(), v2 = new THREE.Vector2();

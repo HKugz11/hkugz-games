@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=287';
+import * as THREE from './three.module.min.js?v=296';
 
 // CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
 export const XMAS = (() => {
@@ -49,7 +49,7 @@ export const finishes = [
   { id: 'magma', name: 'Magma', rule: 'Found in skin crates', rarity: 'epic', theme: th(0x1a0f0c, 0x0c0705, 0x2a1810, 0x0c0705, 0xff9a3a, 0xffe08a, 0x070302), fx: { mode: 6, cell: 10, c: [0xffc030, 0x8a2008, 0, 0], glow: 0.9, glowCol: 0xff7a10, shine: 1 } },
   { id: 'obsidian', name: 'Obsidian', rule: 'Found in skin crates', rarity: 'epic', theme: th(0x1a1626, 0x0d0a16, 0x241c36, 0x0d0a16, 0xb48cff, 0xe8d8ff, 0x05030a), fx: { mode: 7, cell: 22, c: [0, 0, 0, 0xb48cff], rivet: true, glow: 0.4, glowCol: 0x9a60ff, shine: 1, gloss: true } },
   { id: 'aurora', name: 'Aurora', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x0a2a2a, 0x061a1a, 0x103a3a, 0x061a1a, 0x7affd0, 0xd8fff0, 0x020c0c), fx: { mode: 5, cell: 16, c: [0x4af0b0, 0x2a8fd0, 0x9a6aff, 0], glow: 0.5, glowCol: 0x40ffc0, shine: 1, spark: 0xb8fff0 } },
-  { id: 'borealis', name: 'Borealis', rule: 'Found in the Neon Case', rarity: 'legendary', theme: th(0x0b1e2e, 0x061018, 0x10304a, 0x061018, 0x7affd0, 0xd8fff0, 0x03080e), fx: { mode: 12, cell: 16, c: [0x3af0a0, 0x7a5aff, 0x40c8ff, 0], glow: 0.8, glowCol: 0x40ffc0, shine: 1, spark: 0xb8fff0 } },
+  { id: 'borealis', name: 'Borealis', rule: 'Found in the Holiday Case', rarity: 'legendary', holiday: true, theme: th(0x0b1e2e, 0x061018, 0x10304a, 0x061018, 0x7affd0, 0xd8fff0, 0x03080e), fx: { mode: 12, cell: 16, c: [0x3af0a0, 0x7a5aff, 0x40c8ff, 0], glow: 0.8, glowCol: 0x40ffc0, shine: 1, spark: 0xb8fff0 } },
   { id: 'prism', name: 'Prism', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x70708a, 0x40405a, 0x5a5a76, 0x30304a, 0xe8e8ff, 0xffffff, 0x14141e), fx: { mode: 9, cell: 8, c: [0, 0, 0, 0xffffff], glow: 0.35, glowCol: 0xffffff, shine: 1, spark: 0xffffff, gloss: true } },
   { id: 'diamondice', name: 'Diamond Ice', rule: 'Found in skin crates', rarity: 'legendary', theme: th(0x6fd6f5, 0x2f8fc0, 0x8fe4ff, 0x1f6a94, 0xffffff, 0xffffff, 0x0f3d5a), fx: { mode: 8, cell: 7, c: [0xe8fbff, 0, 0, 0xffffff], glow: 0.4, glowCol: 0x70e0ff, shine: 1, spark: 0xe8fbff, gloss: true } },
   // ---- HOLIDAY CASE (Christmas season) ----
@@ -244,10 +244,10 @@ export const knives = [
 
 // crate drop odds (percent), the colour of each rarity, and the coins you get back for a duplicate
 export const rarities = {
-  common: { name: 'Common', pct: 55, color: 0xb8c2cc, refund: 25, sell: 35, hrefund: 5, hsell: 10 },
-  rare: { name: 'Rare', pct: 30, color: 0x4aa3ff, refund: 50, sell: 80, hrefund: 10, hsell: 20 },
-  epic: { name: 'Epic', pct: 12, color: 0xb45cff, refund: 100, sell: 190, hrefund: 20, hsell: 30 },
-  legendary: { name: 'Legendary', pct: 3, color: 0xffc247, refund: 200, sell: 525, hrefund: 40, hsell: 45 }
+  common: { name: 'Common', pct: 55, color: 0xb8c2cc, refund: 25, sell: 35, hrefund: 5, hsell: 15 },
+  rare: { name: 'Rare', pct: 30, color: 0x4aa3ff, refund: 50, sell: 80, hrefund: 10, hsell: 35 },
+  epic: { name: 'Epic', pct: 12, color: 0xb45cff, refund: 100, sell: 190, hrefund: 20, hsell: 70 },
+  legendary: { name: 'Legendary', pct: 3, color: 0xffc247, refund: 200, sell: 525, hrefund: 40, hsell: 120 }
 };
 
 // ---------------------------------------------------------------- inventory card: a square of the skin itself, edge to edge, like wrapping paper
@@ -285,7 +285,7 @@ export function drawSkinSwatch(cx, f) {
   else if (m === 8) { for (let y = 0; y < W; y += 8) for (let x = 0; x < W; x += 8) if (rnd() > 0.68) { cx.fillStyle = c(0, '#fff'); cx.fillRect(x, y, 8, 8); } }
   else if (m === 10) { cx.fillStyle = c(0, '#fff'); for (let y = 0; y < W; y += 22) for (let x = 0; x < W; x += 22) if (rnd() > 0.45) { cx.fillRect(x + 8, y, 5, 20); cx.fillRect(x, y + 8, 20, 5); cx.fillRect(x + 3, y + 3, 4, 4); cx.fillRect(x + 14, y + 14, 4, 4); cx.fillRect(x + 14, y + 3, 4, 4); cx.fillRect(x + 3, y + 14, 4, 4); } }
   else if (m === 12) { cx.globalAlpha = 0.75; for (let x = 0; x < W; x += 6) { const t = Math.sin(x * 0.11) + Math.sin(x * 0.05 + 1); cx.fillStyle = t > 0.7 ? c(2, '#4cf') : t > -0.3 ? c(0, '#3fa') : c(1, '#75f'); cx.fillRect(x, 0, 6, W); } cx.globalAlpha = 1; for (let k = 0; k < 20; k++) { cx.fillStyle = '#fff'; cx.fillRect((rnd() * W) | 0, (rnd() * W) | 0, 2, 2); } }
-  else if (m === 11) { const au = finishes.find((x) => x.id === 'aurora'); drawSkinSwatch(cx, au); return; }   // Northern Lights card: the blocky teal / violet tile with the little crosses (Hyrum's pick)
+  else if (m === 11) { const gx = finishes.find((x) => x.id === 'galaxy'); drawSkinSwatch(cx, gx); return; }   // Northern Lights card: the pink / violet blocky tile with the little crosses (Hyrum's pick: the 4th tile)
   else if (m === 9) { const g = cx.createLinearGradient(0, 0, W, W); g.addColorStop(0, '#ffd6f0'); g.addColorStop(0.35, '#d6ecff'); g.addColorStop(0.65, '#fff3d6'); g.addColorStop(1, '#e3d6ff'); cx.fillStyle = g; cx.fillRect(0, 0, W, W); }
   if (fx.outline) { cx.strokeStyle = hx(fx.c[3] || 0x9aa5b0); cx.lineWidth = 2; for (let k = 16; k < W; k += 32) { cx.beginPath(); cx.moveTo(0, k); cx.lineTo(W, k); cx.moveTo(k, 0); cx.lineTo(k, W); cx.stroke(); } }
   if (fx.rivet) { cx.fillStyle = hx(fx.c[3] || 0xcccccc); for (let y = 8; y < W; y += 24) for (let x = 8; x < W; x += 24) cx.fillRect(x, y, 3, 3); }
@@ -305,8 +305,8 @@ export const cases = [
     finishes: ['snow', 'frost', 'ivory', 'ghost', 'polarcamo', 'pearl'], odds: { rare: 62, epic: 30, legendary: 8 } },
   { id: 'camo', kind: 'skin', name: 'Camo Case', price: 80, tint: 0x6d7d4c, sub: 'Camo and stripes: Desert, Urban, Forest, Tiger, Cobra, Polar Camo, Obsidian. Each fits one random gun.',
     finishes: ['desert', 'urban', 'forest', 'tiger', 'cobra', 'polarcamo', 'obsidian'], odds: { common: 60, rare: 30, epic: 10 } },
-  { id: 'neon', kind: 'skin', name: 'Neon Case', price: 200, tint: 0x5b34c8, sub: 'Bright and glowing: Candy, Sunset, Ocean, Dragon, Tiger, Toxic, Plasma, Magma, Aurora, Borealis, Galaxy, Prism.',
-    knives: true, finishes: ['candy', 'sunset', 'ocean', 'dragon', 'tiger', 'toxic', 'plasma', 'magma', 'aurora', 'borealis', 'galaxy', 'prism'], odds: { common: 40, rare: 30, epic: 22, legendary: 8 } },
+  { id: 'neon', kind: 'skin', name: 'Neon Case', price: 200, tint: 0x5b34c8, sub: 'Bright and glowing: Candy, Sunset, Ocean, Dragon, Tiger, Toxic, Plasma, Magma, Aurora, Galaxy, Prism.',
+    knives: true, finishes: ['candy', 'sunset', 'ocean', 'dragon', 'tiger', 'toxic', 'plasma', 'magma', 'aurora', 'galaxy', 'prism'], odds: { common: 40, rare: 30, epic: 22, legendary: 8 } },
   { id: 'pistol', kind: 'skin', name: 'Pistol Case', price: 80, tint: 0xa2683c, slot: 'sec', sub: 'Skins that only roll for PISTOLS (P-9, Viper, Trio, Peacemaker and the other side arms).',
     finishes: ['desert', 'carbon', 'candy', 'urban', 'forest', 'sunset', 'ocean', 'dragon', 'tiger', 'cobra', 'toxic', 'plasma', 'gold', 'galaxy'], odds: { common: 60, rare: 28, epic: 10, legendary: 2 } },
   { id: 'main', kind: 'skin', name: 'Main Gun Case', price: 150, tint: 0x4d5d4a, slot: 'prim', sub: 'Skins that only roll for MAIN GUNS (rifles, SMGs, shotguns, snipers, the LMG).',
@@ -315,8 +315,8 @@ export const cases = [
     knives: true, finishes: ['dragon', 'tiger', 'cobra', 'toxic', 'plasma', 'magma', 'obsidian', 'gold', 'galaxy', 'aurora', 'prism', 'diamondice'], odds: { rare: 45, epic: 35, legendary: 20 } },
   { id: 'costume', kind: 'costume', name: 'Costume Case', price: 200, tint: 0xb64cd6, sub: 'Silly outfits for your soldier: Bunny Pajamas, Moo Cow, Banana, Shark Hoodie, Dino Onesie and the legendary Unicorn Onesie!',
     pool: ['bunny', 'cow', 'banana', 'shark', 'dino', 'unicorn'], odds: { common: 45, rare: 30, epic: 18, legendary: 7 } },
-  { id: 'holiday', kind: 'skin', seasonal: true, name: 'Holiday Case', price: 50, tint: 0xc62828, sub: 'Six holiday skins: Candy Cane, Gingerbread, Holly Jolly, Ornament, Snowflake and the legendary Northern Lights. Each fits one random gun. Available Nov 15 through Jan 2.',
-    finishes: ['candycane', 'gingerbread', 'holly', 'ornament', 'snowflake', 'northernlights'], odds: { common: 35, rare: 35, epic: 15, legendary: 15 } },
+  { id: 'holiday', kind: 'skin', seasonal: true, name: 'Holiday Case', price: 50, tint: 0xc62828, sub: 'Seven holiday skins: Candy Cane, Gingerbread, Holly Jolly, Ornament, Snowflake and the two legendaries, Northern Lights and Borealis. Each fits one random gun. Available Nov 15 through Jan 2.',
+    finishes: ['candycane', 'gingerbread', 'holly', 'ornament', 'snowflake', 'northernlights', 'borealis'], odds: { common: 35, rare: 35, epic: 15, legendary: 15 } },
   { id: 'holidaycos', kind: 'costume', holiday: true, name: 'Holiday Costume Case', price: 120, tint: 0x1f8a4c, sub: 'Christmas outfits for your soldier: Elf Suit, Reindeer Suit and the epic Snowman.',
     pool: ['elf', 'reindeer', 'snowman'], odds: { common: 50, rare: 35, epic: 15 } },
   { id: 'stick', kind: 'sticker', name: 'Sticker Pack', price: 50, tint: 0xff8fc4, sub: 'One sticker. You use it once, on one gun, and it stays there.',
