@@ -111,3 +111,16 @@ test('Northern Lights fits every gun (and the knife) and a skin made for one gun
     const v = await vault(s, ch); assert.equal(v.items['skin:northernlights@raptor'], 1); assert.equal(v.items['skin:northernlights@ranger'], 1); assert.equal(v.items['skin:northernlights@knife'], 1);
   } finally { await s.close(); }
 });
+
+test('admin give: the operator can put one valid item in a vault (and nothing invalid)', async () => {
+  const s = await boot();
+  try {
+    const u = await s.user('Winner');
+    const adm = (body) => fetch('http://127.0.0.1:' + s.app.server.address().port + '/admin/give', { method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-token': s.app.adminToken }, body: JSON.stringify(body) });
+    assert.equal((await adm({ name: 'Winner', item: 'skin:northernlights@ranger' })).status, 200);
+    assert.equal((await adm({ name: 'Winner', item: 'skin:factory@raptor' })).status, 400, 'not a real item');
+    assert.equal((await adm({ name: 'Nobody', item: 'skin:northernlights@ranger' })).status, 400);
+    assert.equal((await vault(s, u)).items['skin:northernlights@ranger'], 1);
+    assert.equal((await fetch('http://127.0.0.1:' + s.app.server.address().port + '/admin/give', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Winner', item: 'skin:northernlights@ranger' }) })).status >= 400, true, 'no secret, no item');
+  } finally { await s.close(); }
+});

@@ -48,6 +48,7 @@ const when = t => (t ? new Date(t).toISOString().replace('T', ' ').slice(0, 16) 
   if (cmd === 'users') { const r = await call('GET', '/admin/users'); console.log('Sign-ups are ' + (r.signupsOpen ? 'OPEN' : 'CLOSED') + '. ' + r.users.length + ' accounts:'); for (const u of r.users) console.log(u.name.padEnd(18), 'made', when(u.created), ' last log-in', when(u.lastLogin), ' friends', u.friends, u.banned ? ' BANNED' : ''); }
   else if (cmd === 'reports') { const r = await call('GET', '/admin/reports'); if (!r.reports.length) console.log('No reports.'); for (const x of r.reports) console.log(when(x.t), x.by, 'reported', x.who, '-', x.reason); }
   else if (['ban', 'unban', 'delete', 'resetpw'].includes(cmd) && arg) { const r = await call('POST', '/admin/' + cmd, { name: arg }); console.log(r.password ? 'Temporary password for ' + arg + ': ' + r.password + '\n(tell them to change it after they log in)' : 'Done.'); }
+  else if (cmd === 'give' && arg && process.argv[4]) { const r = await call('POST', '/admin/give', { name: arg, item: process.argv[4] }); console.log('Done. ' + arg + ' now has ' + r.has + ' of ' + process.argv[4] + '.'); }
   else if (cmd === 'clear-reports') { await call('POST', '/admin/clear-reports'); console.log('Cleared.'); }
   else if (cmd === 'signups' && (arg === 'open' || arg === 'close')) { await call('POST', '/admin/signups', { open: arg === 'open' }); console.log('Sign-ups are now ' + (arg === 'open' ? 'OPEN' : 'CLOSED') + '.'); }
   else if (cmd === 'export') {

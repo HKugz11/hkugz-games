@@ -452,6 +452,7 @@ function createCore(userCfg, raw) {
       let pw = ''; for (let i = 0; i < 12; i++) pw += CODE_ALPHA[crypto.randomInt(CODE_ALPHA.length)];
       u.pw = await hashNew(pw); dropSessions(u); fails.delete(u.key); save(); return { password: pw };
     },
+    'POST /admin/give': ({ body }) => { const u = lookup(body.name); if (!u) throw bad('No such user.'); if (!itemOk(body.item)) throw bad('That is not an item the vault can hold (example: skin:northernlights@ranger).'); const v = V(u); give(v, body.item); save(); return { ok: true, has: v.items[body.item] }; },
     'POST /admin/clear-reports': () => { reports = []; save(); return { ok: true }; },
     'POST /admin/signups': ({ body }) => { meta.signupsOpen = !!body.open; save(); return { signupsOpen: signupsOpen() }; },
     // everything that is saved (accounts with their scrambled passwords, friends, blocks, reports), minus the log-in sessions, so it can be moved to another server (admin.js export / import)
