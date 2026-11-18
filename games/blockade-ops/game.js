@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=296';
+import { displayWeapon, createHomeStage } from './showcase.js?v=298';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=296';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=296';
-import { platform } from './platform.js?v=296';
-import * as THREE from './three.module.min.js?v=296';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=296';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=296';
-import { createOnline } from './online.js?v=296';
-import { TOUCH, initTouch } from './touch.js?v=296';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=296';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=298';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=298';
+import { platform } from './platform.js?v=298';
+import * as THREE from './three.module.min.js?v=298';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=298';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=298';
+import { createOnline } from './online.js?v=298';
+import { TOUCH, initTouch } from './touch.js?v=298';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=298';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -32,7 +32,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Mat
 const V = () => new THREE.Vector3();
 
 // ---------------- settings ----------------
-const DEFAULTS = { twist: 'off', sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'sandstone', arsenal: 'pro', ranked: 'on', bomb: 'random', speed: 'on', tMine: 5, tFoe: 5, name: '' };
+const DEFAULTS = { twist: 'off', sens: 1, fov: 85, vol: 0.7, xhColor: '#4dff7a', xhSize: 6, xhGap: 4, xhDot: '0', diff: 'normal', length: 'short', side: 'random', mode: 'comp', gfx: 'high', gfxSet: false, ads: IS_CROS ? 'toggle' : 'hold', aimStyle: 'cross', map: 'frostbase', arsenal: 'pro', ranked: 'on', bomb: 'random', speed: 'on', tMine: 5, tFoe: 5, name: '' };
 const S = { ...DEFAULTS };
 try { Object.assign(S, JSON.parse(localStorage.getItem('cs.settings') || localStorage.getItem('coreStrike') || '{}')); } catch { }
 // team sizes (you count as one of your team): 1 to 10 each, so 10 v 2 or 1 v 5 are possible. Only a 5 v 5 match counts for rank.
@@ -290,7 +290,8 @@ const starTex = canvasTex(64, 64, (x) => {
 const holeTex = canvasTex(32, 32, (x) => { const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(20,14,8,1)'); g.addColorStop(0.45, 'rgba(40,28,16,.9)'); g.addColorStop(1, 'rgba(60,40,20,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32); });
 
 const geoBox = new THREE.BoxGeometry(1, 1, 1);
-if (!MAP_LIST.some((m) => m.id === S.map)) S.map = 'sandstone';
+if (!MAP_LIST.some((m) => m.id === S.map)) S.map = 'frostbase';
+try { if (localStorage.getItem('cs.defmap') !== 'fb1') { S.map = 'frostbase'; localStorage.setItem('cs.nextQP', 'frostbase'); localStorage.setItem('cs.defmap', 'fb1'); } } catch (e) { }   // Frostbase is the default map (once, also for people who already had a saved map)
 loadMap(S.map);
 const holdLookCache = new Map();
 let WORLD = null;
@@ -499,7 +500,7 @@ const WD = {
   smoke: { name: 'Smoke', nade: true, price: 300, speed: 6.9, max: 1, col: '#9aa0a6', desc: 'Wall of smoke for 18 s.' },
   molly: { name: 'Molotov', nade: true, price: 400, speed: 6.9, max: 1, reward: 300, col: '#e0742a', desc: 'Bursts into flames. Burns an area for 7 s.' },
   // ---- five more guns (they sit before 'bomb' so the old guns keep their numbers in online play)
-  trio: { name: 'Trio', slot: 'sec', price: 450, dmg: 24, rpm: 780, burst: 3, burstGap: 0.26, mag: 15, res: 90, reload: 2.1, speed: 6.7, inacc: 0.6, moveInacc: 2.4, airInacc: 7, pen: 0.5, range: 0.88, recoil: 1.1, rec: 7, reward: 300, tier: 1, snd: [2800, 0.11, 0.9], acc: '#d96a4a', patk: 'burst', first: 0.5, draw: 0.24, desc: 'Burst pistol: three quick shots per click. Cheap and accurate.' },
+  trio: { name: 'Trio', slot: 'sec', price: 450, dmg: 24, rpm: 780, burst: 3, burstGap: 0.26, mag: 15, res: 90, reload: 2.1, speed: 6.7, inacc: 0.2, moveInacc: 1.0, airInacc: 4, pen: 0.5, range: 0.88, recoil: 0.4, rec: 7, reward: 300, tier: 1, snd: [2800, 0.11, 0.9], acc: '#d96a4a', patk: 'burst', first: 0.5, draw: 0.24, desc: 'Burst pistol: three quick shots per click. Laser accurate, barely any kick.' },
   duster: { name: 'Duster', slot: 'sec', price: 600, dmg: 24, pellets: 10, cone: 5.5, rpm: 140, mag: 2, res: 20, reload: 2.3, speed: 6.6, inacc: 0.5, moveInacc: 1.5, airInacc: 4, pen: 0.55, range: 0.5, recoil: 4.2, rec: 2.5, reward: 600, tier: 1, snd: [1200, 0.32, 1.7], acc: '#8a5a3a', patk: 'cannon', stagger: 0.6, draw: 0.35, desc: 'Sawed-off double barrel. Two shots, huge spread, deadly up close. $600 per kill.' },
   brute: { name: 'Brute', slot: 'prim', price: 1650, dmg: 31, rpm: 660, auto: true, mag: 40, res: 120, reload: 3.0, speed: 6.2, inacc: 0.8, moveInacc: 2.2, airInacc: 7, pen: 0.72, range: 0.87, recoil: 0.85, rec: 8, reward: 600, tier: 2, snd: [2400, 0.14, 1.1], acc: '#a8472e', patk: 'smg', draw: 0.4, stagger: 0.25, desc: 'Heavy SMG: slower than the Buzz but hits harder. 40 rounds. $600 per kill.' },
   ghost: { name: 'Ghost', slot: 'prim', price: 3100, dmg: 30, rpm: 700, auto: true, mag: 30, res: 90, reload: 2.4, speed: 6.4, inacc: 0.26, moveInacc: 4.2, airInacc: 10, pen: 0.66, range: 0.96, recoil: 0.7, rec: 8, reward: 300, tier: 3, snd: [1200, 0.1, 0.7], acc: '#7a5aa8', quiet: true, patk: 'ghost', first: 0.25, draw: 0.35, desc: 'Suppressed rifle: does not give your position away. Light and quick, less damage than the Raptor.' },
@@ -3731,8 +3732,8 @@ setup.classList.add('folded');
 $('play').textContent = 'CUSTOM MATCH';
 $('play').onclick = () => { if (setup.classList.contains('folded')) { setup.classList.remove('folded'); $('play').textContent = 'START CUSTOM MATCH'; return; } initAudio(S.vol); startMatch(); };
 if (!TOUCH) { const tr = document.createElement('button'); tr.className = 'btn'; tr.id = 'training'; tr.textContent = 'TRAINING'; tr.onclick = startTraining; $('launchActions').insertBefore(tr, $('openKeys')); }
-// QUICK PLAY MAPS: the very first Quick Play is Sandstone, after that a random map that is never the one just played. The match brief on the home screen always shows the map coming up next.
-function qpNext() { let n = ''; try { n = localStorage.getItem('cs.nextQP') || ''; } catch (e) {} return MAP_LIST.some((m) => m.id === n) ? n : 'sandstone'; }
+// QUICK PLAY MAPS: the very first Quick Play is Frostbase, after that a random map that is never the one just played. The match brief on the home screen always shows the map coming up next.
+function qpNext() { let n = ''; try { n = localStorage.getItem('cs.nextQP') || ''; } catch (e) {} return MAP_LIST.some((m) => m.id === n) ? n : 'frostbase'; }
 function qpAdvance(played) { const pool = MAP_LIST.map((m) => m.id).filter((id) => id !== played), nxt = pick(pool.length ? pool : [played]); try { localStorage.setItem('cs.nextQP', nxt); } catch (e) {} }
 function showNextQP() {
   const m = MAP_LIST.find((x) => x.id === qpNext()), t = document.getElementById('qpBriefMap'), p = document.getElementById('qpBriefInfo');
