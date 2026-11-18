@@ -1,14 +1,14 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=300';
+import { displayWeapon, createHomeStage } from './showcase.js?v=301';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=300';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=300';
-import { platform } from './platform.js?v=300';
-import * as THREE from './three.module.min.js?v=300';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=300';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=300';
-import { createOnline } from './online.js?v=300';
-import { TOUCH, initTouch } from './touch.js?v=300';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=300';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=301';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=301';
+import { platform } from './platform.js?v=301';
+import * as THREE from './three.module.min.js?v=301';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=301';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=301';
+import { createOnline } from './online.js?v=301';
+import { TOUCH, initTouch } from './touch.js?v=301';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat } from './art.js?v=301';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -74,7 +74,7 @@ function rankDelta(res, margin, mvp, perf = 1) {
   if (res === 'win') d *= Math.max(0, Math.min(1.3, (perf - 0.2) / 0.7));   // carried to a win: 0 RP below perf 0.2, full RP at 0.9, a bonus for a big game
   else if (res === 'loss') d *= perf < 0.3 ? 1.25 : perf < 0.8 ? 1 : perf < 1.2 ? 0.8 : 0.6;   // a good game softens a loss, doing nothing makes it hurt more
   else d = Math.round(Math.max(-6, Math.min(8, (perf - 0.8) * 10)));
-  d += Math.min(50, Math.max(0, ((GS.player && GS.player.kills) || 0) - 8) * 2);   // a big kill game is worth a lot more: +2 RP for every kill after the 8th (up to +50)
+  d += Math.max(0, (GS.player && GS.player.kills) || 0) * 10;   // every kill you get is worth +10 RP (win, draw or loss)
   if (RANK.m < 3) d = d > 0 ? d * 2 : d * 0.5;   // placement matches: wins count double, losses half
   if (d > 0 && GS.rankMates > 0) d *= 0.8;   // friends on your own team make winning easier, so a win is worth a bit less
   return Math.round(d * (rc.length === 'duper' ? 1.5 : rc.length === 'long' ? 1.25 : 1));
