@@ -3,13 +3,13 @@
 //   * Everyone else is a CLIENT: they move and aim on their own machine, send what they shoot, and
 //     draw the match from the snapshots the host sends 20 times a second.
 //   * Data goes peer-to-peer (WebRTC through PeerJS). PeerJS Cloud is only used to introduce players.
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=302';
-import { platform } from './platform.js?v=302';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=312';
+import { platform } from './platform.js?v=312';
 
 export function createOnline(X) {
   const { GS, MP, S, WD, $ } = X;
   const WID = Object.keys(WD);
-  const SL = ['prim', 'sec', 'knife', 'nade'], NS = ['he', 'flash', 'smoke', 'molly'];
+  const SL = ['prim', 'sec', 'knife', 'nade'], NS = ['he', 'flash', 'smoke', 'molly', 'snow'];
   const STATES = ['menu', 'freeze', 'live', 'end', 'over'], CST = ['none', 'carried', 'dropped', 'planted', 'boom', 'defused'];
   const wi = (id) => WID.indexOf(id);
   const r2 = (v) => Math.round(v * 100) / 100;
@@ -248,7 +248,7 @@ export function createOnline(X) {
   }
   function loadoutMsg(a) {
     return { t: 'load', p: a.prim ? [wi(a.prim.id), a.prim.mag, a.prim.res] : null, s: a.sec ? [wi(a.sec.id), a.sec.mag, a.sec.res] : null,
-      n: [a.nades.he, a.nades.flash, a.nades.smoke, a.nades.molly], ar: Math.round(a.armor), hl: a.helmet ? 1 : 0, kt: a.kit ? 1 : 0, sh: a.shield ? 1 : 0, sl: Math.max(0, SL.indexOf(a.slot)), ns: Math.max(0, NS.indexOf(a.nadeSel)), mo: a.money };
+      n: [a.nades.he, a.nades.flash, a.nades.smoke, a.nades.molly, a.nades.snow | 0], ar: Math.round(a.armor), hl: a.helmet ? 1 : 0, kt: a.kit ? 1 : 0, sh: a.shield ? 1 : 0, sl: Math.max(0, SL.indexOf(a.slot)), ns: Math.max(0, NS.indexOf(a.nadeSel)), mo: a.money };
   }
   function sendLoadout(a) { if (net && a.remote) net.hostSend(a.pid, loadoutMsg(a)); }
   // pings go to the pinger's own teammates only (enemies must not see where your team is looking)
@@ -315,7 +315,7 @@ export function createOnline(X) {
     P.prim = d.p ? { id: WID[d.p[0]], mag: d.p[1] | 0, res: d.p[2] | 0 } : null;
     P.sec = d.s ? { id: WID[d.s[0]], mag: d.s[1] | 0, res: d.s[2] | 0 } : null;
     if (P.prim && !WD[P.prim.id]) P.prim = null; if (P.sec && !WD[P.sec.id]) P.sec = null;
-    P.nades = { he: d.n[0] | 0, flash: d.n[1] | 0, smoke: d.n[2] | 0, molly: d.n[3] | 0 };
+    P.nades = { he: d.n[0] | 0, flash: d.n[1] | 0, smoke: d.n[2] | 0, molly: d.n[3] | 0, snow: d.n[4] | 0 };
     P.armor = num(d.ar); P.helmet = !!d.hl; P.kit = !!d.kt; P.shield = !!d.sh; P.money = num(d.mo, P.money); P.nadeSel = NS[d.ns | 0] || 'he';
     let sl = SL[d.sl | 0] || 'sec'; if (!X.slotOK(P, sl)) sl = P.prim ? 'prim' : P.sec ? 'sec' : 'knife';
     if (P.slot !== sl) { P.slot = sl; P.switchT = 0.35; }
@@ -360,7 +360,7 @@ export function createOnline(X) {
       const pi = t[9], si = t[10];
       if (pi >= 0) { if (!a.prim || a.prim.id !== WID[pi]) a.prim = { id: WID[pi], mag: 30, res: 0 }; } else a.prim = null;
       if (si >= 0) { if (!a.sec || a.sec.id !== WID[si]) a.sec = { id: WID[si], mag: 12, res: 0 }; } else a.sec = null;
-      a.nadeSel = NS[t[11]] || 'he'; a.nades = { he: 0, flash: 0, smoke: 0, molly: 0 }; a.nades[a.nadeSel] = 1;
+      a.nadeSel = NS[t[11]] || 'he'; a.nades = { he: 0, flash: 0, smoke: 0, molly: 0, snow: 0 }; a.nades[a.nadeSel] = 1;
       let sl = SL[t[8]] || 'knife';
       if (sl === 'prim' && !a.prim) sl = 'sec'; if (sl === 'sec' && !a.sec) sl = 'knife';
       a.slot = sl;

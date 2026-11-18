@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=302';
+import * as THREE from './three.module.min.js?v=312';
 
 // CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
 export const XMAS = (() => {
@@ -156,7 +156,7 @@ function buildThemed(geo, f, kind, gid) {
       if (cz > 0.335) role = 5; else if (cy > 0.088 && cz > -0.34 && cz < 0.22) role = 5;
       else if (cz < -0.285) role = 5; else if (cy < -0.066 && cz > -0.1 && cz < 0.07) role = 5; else if (role >= 4 && cy < 0.09) role = 0;
     }
-    if (kind === 'knife') role = cz < -0.015 ? (lum > 0.75 ? 0 : 5) : ((cz > 0.14 && sat > 0.3) || cz < 0.03) ? 4 : 3;   // knife: blade = painted with the skin, spine + edge = shiny, guard + pommel = metal, grip = painted
+    if (kind === 'knife') role = cz < -0.015 ? ((lum > 0.75 || sat > 0.3) ? 0 : 5) : ((cz > 0.14 && sat > 0.3) || cz < 0.03) ? 4 : 3;   // knife: blade = painted with the skin, spine + edge = shiny, guard + pommel = metal, grip = painted
     const ny = N.getY(i0), shade = ny > 0.5 ? 1.08 : ny < -0.5 ? 0.72 : 0.92, dst = role >= 4 ? B : A;
     tmp.setHex(roleHex[role]).multiplyScalar(shade);
     for (let k = 0; k < 3; k++) { dst.pos.push(P.getX(i0 + k), P.getY(i0 + k), P.getZ(i0 + k)); dst.nor.push(N.getX(i0 + k), N.getY(i0 + k), N.getZ(i0 + k)); dst.col.push(tmp.r, tmp.g, tmp.b); dst.role.push(role); }

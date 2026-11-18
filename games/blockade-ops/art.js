@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=302';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=302';
+import * as THREE from './three.module.min.js?v=312';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=312';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -1060,15 +1060,30 @@ export function buildGun(id, acc) {
         spec = { sy: 0, mz: [0, -0.004, -0.4], fore: null }; break;
       }
       if (KNIFE_STYLE === 'karambit') {
-        // KARAMBIT: finger ring at the back, ringed handle, brass guard, and a blade that sweeps down in a real curved claw
-        const kb = new THREE.Shape();
-        kb.moveTo(0, 0.03); kb.quadraticCurveTo(0.17, 0.034, 0.27, -0.05); kb.quadraticCurveTo(0.35, -0.13, 0.33, -0.24); kb.quadraticCurveTo(0.25, -0.13, 0.18, -0.05); kb.quadraticCurveTo(0.1, -0.02, 0, -0.026); kb.closePath();
-        const kg = new THREE.ExtrudeGeometry(kb, { depth: 0.009, bevelEnabled: true, bevelSegments: 1, bevelSize: .0025, bevelThickness: .0015, steps: 1 }); kg.translate(0, 0, -0.0045);
-        parts.push([kg, m4(0, -0.002, -0.012, 1, 1, 1, 0, Math.PI / 2), C.blade]);
-        parts.push([new THREE.TorusGeometry(0.032, 0.008, 6, 14), m4(0, -0.004, 0.17, 1, 1, 1, 0, Math.PI / 2), C.metal]);
-        b(.034, .048, .13, 0, -.002, .08, A); for (let k = 0; k < 4; k++) b(.037, .051, .012, 0, -.002, .035 + k * .03, C.dark);
-        b(.07, .034, .016, 0, -.002, .002, C.brass); b(.04, .055, .02, 0, -.002, .152, C.brass);
-        // The bevel follows the curved cutting edge.
+        // KARAMBIT (CS2 style): a deep claw blade that fades blue > purple > gold, a bright cutting edge on the inside of the curve,
+        // a black handle with finger grooves and a big blue finger ring at the back. The blade is built from colour strips so the pattern is visible.
+        const cub = (p, t) => { const u = 1 - t; return [u * u * u * p[0][0] + 3 * u * u * t * p[1][0] + 3 * u * t * t * p[2][0] + t * t * t * p[3][0], u * u * u * p[0][1] + 3 * u * u * t * p[1][1] + 3 * u * t * t * p[2][1] + t * t * t * p[3][1]]; };
+        const OUT = [[0, -0.065], [0.12, -0.075], [0.31, -0.02], [0.13, 0.2]], INN = [[0, 0.04], [0.09, 0.045], [0.2, 0.1], [0.13, 0.2]];   // spine (outside of the curve) and cutting edge (inside)
+        const stops = [0x2850d8, 0x3a52d0, 0x6a3cc4, 0x9a54b8, 0xc89a62, 0xe8bd4a], N = 16, mix = (c1, c2, k) => { const A1 = new THREE.Color(c1), B1 = new THREE.Color(c2); return A1.lerp(B1, k).getHex(); };
+        const strip = (pa, pb, qa, qb, depth, col) => {
+          const sh = new THREE.Shape(); sh.moveTo(pa[0], pa[1]); sh.lineTo(pb[0], pb[1]); sh.lineTo(qb[0], qb[1]); sh.lineTo(qa[0], qa[1]); sh.closePath();
+          const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, steps: 1 }); g.translate(0, 0, -depth / 2);
+          parts.push([g, m4(0, -0.002, -0.012, 1, 1, 1, 0, Math.PI / 2), col]);
+        };
+        for (let i = 0; i < N; i++) {
+          const t0 = i / N, t1 = (i + 1) / N, tm = (t0 + t1) / 2, k = tm * (stops.length - 1), j = Math.min(stops.length - 2, Math.floor(k));
+          const wob = 1 + (((i * 7919) % 13) / 13 - 0.5) * 0.18;   // a little mottling so it does not look flat
+          const col = new THREE.Color(mix(stops[j], stops[j + 1], k - j)).multiplyScalar(wob).getHex();
+          const o0 = cub(OUT, t0), o1 = cub(OUT, t1), i0 = cub(INN, t0), i1 = cub(INN, t1);
+          strip(o0, o1, i0, i1, 0.007, col);
+          const e0 = [i0[0] + (o0[0] - i0[0]) * 0.1, i0[1] + (o0[1] - i0[1]) * 0.1], e1 = [i1[0] + (o1[0] - i1[0]) * 0.1, i1[1] + (o1[1] - i1[1]) * 0.1];
+          strip(i0, i1, e0, e1, 0.0085, C.light);   // the bright cutting edge
+        }
+        b(.026, .085, .024, 0, -.002, -.006, C.dark);                                                              // bolster between blade and handle
+        b(.03, .04, .17, 0, -.004, .09, 0x15171b);                                                           // black handle core
+        for (let k = 0; k < 4; k++) { parts.push(pt.cz(0.0215, 0.03, 0, 0.026, 0.04 + k * 0.038, 0x15171b)); b(.032, .016, .012, 0, -.022, 0.052 + k * 0.038, 0x0c0d10); }   // finger grooves: humps on the blade side, notches underneath
+        b(.034, .052, .035, 0, -.002, .185, 0x15171b);                                                       // flared back of the handle
+        parts.push([new THREE.TorusGeometry(0.047, 0.0125, 8, 22), m4(0, 0.012, 0.235, 1, 1, 1, 0, Math.PI / 2, 0.25), 0x4f7be8]);   // the big blue finger ring
         spec = { sy: 0, mz: [0, -0.1, -0.25], fore: null }; break;
       }
       if (KNIFE_STYLE === 'machete' || KNIFE_STYLE === 'dagger') {
@@ -1105,8 +1120,9 @@ export function buildGun(id, acc) {
         b(.03, .06, .02, .005, .155, -.04, 0xece4d0, .25); b(.026, .05, .02, .01, .2, -.04, 0xff9a2a, .25); b(.016, .035, .016, .012, .235, -.04, 0xffd44a, .25);
         spec = { sy: 0, mz: [0, 0, -0.1], fore: null };
       } else if (id === 'he') { parts.push([new THREE.IcosahedronGeometry(1, 1), m4(0, 0, -0.04, 0.05, 0.058, 0.05), A]); }
+      else if (id === 'snow') { parts.push([new THREE.IcosahedronGeometry(1, 2), m4(0, 0.01, -0.04, 0.105, 0.105, 0.105), 0xffffff], [new THREE.IcosahedronGeometry(1, 1), m4(0.045, 0.05, -0.1, 0.03, 0.03, 0.03), 0xdcebff]); spec = { sy: 0, mz: [0, 0, -0.1], fore: null }; }
       else { parts.push(pt.cyl(0.036, 0.13, 0, 0, -0.04, A)); parts.push(pt.cyl(0.038, 0.014, 0, 0.045, -0.04, C.dark), pt.cyl(0.038, 0.014, 0, -0.045, -0.04, C.dark)); }
-      if (id !== 'molly') { b(.016, .09, .022, .042, .03, -.04, C.metal); parts.push(pt.cyl(0.016, 0.03, 0, 0.075, -0.04, C.metal)); spec = { sy: 0, mz: [0, 0, -0.1], fore: null }; }
+      if (id !== 'molly' && id !== 'snow') { b(.016, .09, .022, .042, .03, -.04, C.metal); parts.push(pt.cyl(0.016, 0.03, 0, 0.075, -0.04, C.metal)); spec = { sy: 0, mz: [0, 0, -0.1], fore: null }; }
   }
   const g = new THREE.Group();
   // each arm is ONE simple rectangle (team-coloured sleeve) that comes up from the bottom of the screen and holds the gun
@@ -1116,7 +1132,7 @@ export function buildGun(id, acc) {
     sm.matrixAutoUpdate = false; sm.matrix.copy(s2[1]); g.add(sm); return sm;
   };
   let lArm = null;   // the off hand's arm: game.js hides it while the ballistic shield is up (that hand is holding the shield)
-  const noHands = ['he', 'flash', 'smoke', 'molly'].includes(id);
+  const noHands = ['he', 'flash', 'smoke', 'molly', 'snow'].includes(id);
   if (id === 'knife') armBox(V(0, -0.005, 0.045), V(0.18, -0.5, 0.5), 0.085, 1.2);
   else if (noHands) armBox(V(0, -0.05, -0.02), V(0.18, -0.5, 0.5), 0.09, 1.2);
   else if (spec.pistol) { armBox(V(0.004 * spec.hs, 0.02 * spec.hs, 0.03 * spec.hs), V(0.12, -0.8, 0.5), 0.092 * spec.hs, 1.3)
