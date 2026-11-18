@@ -356,7 +356,7 @@ function createCore(userCfg, raw) {
     if (p.kind !== 'sticker') {
       const key = (p.kind === 'skin' ? 'skin:' : p.kind === 'knife' ? 'knife:' : 'costume:') + p.id;
       prize.item = key;
-      if (has(v, key) || nItems(v) >= ITEM_CAP) { prize.dupe = true; prize.refund = RAR[p.rarity].refund; v.coins += prize.refund; } else give(v, key);
+      if (has(v, key) || nItems(v) >= ITEM_CAP) { prize.dupe = true; prize.refund = (p.kind === 'skin' && FIN.get(p.f) && FIN.get(p.f).holiday) ? RAR[p.rarity].hrefund : RAR[p.rarity].refund; v.coins += prize.refund; } else give(v, key);
     }
     save(); return { prize, coins: v.coins };
   });
@@ -382,9 +382,10 @@ function createCore(userCfg, raw) {
   // Quick sell: the game buys an item straight away for a fixed price (the rarer, the more). Market: players list an item for a price they choose, within a band; the item waits
   // safely on the server (escrow) until someone buys it (the seller gets the price minus a 5% fee), or the owner takes it back. Listings never show who is selling.
   const MKT = { fee: 0.05, maxMult: 20, perUser: 12, global: 2000, page: 60 };
-  const sellOf = r => (RAR[r] && RAR[r].sell) || 0;
+  const holItem = id => { const m = /^skin:([^@]+)@/.exec(id || ''), f = m && FIN.get(m[1]); return !!(f && f.holiday); };   // holiday skins sell and refund for less (the Holiday Case is cheap)
+  const sellOf = (r, id) => { const R = RAR[r]; return R ? ((holItem(id) ? R.hsell : R.sell) || 0) : 0; };
   function rarityOfItem(id) { const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1); return kind === 'skin' ? FIN.get(rest.split('@')[0]).rarity : kind === 'knife' ? KNV.get(rest).rarity : COS.get(rest).rarity; }
-  const bandOf = id => { const s = sellOf(rarityOfItem(id)); return [s, s * MKT.maxMult]; };
+  const bandOf = id => { const s = sellOf(rarityOfItem(id), id); return [s, s * MKT.maxMult]; };
   const live = l => { const o = users.get(l.seller); return !!o && !o.banned; };
   const listingOut = (l, u) => ({ id: l.id, item: l.item, price: l.price, t: l.t, mine: l.seller === u.key });
   const newId = () => crypto.randomBytes(6).toString('hex');
@@ -394,7 +395,7 @@ function createCore(userCfg, raw) {
     const ids = Array.isArray(body.items) ? body.items : typeof body.item === 'string' ? [body.item] : [];
     if (!ids.length || ids.length > 60) throw bad('Pick 1 to 60 items to sell.');
     const v = V(user), need = {}; let total = 0;
-    for (const id of ids) { if (!itemOk(id)) throw bad('One of those can not be sold.'); need[id] = (need[id] | 0) + 1; if ((v.items[id] | 0) < need[id]) throw bad('You do not have that item.'); total += sellOf(rarityOfItem(id)); }
+    for (const id of ids) { if (!itemOk(id)) throw bad('One of those can not be sold.'); need[id] = (need[id] | 0) + 1; if ((v.items[id] | 0) < need[id]) throw bad('You do not have that item.'); total += sellOf(rarityOfItem(id), id); }
     for (const id of ids) takeOne(v, id);
     v.coins += total; save(); return Object.assign(vaultOf(user), { sold: ids.length, got: total });
   });

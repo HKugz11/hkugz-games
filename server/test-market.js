@@ -19,14 +19,14 @@ async function boot(extra) {
 const vault = (s, u) => s.post('/api/vault', {}, u.token).then(r => r.json);
 
 test('economy: quick selling what a case gives is always worth LESS than the case cost (no coin printing)', () => {
-  const sell = r => CAT.rarities[r].sell;
+  const sell = (r, c) => (c.id === 'holiday' ? CAT.rarities[r].hsell : CAT.rarities[r].sell);   // holiday skins sell for less
   for (const c of CAT.cases) {
     if (c.kind === 'sticker') continue;   // stickers can not be sold
     const total = Object.values(c.odds).reduce((a, b) => a + b, 0); let ev = 0;
-    for (const [r, p] of Object.entries(c.odds)) ev += (p / total) * sell(r);
+    for (const [r, p] of Object.entries(c.odds)) ev += (p / total) * Math.max(sell(r, c), c.id === 'holiday' ? CAT.rarities[r].hrefund : 0);
     assert.ok(ev < c.price, c.id + ': quick-sell value ' + ev.toFixed(1) + ' must be below the price ' + c.price);
   }
-  assert.ok(sell('common') < sell('rare') && sell('rare') < sell('epic') && sell('epic') < sell('legendary'), 'the rarer, the more');
+  const plain = {}; assert.ok(sell('common', plain) < sell('rare', plain) && sell('rare', plain) < sell('epic', plain) && sell('epic', plain) < sell('legendary', plain), 'the rarer, the more');
 });
 
 test('quick sell: the rarer the more, only your own items, many at once', async () => {

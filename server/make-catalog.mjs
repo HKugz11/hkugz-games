@@ -15,7 +15,7 @@ for (const m of src.matchAll(/^  (\w+): \{ name: '[^']*', slot: '(prim|sec)'[^\n
 if (guns.length < 15) throw new Error('Found only ' + guns.length + ' guns in game.js: the gun list format changed.');
 const cat = {
   v: 1,
-  rarities: Object.fromEntries(Object.entries(skins.rarities).map(([k, r]) => [k, { refund: r.refund, sell: r.sell }])),
+  rarities: Object.fromEntries(Object.entries(skins.rarities).map(([k, r]) => [k, { refund: r.refund, sell: r.sell, hrefund: r.hrefund, hsell: r.hsell }])),
   finishes: skins.finishes.map(f => ({ id: f.id, rarity: f.rarity || null, weight: f.weight || 1, rp: f.rp === undefined ? undefined : f.rp, holiday: !!f.holiday, weapon: f.weapon || undefined })),
   knives: skins.knives.map(k => ({ id: k.id, rarity: k.rarity || null, gift: !!k.gift })),
   costumes: skins.costumes.map(c => ({ id: c.id, rarity: c.rarity, holiday: !!c.holiday })),

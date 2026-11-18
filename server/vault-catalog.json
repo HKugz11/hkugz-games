@@ -3,19 +3,27 @@
  "rarities": {
   "common": {
    "refund": 25,
-   "sell": 35
+   "sell": 35,
+   "hrefund": 5,
+   "hsell": 10
   },
   "rare": {
    "refund": 50,
-   "sell": 80
+   "sell": 80,
+   "hrefund": 10,
+   "hsell": 20
   },
   "epic": {
    "refund": 100,
-   "sell": 190
+   "sell": 190,
+   "hrefund": 20,
+   "hsell": 30
   },
   "legendary": {
    "refund": 200,
-   "sell": 525
+   "sell": 525,
+   "hrefund": 40,
+   "hsell": 45
   }
  },
  "finishes": [
@@ -187,6 +195,12 @@
   },
   {
    "id": "aurora",
+   "rarity": "legendary",
+   "weight": 1,
+   "holiday": false
+  },
+  {
+   "id": "borealis",
    "rarity": "legendary",
    "weight": 1,
    "holiday": false
@@ -451,6 +465,7 @@
     "plasma",
     "magma",
     "aurora",
+    "borealis",
     "galaxy",
     "prism"
    ],
@@ -574,7 +589,7 @@
   {
    "id": "holiday",
    "kind": "skin",
-   "price": 160,
+   "price": 50,
    "odds": {
     "common": 35,
     "rare": 35,
