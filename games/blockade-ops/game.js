@@ -1,15 +1,15 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=318';
+import { displayWeapon, createHomeStage } from './showcase.js?v=319';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=318';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=318';
-import { gloves, gloveTypes, gloveById, gloveLabel, gloveTexture, drawGloveIcon } from './gloves.js?v=318';
-import { platform } from './platform.js?v=318';
-import * as THREE from './three.module.min.js?v=318';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=318';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=318';
-import { createOnline } from './online.js?v=318';
-import { TOUCH, initTouch } from './touch.js?v=318';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat, setGlove } from './art.js?v=318';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=319';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=319';
+import { gloves, gloveTypes, gloveById, gloveLabel, gloveTexture, drawGloveIcon } from './gloves.js?v=319';
+import { platform } from './platform.js?v=319';
+import * as THREE from './three.module.min.js?v=319';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=319';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=319';
+import { createOnline } from './online.js?v=319';
+import { TOUCH, initTouch } from './touch.js?v=319';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat, setGlove } from './art.js?v=319';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -499,7 +499,7 @@ const WD = {
   he: { name: 'HE Grenade', nade: true, price: 300, speed: 6.9, reward: 300, max: 1, col: '#4caf50', desc: 'Boom. Big damage in a small area.' },
   flash: { name: 'Flashbang', nade: true, price: 200, speed: 6.9, max: 2, col: '#e6f0ff', desc: 'Blinds anyone looking at it.' },
   smoke: { name: 'Smoke', nade: true, price: 300, speed: 6.9, max: 1, col: '#9aa0a6', desc: 'Wall of smoke for 18 s.' },
-  snow: { name: 'Snowball', nade: true, price: 500, speed: 6.9, max: 2, reward: 300, col: '#ffffff', desc: 'A MASSIVE snowball. Huge blast: anyone within 7 m is gone, and it still hurts from 11 m away. You can carry two.' },
+  snow: { name: 'Snowball', nade: true, price: 500, speed: 6.9, max: 10, reward: 300, col: '#ffffff', desc: 'A MASSIVE snowball. Huge blast: anyone within 7 m is gone, and it still hurts from 11 m away. You can carry TEN, and they never count towards your 4 other grenades.' },
   molly: { name: 'Molotov', nade: true, price: 400, speed: 6.9, max: 1, reward: 300, col: '#e0742a', desc: 'Bursts into flames. Burns an area for 7 s.' },
   // ---- five more guns (they sit before 'bomb' so the old guns keep their numbers in online play)
   trio: { name: 'Trio', slot: 'sec', price: 450, dmg: 24, rpm: 780, burst: 3, burstGap: 0.26, mag: 15, res: 90, reload: 2.1, speed: 6.7, inacc: 0.2, moveInacc: 1.0, airInacc: 4, pen: 0.5, range: 0.88, recoil: 0.4, rec: 7, reward: 300, tier: 1, snd: [2800, 0.11, 0.9], acc: '#d96a4a', patk: 'burst', first: 0.5, draw: 0.24, desc: 'Burst pistol: three quick shots per click. Laser accurate, barely any kick.' },
@@ -1506,7 +1506,7 @@ function priceOf(a, id) {
 function canBuy(a, id) {
   if (!a.alive || !gunOK(id)) return false;
   const p = priceOf(a, id); if (a.money < p) return false;
-  if (WD[id] && WD[id].nade) { const tot = a.nades.he + a.nades.flash + a.nades.smoke + a.nades.molly + (a.nades.snow | 0); return (a.nades[id] | 0) < WD[id].max && tot < 4; }
+  if (WD[id] && WD[id].nade) { const tot = a.nades.he + a.nades.flash + a.nades.smoke + a.nades.molly; return (a.nades[id] | 0) < WD[id].max && (id === 'snow' || tot < 4); }   // snowballs have their own bag of 10
   if (id === 'shield') return !a.shield;
   if (id === 'kevlar') return a.armor < 100;
   if (id === 'helm') return !(a.armor >= 100 && a.helmet);

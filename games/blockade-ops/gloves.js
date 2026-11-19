@@ -1,7 +1,7 @@
 // GLOVES (cosmetic only: they never change how strong you are). Five glove styles, four skins each, from Common to Legendary.
 // You wear one pair: the first-person hands show them, and so does the soldier in the menu.
 // Each pair is a small blocky pattern tile (painted here with plain rectangles, like everything else in the game) plus a cuff colour.
-import * as THREE from './three.module.min.js?v=318';
+import * as THREE from './three.module.min.js?v=319';
 
 export const gloveTypes = { sport: 'Sport Gloves', driver: 'Driver Gloves', wraps: 'Hand Wraps', moto: 'Moto Gloves', specialist: 'Specialist Gloves' };
 // base / alt / acc = the three pattern colours, cuff = the wrist band, mode = which pattern, glow = a soft shine for the legendary ones
