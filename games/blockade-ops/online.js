@@ -3,13 +3,13 @@
 //   * Everyone else is a CLIENT: they move and aim on their own machine, send what they shoot, and
 //     draw the match from the snapshots the host sends 20 times a second.
 //   * Data goes peer-to-peer (WebRTC through PeerJS). PeerJS Cloud is only used to introduce players.
-import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=319';
-import { platform } from './platform.js?v=319';
+import { Net, makeCode, cleanCode, MAX_PLAYERS } from './net.js?v=322';
+import { platform } from './platform.js?v=322';
 
 export function createOnline(X) {
   const { GS, MP, S, WD, $ } = X;
   const WID = Object.keys(WD);
-  const SL = ['prim', 'sec', 'knife', 'nade'], NS = ['he', 'flash', 'smoke', 'molly', 'snow'];
+  const SL = ['prim', 'sec', 'knife', 'nade'], NS = ['he', 'flash', 'smoke', 'molly', 'snow', 'snowrpg'];
   const STATES = ['menu', 'freeze', 'live', 'end', 'over'], CST = ['none', 'carried', 'dropped', 'planted', 'boom', 'defused'];
   const wi = (id) => WID.indexOf(id);
   const r2 = (v) => Math.round(v * 100) / 100;
@@ -170,7 +170,7 @@ export function createOnline(X) {
       case 'hit': hostHit(pid, a, d); break;
       case 'nade': {
         const ty = NS[d.ty | 0]; if (!ty || !a.alive || a.nades[ty] <= 0 || !Array.isArray(d.p) || !Array.isArray(d.v)) return;
-        a.nades[ty]--;
+        if (ty === 'snowrpg') { if (!(a.prim && a.prim.id === 'snowrpg')) return; } else a.nades[ty]--;   // a rocket comes from the launcher, not from the grenade bag
         const p = [num(d.p[0]), num(d.p[1]), num(d.p[2])], v = [clampN(num(d.v[0]), -30, 30), clampN(num(d.v[1]), -30, 30), clampN(num(d.v[2]), -30, 30)];
         X.spawnNade(a, ty, p, v, num(d.id), false);
         net.hostBroadcast({ t: 'nade', i: a.idx, ty: d.ty | 0, p, v, id: num(d.id) }, pid);

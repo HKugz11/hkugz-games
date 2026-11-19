@@ -946,6 +946,11 @@
    "holiday": false
   },
   {
+   "id": "snowrpg",
+   "slot": "prim",
+   "holiday": false
+  },
+  {
    "id": "frosty",
    "slot": "sec",
    "holiday": true

@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=319';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=319';
+import * as THREE from './three.module.min.js?v=322';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=322';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -867,6 +867,11 @@ export function buildGun(id, acc) {
       b(.05, .11, .03, 0, -.03, .32, C.dark); b(.04, .1, .045, 0, -.08, -.3, C.dark);
       b(.012, .04, .02, .018, .12, .04, C.dark); b(.012, .04, .02, -.018, .12, .04, C.dark); b(.01, .036, .012, 0, .12, -.24, C.dark);
       spec = { sy: 0.135, mz: [0, 0.02, -0.55], fore: [0, -0.13, -0.3], ads: [-0.46, 1.3] }; break;
+    case 'snowrpg':
+      cz(.056, .82, 0, .03, -.26, 0xcfdcea, 10); cz(.066, .1, 0, .03, .17, C.dark, 10); cz(.06, .06, 0, .03, -.66, A, 10);
+      cz(.057, .04, 0, .03, -.4, 0xffffff, 10); cz(.036, .1, 0, .03, -.7, 0xe8f2ff, 8); cz(.02, .05, 0, .03, -.77, 0xff8a2a, 6);
+      b(.04, .14, .05, 0, -.075, .02, C.dark, .15); b(.04, .12, .05, 0, -.07, -.3, C.dark); b(.03, .012, .22, 0, .092, -.2, C.dark); b(.012, .05, .02, 0, .115, -.1, C.dark); b(.012, .04, .02, 0, .112, -.4, C.dark);
+      spec = { sy: 0.09, mz: [0, 0.03, -0.82], grip: [0, -0.085, 0.02], fore: [0, -0.085, -0.3], ads: [-0.44, 1.2] }; break;
     case 'thumper':
       cz(.025, .74, 0, .035, -.34, C.dark); cz(.022, .52, 0, -.02, -.27, C.metal);
       cz(.042, .2, 0, -.022, -.37, C.wood, 8);
@@ -1174,7 +1179,7 @@ export function buildGun(id, acc) {
   const finishMesh = new THREE.Mesh(mergeParts(parts), gunMat); g.add(finishMesh);
   for (const e of extra) g.add(e);
   const mz = new THREE.Object3D(); mz.position.set(...spec.mz); g.add(mz);
-  const k = { raptor: 0.8, sentinel: 0.8, buzz: 0.84, thumper: 0.8, longbow: 0.8, chopper: 0.84, scatter: 0.8, carbine: 0.8, ranger: 0.8, dmr: 0.8, lmg: 0.78, brute: 0.84, ghost: 0.8, breaker: 0.8, jingle: 0.8 }[id] || 1;
+  const k = { raptor: 0.8, sentinel: 0.8, buzz: 0.84, thumper: 0.8, snowrpg: 0.78, longbow: 0.8, chopper: 0.84, scatter: 0.8, carbine: 0.8, ranger: 0.8, dmr: 0.8, lmg: 0.78, brute: 0.84, ghost: 0.8, breaker: 0.8, jingle: 0.8 }[id] || 1;
   if (k !== 1) { g.scale.setScalar(k); spec.sy *= k; }
   return { ...spec, g, mz, lArm, finishMesh };
 }

@@ -1,15 +1,15 @@
-import { displayWeapon, createHomeStage } from './showcase.js?v=319';
+import { displayWeapon, createHomeStage } from './showcase.js?v=322';
 // CORE STRIKE - 5v5 tactical toy-soldier shooter. No blood: eliminated players pop into cubes.
-import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=319';
-import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=319';
-import { gloves, gloveTypes, gloveById, gloveLabel, gloveTexture, drawGloveIcon } from './gloves.js?v=319';
-import { platform } from './platform.js?v=319';
-import * as THREE from './three.module.min.js?v=319';
-import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=319';
-import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=319';
-import { createOnline } from './online.js?v=319';
-import { TOUCH, initTouch } from './touch.js?v=319';
-import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat, setGlove } from './art.js?v=319';
+import { createCrateStage, createPreviewStage, weaponThumb } from './showcase.js?v=322';
+import { finishes, knives, rarities, applyFinish, drawSkinSwatch, drawSkinIcon, tickSkins, outfitSoldier, fxQuality, cases, stickers, drawSticker, applyStickers, costumes, drawCostumeIcon, XMAS} from './skins.js?v=322';
+import { gloves, gloveTypes, gloveById, gloveLabel, gloveTexture, drawGloveIcon } from './gloves.js?v=322';
+import { platform } from './platform.js?v=322';
+import * as THREE from './three.module.min.js?v=322';
+import { W, H, CS, G, ZONE, HG, hAt, hPos, zoneAt, cellOf, cellX, cellZ, WALKABLE, blocked, groundAt, rayWorld, clearLine, astar, SITES, ROUTES, MID_HOLDS, LURK, SPAWN, walk, nearestWalk, MAP, MAP_LIST, loadMap } from './map.js?v=322';
+import { initAudio, setVolume, setListener, setPlatformMuted, setFastForward, setMusic, SFX } from './audio.js?v=322';
+import { createOnline } from './online.js?v=322';
+import { TOUCH, initTouch } from './touch.js?v=322';
+import { buildWorld, junkify, setKnifeStyle, tpGunGeo, tpMenuArms, tpGunMenu, soldierParts, soldierPartsLite, tpArms, TP_MUZ, charMat, buildBomb, buildGun, fpMat, sleeveMat, SIDE_SLEEVE, ENV, disposeWorld, GFX, costumeKit, santaHat, setGlove } from './art.js?v=322';
 
 platform.onMute(setPlatformMuted);
 const $ = (id) => document.getElementById(id);
@@ -507,6 +507,7 @@ const WD = {
   brute: { name: 'Brute', slot: 'prim', price: 1650, dmg: 31, rpm: 660, auto: true, mag: 40, res: 120, reload: 3.0, speed: 6.2, inacc: 0.8, moveInacc: 2.2, airInacc: 7, pen: 0.72, range: 0.87, recoil: 0.85, rec: 8, reward: 600, tier: 2, snd: [2400, 0.14, 1.1], acc: '#a8472e', patk: 'smg', draw: 0.4, stagger: 0.25, desc: 'Heavy SMG: slower than the Buzz but hits harder. 40 rounds. $600 per kill.' },
   ghost: { name: 'Ghost', slot: 'prim', price: 3100, dmg: 30, rpm: 700, auto: true, mag: 30, res: 90, reload: 2.4, speed: 6.4, inacc: 0.26, moveInacc: 4.2, airInacc: 10, pen: 0.66, range: 0.96, recoil: 0.7, rec: 8, reward: 300, tier: 3, snd: [1200, 0.1, 0.7], acc: '#7a5aa8', quiet: true, patk: 'ghost', first: 0.25, draw: 0.35, desc: 'Suppressed rifle: does not give your position away. Light and quick, less damage than the Raptor.' },
   breaker: { name: 'Breaker', slot: 'prim', price: 2300, dmg: 17, pellets: 8, cone: 4.2, rpm: 300, mag: 8, res: 32, reload: 3.2, shell: 0.38, speed: 6.1, inacc: 0.4, moveInacc: 1.2, airInacc: 4, pen: 0.7, range: 0.6, recoil: 2.6, rec: 4, reward: 900, tier: 3, snd: [1350, 0.28, 1.5], acc: '#d4a02a', patk: 'cannon', stagger: 0.4, draw: 0.45, desc: 'Fast semi-auto shotgun: 8 pellets, quick follow-up shots. $900 per kill.' },
+  snowrpg: { name: 'Snow Launcher', slot: 'prim', price: 700, dmg: 100, rpm: 50, mag: 1, res: 6, reload: 2.6, launcher: true, col: '#ffffff', speed: 5.7, inacc: 0.3, moveInacc: 1, airInacc: 3, pen: 1, range: 0.9, recoil: 5, rec: 2, reward: 300, tier: 2, snd: [800, 0.42, 2.0], acc: '#8fd0ff', patk: 'cannon', draw: 0.55, desc: 'A cheap snowball ROCKET launcher. One rocket, then a slow reload; it goes off on the first wall, floor or enemy it touches. Anyone within about 4 m is gone, and it still hurts out to 6.5 m. You get 6 rockets.' },
   frosty: { name: 'Frosty Pistol', slot: 'sec', price: 600, dmg: 46, rpm: 600, auto: true, mag: 15, res: 90, reload: 1.9, speed: 6.7, inacc: 0.12, moveInacc: 0.8, airInacc: 3, pen: 0.55, range: 0.95, recoil: 0.35, rec: 8, first: 0.4, reward: 300, tier: 1, snd: [2200, 0.12, 0.9], acc: '#7fc4e8', patk: 'smg', stagger: 0.3, draw: 0.24, desc: 'HOLIDAY GIFT: a full-auto snowball pistol like a tiny machine gun. 15 rounds, hits hard, each snowball shoves the target a little. Laser accurate.' },
   jingle: { name: 'Tinsel Blaster', slot: 'prim', price: 1700, dmg: 12, pellets: 6, cone: 1.3, rpm: 400, auto: true, mag: 24, res: 72, reload: 2.7, speed: 6.2, inacc: 0.35, moveInacc: 1.4, airInacc: 5, pen: 0.6, range: 0.95, recoil: 1.2, rec: 5, reward: 900, tier: 2, snd: [1500, 0.2, 1.2], acc: '#d62828', patk: 'smg', stagger: 0.25, draw: 0.4, desc: 'HOLIDAY GIFT: a full-auto shotgun with long range. Sprays 6 tight pellets every shot, hold the button down.' },
   bomb: { name: 'BOMB BLAST', hidden: true },   // not a gun: only so a bomb kill has a name (keep it LAST: online play numbers the guns by their place in this list)
@@ -534,7 +535,7 @@ function showTwist() {
   twistTag.textContent = 'WILD TWIST: ' + t.name.toUpperCase(); twistTag.classList.remove('hidden');
   setTimeout(() => { if (GS.twist === t.id && GS.state !== 'menu') banner('WILD TWIST: ' + t.name.toUpperCase(), t.desc, '#fff', 3600); }, 3300);
 }
-const SIMPLE_GUNS = new Set(['p9', 'viper', 'trio', 'buzz', 'thumper', 'carbine', 'raptor', 'longbow', 'ranger', 'lmg']);
+const SIMPLE_GUNS = new Set(['p9', 'viper', 'trio', 'buzz', 'snowrpg', 'thumper', 'carbine', 'raptor', 'longbow', 'ranger', 'lmg']);
 const holidayOwn = (a, id) => a.isPlayer && !MP.on && skinState.rewarded.includes('gun:' + id);   // the player starts with the holiday guns once the gift is opened
 function gunOK(id) {
   const d = WD[id]; if (!d || !d.mag) return true;   // grenades, gear and the knife are always there
@@ -582,7 +583,7 @@ function nameTag(a, g) {
   tag.scale.set(1.3, 0.33, 1); tag.position.y = 2.2; tag.renderOrder = 999; g.add(tag); g.userData.nameTag = tag;
 }
 // What each gun looks like in a soldier's hands (the arms pose and the gun shape come from this class, see tpArms in art.js)
-const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', jingle: 'shotgun', frosty: 'pistol', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade', snow: 'nade' };
+const TPC = { p9: 'pistol', viper: 'pistol', revolver: 'revolver', tec: 'mpistol', buzz: 'smg', chopper: 'smg', thumper: 'shotgun', scatter: 'shotgun', raptor: 'rifle', sentinel: 'rifle', carbine: 'rifle', longbow: 'sniper', ranger: 'sniper', dmr: 'sniper', lmg: 'lmg', trio: 'pistol', duster: 'sawed', brute: 'smg', ghost: 'suppressed', breaker: 'shotgun', jingle: 'shotgun', snowrpg: 'lmg', frosty: 'pistol', knife: 'knife', he: 'nade', flash: 'nade', smoke: 'nade', molly: 'nade', snow: 'nade' };
 // A soldier is a few merged meshes: 2 legs (+2 shins in Pretty/Fast), body, head (Pretty/Fast) and ONE arms+gun mesh whose shape changes with the gun in hand.
 // Lite uses straight legs and a body that already includes the head; the knees are empty groups there.
 const shieldMats = { body: new THREE.MeshLambertMaterial({ color: 0x2c3a52, flatShading: true }), rim: new THREE.MeshLambertMaterial({ color: 0x14181f, flatShading: true }), glass: new THREE.MeshBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.3 }) };
@@ -887,14 +888,15 @@ function fireWeapon(a, cont) {   // cont: this is the 2nd / 3rd bullet of a burs
   const o = eyePos(a);
   const n = def.pellets || 1;
   let anyHit = false, d0 = null;
-  for (let i = 0; i < n; i++) {
+  if (def.launcher) { d0 = fwd(baseY, baseP).clone(); launchRocket(a, w.id, o, d0); }   // a rocket instead of a bullet
+  else for (let i = 0; i < n; i++) {
     const r = Math.sqrt(Math.random()) * (def.pellets ? def.cone : spread) * DEG + (def.pellets ? Math.random() * spread * 0.3 * DEG : 0);
     const th = Math.random() * Math.PI * 2;
     const d = fwd(baseY + Math.cos(th) * r, baseP + Math.sin(th) * r);
     if (i === 0) d0 = d.clone();
     if (traceShot(a, o, d, def, w.id, i === 0)) anyHit = true;
   }
-  if (MP.on && d0) { if (MP.role === 'host') MPH.shotFx(a, w.id, o, d0); else if (a.isPlayer) MPH.clientShot(a, w.id, o, d0); }
+  if (MP.on && d0 && !def.launcher) { if (MP.role === 'host') MPH.shotFx(a, w.id, o, d0); else if (a.isPlayer) MPH.clientShot(a, w.id, o, d0); }
   if (anyHit) a.hits++;
   if (def.quiet) SFX.suppressed(a.pos, a.isPlayer); else SFX.shot(def.snd, a.pos, a.isPlayer);
   noiseEvent(a.pos, def.quiet ? 22 : 45, a);
@@ -964,11 +966,11 @@ function damage(v, amt, att, part, wid, dir) {
   }
   if (!v.alive || v.protT > 0) return;
   if (att && att !== v && att.side === v.side && GS.mode !== 'range') return;
-  if (att && att !== v && wid !== 'bomb' && wid !== 'he' && wid !== 'molly' && wid !== 'snow' && shieldUp(v) && shieldFaces(v, att.pos)) {   // the ballistic shield catches it
+  if (att && att !== v && wid !== 'bomb' && wid !== 'he' && wid !== 'molly' && wid !== 'snow' && wid !== 'snowrpg' && shieldUp(v) && shieldFaces(v, att.pos)) {   // the ballistic shield catches it
     if (v.isPlayer || att.isPlayer) SFX.armorHit();
     v.tagT = Math.max(v.tagT, 0.1); return;
   }
-  if (att && att !== v && GS.mode === 'comp' && GS.state === 'live' && wid !== 'bomb' && wid !== 'he' && wid !== 'molly' && wid !== 'snow') {   // no shooting out of your own spawn room
+  if (att && att !== v && GS.mode === 'comp' && GS.state === 'live' && wid !== 'bomb' && wid !== 'he' && wid !== 'molly' && wid !== 'snow' && wid !== 'snowrpg') {   // no shooting out of your own spawn room
     const z = zoneAt(att.pos.x, att.pos.z);
     if (z === (att.side === 0 ? 'T' : 'D') && zoneAt(v.pos.x, v.pos.z) !== z) { if (att.isPlayer && GS.time - (GS.spawnMsgT || -9) > 4) { GS.spawnMsgT = GS.time; toast('Move out of your spawn to fight'); } return; }
   }
@@ -1086,8 +1088,14 @@ function melee(a, heavy) {
 
 // grenades
 const nadeMeshes = {};
+const ROCKET_SPEED = 28;
+function launchRocket(a, id, o, d) {   // the Snow Launcher: a rocket is a grenade-like projectile (so online play carries it too) that flies nearly straight
+  const p = o.clone().addScaledVector(d, 0.9), tv = [d.x * ROCKET_SPEED, d.y * ROCKET_SPEED, d.z * ROCKET_SPEED];
+  if (MP.role === 'client') { const nid = MPH.clientNade(a, id, p.x, p.y, p.z, tv[0], tv[1], tv[2]); spawnNade(a, id, [p.x, p.y, p.z], tv, nid, true); }
+  else { const n = spawnNade(a, id, [p.x, p.y, p.z], tv, ++MP.nid, false); if (MP.role === 'host') MPH.nadeEvent(n); }
+}
 function spawnNade(a, type, p, v, id, fake) {
-  const m = new THREE.Mesh(geoBox, new THREE.MeshLambertMaterial({ color: WD[type].col })); if (type === 'snow') m.scale.set(0.42, 0.42, 0.42); else m.scale.set(0.12, 0.15, 0.12); m.castShadow = true; scene.add(m);
+  const m = new THREE.Mesh(geoBox, new THREE.MeshLambertMaterial({ color: WD[type].col })); if (type === 'snow') m.scale.set(0.42, 0.42, 0.42); else if (type === 'snowrpg') m.scale.set(0.16, 0.16, 0.6); else m.scale.set(0.12, 0.15, 0.12); m.castShadow = true; scene.add(m);
   const n = { type, x: p[0], y: p[1], z: p[2], vx: v[0], vy: v[1], vz: v[2], t: 0, owner: a, m, still: 0, id, fake: !!fake };
   GS.nades.push(n); return n;
 }
@@ -1106,6 +1114,20 @@ function throwNade(a, type, dir, speed) {
 function updateNades(dt) {
   for (let i = GS.nades.length - 1; i >= 0; i--) {
     const n = GS.nades[i]; n.t += dt;
+    if (n.type === 'snowrpg') {   // a rocket: flies almost straight, goes off on a wall, the ground or the first enemy it touches
+      let hit = false; const sub = Math.max(4, Math.ceil(Math.hypot(n.vx, n.vy, n.vz) * dt / 0.25)), h = dt / sub;   // small steps, so a rocket can never skip over a wall or a soldier
+      for (let s = 0; s < sub && !hit; s++) {
+        n.vy -= 1.8 * h;
+        const nx = n.x + n.vx * h, ny = n.y + n.vy * h, nz = n.z + n.vz * h;
+        if (hPos(nx, nz) > ny - 0.04) { hit = true; break; }
+        n.x = nx; n.y = ny; n.z = nz;
+        for (const e of GS.actors) { if (!e.alive || e === n.owner || (e.side === n.owner.side && GS.mode !== 'range')) continue; if (Math.hypot(e.pos.x - n.x, e.pos.z - n.z) < 0.65 && n.y > e.pos.y - 0.05 && n.y < e.pos.y + 1.85) { hit = true; break; } }
+      }
+      n.m.position.set(n.x, n.y, n.z); n.m.lookAt(n.x + n.vx, n.y + n.vy, n.z + n.vz);
+      if (!LITE || (i & 1)) burst(n.x - n.vx * 0.02, n.y, n.z - n.vz * 0.02, 1, 0.7, SNOWCOL, 0.1, 0.5, 2, 0);   // a little white trail
+      if (hit || n.t > 5) { if (!n.fake) { detonate(n); if (MP.role === 'host') MPH.detEvent(n); } scene.remove(n.m); n.m.material.dispose(); GS.nades.splice(i, 1); }
+      continue;
+    }
     const sub = 4, h = dt / sub;
     for (let s = 0; s < sub; s++) {
       n.vy -= 15 * h;
@@ -1137,17 +1159,18 @@ function detonate(n, fxOnly) {
       damage(e, hit * (e === n.owner ? 0.5 : 1), n.owner, 'body', 'he', c.clone().sub(p).normalize());
     }
     if (!fxOnly) noiseEvent(p, 50, n.owner);
-  } else if (n.type === 'snow') {
+  } else if (n.type === 'snow' || n.type === 'snowrpg') {
+    const rk = n.type === 'snowrpg', R1 = rk ? 3.8 : 7, R2 = rk ? 6.6 : 11.5;   // the launcher's rocket is a smaller blast than the big snowball
     // a MASSIVE snowball: a big white blast, one shot inside 7 m, still hurts out to 11 m
     explosionFx(p, true, 0xeaf4ff); SFX.boom(p, true); GS.shake = Math.max(GS.shake, 0.9 / (1 + GS.player.pos.distanceTo(p) / 9));
     burst(p.x, p.y + 0.3, p.z, LITE ? 36 : 90, 15, ['#ffffff', '#eef6ff', '#cfe6ff', '#aad2ff'], 0.16, 1.1, 4, 3);
     for (const e of GS.actors) {
       if (!e.alive || fxOnly) continue;
       const c = chestPos(e), d = c.distanceTo(p);
-      if (d > 11.5 || !losClear(p, c, false)) continue;
+      if (d > R2 || !losClear(p, c, false)) continue;
       if (e !== n.owner && e.side === n.owner.side && GS.mode !== 'range') continue;
-      const hit = d <= 7 ? 600 : 130 * Math.pow(1 - (d - 7) / 4.5, 1.1);
-      damage(e, hit * (e === n.owner ? 0.5 : 1), n.owner, 'body', 'snow', c.clone().sub(p).normalize());
+      const hit = d <= R1 ? 600 : 130 * Math.pow(1 - (d - R1) / (R2 - R1), 1.1);
+      damage(e, hit * (e === n.owner ? 0.5 : 1), n.owner, 'body', n.type, c.clone().sub(p).normalize());
     }
     if (!fxOnly) noiseEvent(p, 60, n.owner);
   } else if (n.type === 'flash') {
@@ -3150,7 +3173,7 @@ function updateBoard() {
 }
 
 // buy menu
-const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver', 'frosty']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker', 'jingle']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['GEAR', ['kevlar', 'helm', 'kit', 'shield']], ['GRENADES', ['he', 'flash', 'smoke', 'molly', 'snow']]];
+const BUY = [['PISTOLS', ['p9', 'tec', 'trio', 'viper', 'duster', 'revolver', 'frosty']], ['SMG / SHOTGUN', ['buzz', 'brute', 'chopper', 'thumper', 'scatter', 'breaker', 'jingle']], ['RIFLES', ['carbine', 'raptor', 'sentinel', 'ghost', 'lmg']], ['SNIPERS', ['ranger', 'dmr', 'longbow']], ['LAUNCHER', ['snowrpg']], ['GEAR', ['kevlar', 'helm', 'kit', 'shield']], ['GRENADES', ['he', 'flash', 'smoke', 'molly', 'snow']]];
 // Original lightweight side profiles. Inline SVG inherits each card's purchase-state color.
 function buyIcon(id) {
  const pistol='M35 20H111V29H72L65 35H55L50 53H32L39 32H31V24Z';
@@ -3159,7 +3182,7 @@ function buyIcon(id) {
  p9:pistol, frosty:pistol, trio:pistol+' M88 17H101V20H88Z', viper:'M28 17H119V30H71L61 37L54 55H32L40 31H28Z', tec:'M45 19H98V25H120V30H82V51H70V32H61L56 51H41L47 29Z',
  revolver:'M25 23H59V18H78V21H124V28H79L72 35H57L51 53H31L39 32H25Z',duster:'M30 25H131V31H62L50 43H27L38 32Z',
  buzz:'M17 28L40 20H105V24H130V30H84V51H71V32H56L49 47H38L41 32H17Z',brute:rifle,chopper:rifle,
- thumper:'M12 30L42 22H89V24H148V29H93V35H56L39 45H14Z',scatter:'M12 29L37 22H145V28H100V34H72L65 49H52L54 33L15 42Z',breaker:rifle+' M110 31H143V36H110Z',jingle:rifle+' M110 31H143V36H110Z',
+ snowrpg:'M10 27H44V22H132L143 20V36L132 34H44V38H10Z M58 34V49H68V34Z M104 34V45H114V34Z',thumper:'M12 30L42 22H89V24H148V29H93V35H56L39 45H14Z',scatter:'M12 29L37 22H145V28H100V34H72L65 49H52L54 33L15 42Z',breaker:rifle+' M110 31H143V36H110Z',jingle:rifle+' M110 31H143V36H110Z',
  carbine:rifle,raptor:rifle+' M81 34L88 48L98 53L92 57L81 54L74 36Z',sentinel:rifle+' M63 13H98V17H63Z',ghost:rifle+' M139 22H160V32H139Z',lmg:rifle+' M75 33H99V53H75Z M126 30L119 53H123L130 34L137 53H141L134 30Z',
  ranger:'M10 29L39 23H117V25H157V28H111V33H64L46 41H12Z M65 15H103V21H65Z M73 20H77V24H73Z M93 20H97V24H93Z',
  dmr:rifle+' M63 13H105V19H63Z M70 18H75V22H70Z M94 18H99V22H94Z',
@@ -4529,7 +4552,7 @@ if (!PORTAL) {
     document.body.appendChild(t); setTimeout(() => t.remove(), 4500);
   });
 }
-if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, showRankUp, saveRank, toggleMap, MARKS, shieldUp, buy, damage, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, QC, RUNGS, applyRung, qualityTick, GPUQ, GPU_NAME, WEAK_GPU, drawFrame, blitMat, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, get padMode() { return padMode; } };
+if (DEBUG) window.__cs = { plantSite, endMatch, RANK, rankInfo, settleRank, rankEndHTML, showRankUp, saveRank, toggleMap, MARKS, shieldUp, buy, damage, undoBuy, gunOK, setNewBots(v) { NB = !!v; }, botTakeover, get NAV() { return NAV; }, DBGCAM, get W() { return W; }, get H() { return H; }, CS, ZONE, MAP_LIST, MP, get MPH() { return MPH; }, renderer, scene, vmScene, vmCam, QC, RUNGS, applyRung, qualityTick, GPUQ, GPU_NAME, WEAK_GPU, drawFrame, blitMat, GS, S, step, startMatch, keys, mouse, pressed, WD, buy, camera, THREE, D, kill, toMenu, throwNade, damage, eyePos, SITES, zoneAt, cellX, cellZ, pad, padStep, padLayer, updateHUD, updateCamera, VMS, ironSights, fireWeapon, equip, newGun, get padMode() { return padMode; } };
 
 MPH = createOnline({ GS, MP, S, WD, $, rankBadgeHTML, addPing, get worldW() { return W * CS; }, get worldH() { return H * CS; }, MAP_LIST, NAMES, shuffle, pick, angDiff, V3: (x, y, z) => new THREE.Vector3(x, y, z), saveS, syncSeg, initAudio,
   makeSoldier, botTakeover, shotDamage, undoBuy, plantSite, feedText, banner, toast, slotOK, zoneAt, curW, eyePos, chestPos, damage, footsteps, inBuyZone, buy, startMatchMP, resetToMenu, toMenu,
