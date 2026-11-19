@@ -1,6 +1,6 @@
 // Core Strike art, Krunker-style: crisp pixel textures, clean blocky geometry, bright colours.
-import * as THREE from './three.module.min.js?v=312';
-import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=312';
+import * as THREE from './three.module.min.js?v=318';
+import { W, H, CS, G, ZONE, HG, hAt, SITES, MAP } from './map.js?v=318';
 
 // Lite mode (Chromebooks): game.js sets GFX.lite before the world is built. No sky dome or skyline, 1-draw-call soldier parts.
 export const GFX = { lite: false };
@@ -641,8 +641,9 @@ export function tpMenuArms(side, grip, support) {
     const wrist = hand.clone().lerp(elbow, .15);
     parts.push(pt.seg(shoulder, elbow, .145, .15, palette.shirt),
       pt.seg(elbow, wrist, .123, .13, palette.shirt),
-      pt.seg(wrist, hand, .106, .11, palette.glove),
-      pt.box(.108, .104, .11, hand.x, hand.y, hand.z, palette.glove));
+      pt.seg(wrist, hand, .106, .11, GLOVE.on ? GLOVE.base : palette.glove),
+      pt.box(.108, .104, .11, hand.x, hand.y, hand.z, GLOVE.on ? GLOVE.base : palette.glove));
+    if (GLOVE.on) parts.push(pt.seg(wrist.clone().lerp(elbow, .55), wrist, .14, .145, GLOVE.cuff));   // the glove's cuff
   }
   arm(1, grip);
   arm(-1, support || V(-.35, -.56, -.065));
@@ -725,6 +726,15 @@ export function fpMat(key, acc) {
   return (FPM[k] = new THREE.MeshLambertMaterial({ color: col, flatShading: true }));
 }
 export const sleeveMat = new THREE.MeshLambertMaterial({ color: 0xd9732e, flatShading: true });
+// GLOVES: the hands of the first-person arms (drawn on top of the sleeve only while you wear a pair) and the menu soldier's hands
+export const gloveMat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), gloveCuffMat = new THREE.MeshLambertMaterial({ color: 0x222222, flatShading: true });
+gloveMat.visible = gloveCuffMat.visible = false;
+export const GLOVE = { on: false, type: 'sport', base: 0, cuff: 0 };
+export function setGlove(g, tex) {   // g = a glove from gloves.js (or null for bare sleeves); tex = its pattern tile. The viewmodels are rebuilt by the caller (the style changes the cuff).
+  GLOVE.on = !!g; gloveMat.visible = gloveCuffMat.visible = !!g;
+  if (!g) { gloveMat.map = null; gloveMat.emissive.setHex(0); gloveMat.needsUpdate = true; return; }
+  GLOVE.type = g.type; GLOVE.base = g.base; GLOVE.cuff = g.cuff; gloveMat.map = tex || null; gloveMat.emissive.setHex(g.glow || 0); gloveMat.emissiveIntensity = 0.22; gloveMat.needsUpdate = true; gloveCuffMat.color.setHex(g.cuff);
+}
 const gunMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
 const dotMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a });
 const glassMat = new THREE.MeshBasicMaterial({ color: 0x9fd0ff, transparent: true, opacity: 0.15, depthWrite: false });
@@ -1126,14 +1136,31 @@ export function buildGun(id, acc) {
   }
   const g = new THREE.Group();
   // each arm is ONE simple rectangle (team-coloured sleeve) that comes up from the bottom of the screen and holds the gun
-  const armBox = (from, dir, w, len) => {
-    const d = dir.clone().normalize();
+  const armBox = (from, dir, w, len, kind = 'arm') => {
+    const d = dir.clone().normalize(), grp = new THREE.Group(); grp.userData.arm = true;
     const s2 = pt.seg(from, from.clone().addScaledVector(d, len), w, w, 0), sm = new THREE.Mesh(GEO.box, sleeveMat);
-    sm.matrixAutoUpdate = false; sm.matrix.copy(s2[1]); g.add(sm); return sm;
+    sm.matrixAutoUpdate = false; sm.matrix.copy(s2[1]); grp.add(sm); g.add(grp);
+    // gloves (they only show while you wear a pair): the hand, then the cuff, and a knuckle guard on some styles
+    const at = (t) => from.clone().addScaledVector(d, t), bit = (a, b, ww, mat) => { const s = pt.seg(a, b, ww, ww, 0), m = new THREE.Mesh(GEO.box, mat); m.matrixAutoUpdate = false; m.matrix.copy(s[1]); grp.add(m); return m; };
+    if (kind === 'fist') bit(from, at(len), w * 1.12, gloveMat);
+    else if (kind === 'arm') {
+      const ty = GLOVE.type, cl = { sport: 0.22, driver: 0.07, wraps: 0.13, moto: 0.17, specialist: 0.15 }[ty] || 0.12;
+      bit(at(-0.025), at(0.125), w * 1.1, gloveMat);                                  // the hand
+      bit(at(0.115), at(0.115 + cl), w * 1.2, gloveCuffMat);                          // the cuff
+      if (ty === 'sport') bit(at(0.115 + cl * 0.5), at(0.115 + cl * 0.5 + 0.035), w * 1.24, gloveMat);   // a pattern band round the cuff
+      if (ty === 'wraps') { bit(at(0.04), at(0.06), w * 1.15, gloveCuffMat); bit(at(0.085), at(0.1), w * 1.15, gloveCuffMat); }   // cloth straps
+      if (ty === 'moto' || ty === 'specialist') { const up = V(0, 1, 0).addScaledVector(d, -d.y).normalize(), q = at(0.025).addScaledVector(up, w * 0.5); bit(q.clone().addScaledVector(d, -0.03), q.clone().addScaledVector(d, 0.035), w * 0.4, gloveCuffMat); }   // knuckle guard
+    }
+    return grp;
   };
   let lArm = null;   // the off hand's arm: game.js hides it while the ballistic shield is up (that hand is holding the shield)
   const noHands = ['he', 'flash', 'smoke', 'molly', 'snow'].includes(id);
-  if (id === 'knife') armBox(V(0, -0.005, 0.045), V(0.18, -0.5, 0.5), 0.085, 1.2);
+  if (id === 'knife' && KNIFE_STYLE === 'karambit') {   // held sideways like in CS2: a fist around the handle and the arm coming in from the bottom right
+    armBox(V(0, -0.012, 0.035), V(0, 0, 1), 0.078, 0.135, 'fist');                                // the fist
+    for (let k = 0; k < 4; k++) armBox(V(0, 0.034, 0.05 + k * 0.032), V(0, 0.3, 0.02), 0.03, 0.03, 'fist');   // knuckles over the grooves
+    armBox(V(0, -0.02, 0.15), V(0.78, -0.5, -0.36), 0.095, 1.2);                                  // the arm
+  }
+  else if (id === 'knife') armBox(V(0, -0.005, 0.045), V(0.18, -0.5, 0.5), 0.085, 1.2);
   else if (noHands) armBox(V(0, -0.05, -0.02), V(0.18, -0.5, 0.5), 0.09, 1.2);
   else if (spec.pistol) { armBox(V(0.004 * spec.hs, 0.02 * spec.hs, 0.03 * spec.hs), V(0.12, -0.8, 0.5), 0.092 * spec.hs, 1.3)
     lArm = armBox(V(-0.012 * spec.hs, -0.012 * spec.hs, 0.012 * spec.hs), V(-0.32, -0.8, 0.5), 0.09 * spec.hs, 1.3); }

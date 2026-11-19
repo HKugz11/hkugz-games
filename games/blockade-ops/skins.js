@@ -1,6 +1,6 @@
 // Weapon skins with real themes. Every skin colours the PARTS of a gun on its own (body, barrel, stock, grip + magazine, shiny metal trim, edge highlights, dark details),
 // adds a crisp blocky pattern in a small shader (camo, stripes, circuit lines, scales, stars, cracks, carbon, ice, pearl), and the rarer ones glow, shine and sparkle.
-import * as THREE from './three.module.min.js?v=312';
+import * as THREE from './three.module.min.js?v=318';
 
 // CHRISTMAS SEASON: on by itself Nov 15 - Jan 2 (any year). ?xmas=1 forces it on (to preview), ?xmas=0 forces it off. Same remembered setting ('hk-xmas') as the hub's Christmas theme.
 export const XMAS = (() => {
@@ -315,6 +315,10 @@ export const cases = [
     knives: true, finishes: ['dragon', 'tiger', 'cobra', 'toxic', 'plasma', 'magma', 'obsidian', 'gold', 'galaxy', 'aurora', 'prism', 'diamondice'], odds: { rare: 45, epic: 35, legendary: 20 } },
   { id: 'costume', kind: 'costume', name: 'Costume Case', price: 200, tint: 0xb64cd6, sub: 'Silly outfits for your soldier: Bunny Pajamas, Moo Cow, Banana, Shark Hoodie, Dino Onesie and the legendary Unicorn Onesie!',
     pool: ['bunny', 'cow', 'banana', 'shark', 'dino', 'unicorn'], odds: { common: 45, rare: 30, epic: 18, legendary: 7 } },
+  { id: 'gloves', kind: 'glove', name: 'Glove Case', price: 400, tint: 0x2f6fb0, sub: 'Twenty pairs of gloves for your hands: Sport, Driver, Hand Wraps, Moto and Specialist gloves, from Desert Dust up to the legendary Blue Steel, Gold Rush, Hyperspace, Moon Weave and Sunset Fade. You see them on your own hands in the game.',
+    pool: ['dust', 'convoy', 'cloth', 'jungle', 'woodland', 'arctic', 'racing', 'skullwrap', 'boom', 'emerald', 'vice', 'cobra', 'ruby', 'polygon', 'reddragon', 'hyper', 'moonweave', 'sunsetfade', 'goldrush', 'bluesteel'], odds: { common: 50, rare: 30, epic: 15, legendary: 5 } },
+  { id: 'gloves2', kind: 'glove', name: 'Elite Glove Case', price: 900, tint: 0x1b1b22, sub: 'No common gloves! Rare or better only, with a much bigger chance of a legendary pair (Blue Steel, Gold Rush, Hyperspace, Moon Weave or Sunset Fade).',
+    pool: ['arctic', 'racing', 'skullwrap', 'boom', 'emerald', 'vice', 'cobra', 'ruby', 'polygon', 'reddragon', 'hyper', 'moonweave', 'sunsetfade', 'goldrush', 'bluesteel'], odds: { rare: 40, epic: 38, legendary: 22 } },
   { id: 'holiday', kind: 'skin', seasonal: true, name: 'Holiday Case', price: 50, tint: 0xc62828, sub: 'Seven holiday skins: Candy Cane, Gingerbread, Holly Jolly, Ornament, Snowflake and the two legendaries, Northern Lights and Borealis. Each fits one random gun. Available Nov 15 through Jan 2.',
     finishes: ['candycane', 'gingerbread', 'holly', 'ornament', 'snowflake', 'northernlights', 'borealis'], odds: { common: 35, rare: 35, epic: 15, legendary: 15 } },
   { id: 'holidaycos', kind: 'costume', holiday: true, name: 'Holiday Costume Case', price: 120, tint: 0x1f8a4c, sub: 'Christmas outfits for your soldier: Elf Suit, Reindeer Suit and the epic Snowman.',

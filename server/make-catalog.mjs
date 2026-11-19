@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 const GAME = process.env.GAME_DIR || 'C:/Users/hyrum/core-strike-crazygames/game';
 const skins = await import(pathToFileURL(path.join(GAME, 'skins.js')).href);
+const gloves = await import(pathToFileURL(path.join(GAME, 'gloves.js')).href);
 const src = fs.readFileSync(path.join(GAME, 'game.js'), 'utf8');
 const guns = [];
 for (const m of src.matchAll(/^  (\w+): \{ name: '[^']*', slot: '(prim|sec)'[^\n]*$/gm)) {
@@ -19,9 +20,10 @@ const cat = {
   finishes: skins.finishes.map(f => ({ id: f.id, rarity: f.rarity || null, weight: f.weight || 1, rp: f.rp === undefined ? undefined : f.rp, holiday: !!f.holiday, weapon: f.weapon || undefined })),
   knives: skins.knives.map(k => ({ id: k.id, rarity: k.rarity || null, gift: !!k.gift })),
   costumes: skins.costumes.map(c => ({ id: c.id, rarity: c.rarity, holiday: !!c.holiday })),
+  gloves: gloves.gloves.map(g => ({ id: g.id, rarity: g.rarity, type: g.type })),
   stickers: skins.stickers.map(s => ({ id: s.id, rarity: s.rarity })),
   cases: skins.cases.map(c => ({ id: c.id, kind: c.kind, price: c.price, odds: c.odds, finishes: c.finishes, pool: c.pool, knives: !!c.knives, slot: c.slot || null, holiday: !!(c.holiday || c.seasonal) })),
   guns
 };
 fs.writeFileSync(path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), 'vault-catalog.json'), JSON.stringify(cat, null, 1));
-console.log('vault-catalog.json written:', cat.finishes.length, 'finishes,', cat.knives.length, 'knives,', cat.costumes.length, 'costumes,', cat.stickers.length, 'stickers,', cat.cases.length, 'cases,', guns.length, 'guns');
+console.log('vault-catalog.json written:', cat.finishes.length, 'finishes,', cat.knives.length, 'knives,', cat.costumes.length, 'costumes,', cat.gloves.length, 'gloves,', cat.stickers.length, 'stickers,', cat.cases.length, 'cases,', guns.length, 'guns');

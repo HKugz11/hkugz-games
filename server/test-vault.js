@@ -68,6 +68,22 @@ test('vault: migrate once, open cases, duplicates refund, holiday case is season
   } finally { await s.close(); }
 });
 
+test('vault: glove cases only roll gloves (Elite = rare or better), a pair is kept, sold, gifted and listed like the other items', async () => {
+  const s = await boot({ xmas: true });
+  try {
+    const a = await s.user('Gwen'); await s.post('/api/vault/migrate', { coins: 6000, items: ['glove:bluesteel', 'glove:nope', 'glove:dust'] }, a.token);
+    const cat = require('./vault-catalog.json'), ids = new Set(cat.gloves.map(g => g.id)), rar = Object.fromEntries(cat.gloves.map(g => [g.id, g.rarity]));
+    assert.equal(cat.gloves.length, 20); assert.equal(cat.gloves.filter(g => g.rarity === 'legendary').length, 5);
+    const v0 = (await s.post('/api/vault', {}, a.token)).json.items; assert.equal(v0['glove:bluesteel'], 1); assert.equal(v0['glove:dust'], 1); assert.equal(v0['glove:nope'], undefined, 'an unknown pair is refused');
+    for (let i = 0; i < 8; i++) { const r = await s.post('/api/vault/open', { case: 'gloves' }, a.token); assert.equal(r.status, 200); const p = r.json.prize; assert.equal(p.kind, 'glove'); assert.ok(ids.has(p.id), p.id); assert.equal(p.item, 'glove:' + p.id); assert.equal(p.rarity, rar[p.id]); }
+    for (let i = 0; i < 3; i++) { const p = (await s.post('/api/vault/open', { case: 'gloves2' }, a.token)).json.prize; assert.equal(p.kind, 'glove'); assert.notEqual(rar[p.id], 'common', 'the Elite case has no commons'); }
+    const v = (await s.post('/api/vault', {}, a.token)).json; assert.ok(Object.keys(v.items).some(k => k.startsWith('glove:')));
+    const sold = await s.post('/api/vault/sell', { item: 'glove:bluesteel' }, a.token); assert.equal(sold.status, 200); assert.equal(sold.json.got, 525, 'a legendary pair sells like any legendary');
+    const lst = await s.post('/api/market/list', { item: 'glove:dust', price: 40 }, a.token); assert.equal(lst.status, 200);
+    const br = await s.post('/api/market/browse', { kind: 'glove' }, a.token); assert.ok(br.json.listings.every(l => l.item.startsWith('glove:')) && br.json.listings.length >= 1);
+  } finally { await s.close(); }
+});
+
 test('vault: pistol cases only roll pistols, costume cases only costumes, sticker packs keep nothing', async () => {
   const s = await boot({ xmas: true });
   try {

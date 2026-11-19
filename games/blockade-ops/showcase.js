@@ -1,7 +1,8 @@
 // Small 3D stages that live in their own little canvases: the home-screen soldier + weapon, and the skin-crate opening.
-import * as THREE from './three.module.min.js?v=312';
-import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=312';
-import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=312';
+import * as THREE from './three.module.min.js?v=318';
+import { soldierParts, tpArms, charMat, buildGun, sleeveMat, setKnifeStyle, KNIFE_STYLE, costumeKit } from './art.js?v=318';
+import { gloveIconTexture } from './gloves.js?v=318';
+import { applyFinish, tickSkins, applyStickers, stickerTexture, costumeTexture, outfitSoldier } from './skins.js?v=318';
 
 function makeStage(canvas, fov, camPos, lookAt) {
   let r;
@@ -44,7 +45,7 @@ export function displayWeapon(item, accent) {
   let b;
   if (item.knife) { const prev = KNIFE_STYLE; setKnifeStyle(item.knife); b = buildGun('knife', accent); setKnifeStyle(prev); }
   else b = buildGun(item.gun, accent);
-  for (const c of b.g.children) if (c.material === sleeveMat) c.visible = false;
+  for (const c of b.g.children) if (c.material === sleeveMat || c.userData.arm) c.visible = false;
   if (item.finish) applyFinish(b.finishMesh, item.finish, item.knife ? 'knife' : undefined, item.gun);
   if (item.stickers) applyStickers(b.finishMesh, item.stickers);
   b.g.userData.grip = new THREE.Vector3(...(b.grip || (item.knife ? [0, -.004, .082] : [0, -.08, .065])));
@@ -192,7 +193,7 @@ export function createCrateStage(canvas) {
     for (const s of [glow, burst, halo, floorGlow]) s.material.color.setHex(hex);
     light.color.setHex(hex); bits.forEach((b) => b.m.material.color.setHex(hex)); rings.forEach((r) => r.material.color.setHex(hex)); rayMeshes.forEach((m) => m.material.color.setHex(hex));
     let w, sc;
-    if (prize.s || prize.c) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({ map: prize.s ? stickerTexture(prize.s.id) : costumeTexture(prize.c.id), transparent: true, side: THREE.DoubleSide, alphaTest: 0.3 })); pl.userData.mesh = pl; w = pl; sc = 1.0; }
+    if (prize.s || prize.c || prize.g) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({ map: prize.s ? stickerTexture(prize.s.id) : prize.g ? gloveIconTexture(prize.g.id) : costumeTexture(prize.c.id), transparent: true, side: THREE.DoubleSide, alphaTest: 0.3 })); pl.userData.mesh = pl; w = pl; sc = 1.0; }
     else { const item = prize.k ? { knife: prize.k.id } : prize.wid === 'knife' ? { knife: 'combat', finish: prize.f } : { gun: prize.wid || 'raptor', finish: prize.f }; w = displayWeapon(item, 0x3a3f44); sc = prize.k || prize.wid === 'knife' ? 2.6 : 2.0; w.position.z = 0.3; }
     const g = new THREE.Group(); g.add(w); g.scale.setScalar(sc); holder.add(g);
     run = { t: 0, ticks: 0, popped: false, shown: false, sfx, done, rank, build: 1.05 + rank * 0.2 };

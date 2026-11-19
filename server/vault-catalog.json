@@ -328,6 +328,108 @@
    "holiday": true
   }
  ],
+ "gloves": [
+  {
+   "id": "dust",
+   "rarity": "common",
+   "type": "sport"
+  },
+  {
+   "id": "convoy",
+   "rarity": "common",
+   "type": "driver"
+  },
+  {
+   "id": "cloth",
+   "rarity": "common",
+   "type": "wraps"
+  },
+  {
+   "id": "jungle",
+   "rarity": "common",
+   "type": "moto"
+  },
+  {
+   "id": "woodland",
+   "rarity": "common",
+   "type": "specialist"
+  },
+  {
+   "id": "arctic",
+   "rarity": "rare",
+   "type": "sport"
+  },
+  {
+   "id": "racing",
+   "rarity": "rare",
+   "type": "driver"
+  },
+  {
+   "id": "skullwrap",
+   "rarity": "rare",
+   "type": "wraps"
+  },
+  {
+   "id": "boom",
+   "rarity": "rare",
+   "type": "moto"
+  },
+  {
+   "id": "emerald",
+   "rarity": "rare",
+   "type": "specialist"
+  },
+  {
+   "id": "vice",
+   "rarity": "epic",
+   "type": "sport"
+  },
+  {
+   "id": "cobra",
+   "rarity": "epic",
+   "type": "driver"
+  },
+  {
+   "id": "ruby",
+   "rarity": "epic",
+   "type": "wraps"
+  },
+  {
+   "id": "polygon",
+   "rarity": "epic",
+   "type": "moto"
+  },
+  {
+   "id": "reddragon",
+   "rarity": "epic",
+   "type": "specialist"
+  },
+  {
+   "id": "hyper",
+   "rarity": "legendary",
+   "type": "sport"
+  },
+  {
+   "id": "moonweave",
+   "rarity": "legendary",
+   "type": "driver"
+  },
+  {
+   "id": "sunsetfade",
+   "rarity": "legendary",
+   "type": "wraps"
+  },
+  {
+   "id": "goldrush",
+   "rarity": "legendary",
+   "type": "moto"
+  },
+  {
+   "id": "bluesteel",
+   "rarity": "legendary",
+   "type": "specialist"
+  }
+ ],
  "stickers": [
   {
    "id": "star",
@@ -580,6 +682,72 @@
     "shark",
     "dino",
     "unicorn"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "gloves",
+   "kind": "glove",
+   "price": 400,
+   "odds": {
+    "common": 50,
+    "rare": 30,
+    "epic": 15,
+    "legendary": 5
+   },
+   "pool": [
+    "dust",
+    "convoy",
+    "cloth",
+    "jungle",
+    "woodland",
+    "arctic",
+    "racing",
+    "skullwrap",
+    "boom",
+    "emerald",
+    "vice",
+    "cobra",
+    "ruby",
+    "polygon",
+    "reddragon",
+    "hyper",
+    "moonweave",
+    "sunsetfade",
+    "goldrush",
+    "bluesteel"
+   ],
+   "knives": false,
+   "slot": null,
+   "holiday": false
+  },
+  {
+   "id": "gloves2",
+   "kind": "glove",
+   "price": 900,
+   "odds": {
+    "rare": 40,
+    "epic": 38,
+    "legendary": 22
+   },
+   "pool": [
+    "arctic",
+    "racing",
+    "skullwrap",
+    "boom",
+    "emerald",
+    "vice",
+    "cobra",
+    "ruby",
+    "polygon",
+    "reddragon",
+    "hyper",
+    "moonweave",
+    "sunsetfade",
+    "goldrush",
+    "bluesteel"
    ],
    "knives": false,
    "slot": null,

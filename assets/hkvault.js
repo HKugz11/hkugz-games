@@ -1,4 +1,4 @@
-/* Games-site VAULT client: when you are logged in to the friends panel, your coins and your skins / knives / costumes live on the friends server (so nobody can fake them) and can be given to friends.
+/* Games-site VAULT client: when you are logged in to the friends panel, your coins and your skins / knives / costumes / gloves live on the friends server (so nobody can fake them) and can be given to friends.
    This file only gives the game a tiny helper, window.HKVault. It does nothing (no network at all) until the friends server address is set in assets/friends-config.js AND you are logged in.
    Load it after friends-config.js and before the game. What the server keeps: docs/FRIENDS-SAFETY.md. */
 (function () {

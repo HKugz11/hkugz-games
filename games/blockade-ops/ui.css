@@ -387,8 +387,9 @@ button,input,select{font-family:var(--body)}
 #twistTag.hidden{display:none}
 #optTwist .seg{flex-wrap:wrap}
 
-.cost-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px;margin:6px 0 14px}
+.cost-list,.glove-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px;margin:6px 0 14px}
 #costStage{width:100%;height:190px;flex:none}
+#gloveBig{width:100%;height:190px;flex:none;object-fit:contain;image-rendering:pixelated;background:#1f1e26;border-radius:6px}
 
 /* wild twists + Capture the Duck are switched off (WEIRD_ON in game.js) */
 .no-weird #optTwist,.no-weird .seg[data-k="mode"] button[data-v="duck"]{display:none!important}

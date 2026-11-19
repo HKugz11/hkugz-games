@@ -284,9 +284,9 @@ function createCore(userCfg, raw) {
     removeUser(user); save(); return { ok: true };
   });
 
-  // ------------------------------------------------------------------ the VAULT: each account's coins and skins / knives / costumes live HERE, so nobody can make them up by editing their browser
-  // Stickers are NOT kept here (they stay in the player's own browser). Item names: 'skin:desert@raptor' (a skin that fits ONE gun or the knife), 'knife:karambit', 'costume:unicorn'.
-  const RAR = CAT.rarities, FIN = new Map(CAT.finishes.map(f => [f.id, f])), KNV = new Map(CAT.knives.map(k => [k.id, k])), COS = new Map(CAT.costumes.map(c => [c.id, c]));
+  // ------------------------------------------------------------------ the VAULT: each account's coins and skins / knives / costumes / gloves live HERE, so nobody can make them up by editing their browser
+  // Stickers are NOT kept here (they stay in the player's own browser). Item names: 'skin:desert@raptor' (a skin that fits ONE gun or the knife), 'knife:karambit', 'costume:unicorn', 'glove:bluesteel'.
+  const RAR = CAT.rarities, FIN = new Map(CAT.finishes.map(f => [f.id, f])), KNV = new Map(CAT.knives.map(k => [k.id, k])), COS = new Map(CAT.costumes.map(c => [c.id, c])), GLV = new Map((CAT.gloves || []).map(g => [g.id, g]));
   const STK = new Map(CAT.stickers.map(x => [x.id, x])), CASES = new Map(CAT.cases.map(c => [c.id, c])), GUN = new Map(CAT.guns.map(g => [g.id, g]));
   const ITEM_CAP = 400, START_COINS = 150;
   const V = u => (u.vault || (u.vault = { coins: START_COINS, items: {}, migrated: false, earnDay: 0, earned: 0, ticket: null, gifts: [] }));
@@ -300,6 +300,7 @@ function createCore(userCfg, raw) {
     if (kind === 'skin') { const [f, w, extra] = rest.split('@'), fin = FIN.get(f); return !!fin && !extra && fin.rp === undefined && f !== 'factory' && !!fin.rarity && (fin.weapon ? w === fin.weapon : (w === 'knife' || (GUN.has(w) && !GUN.get(w).holiday))); }   // a skin made for one gun (Northern Lights = the AWP) fits only that gun
     if (kind === 'knife') { const k = KNV.get(rest); return !!k && !k.gift && !!k.rarity; }
     if (kind === 'costume') return COS.has(rest);
+    if (kind === 'glove') return GLV.has(rest);
     return false;
   }
   const xmasOn = () => { if (typeof cfg.xmas === 'boolean') return cfg.xmas; const d = new Date(now()), md = (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); return md >= 1115 || md <= 102; };
@@ -311,6 +312,7 @@ function createCore(userCfg, raw) {
     let cand;
     if (c.kind === 'sticker') cand = (c.pool || []).map(id => STK.get(id)).filter(x => x && x.rarity === rar).map(x => ({ kind: 'sticker', id: x.id, w: 1 }));
     else if (c.kind === 'costume') cand = (c.pool || []).map(id => COS.get(id)).filter(x => x && x.rarity === rar).map(x => ({ kind: 'costume', id: x.id, w: 1 }));
+    else if (c.kind === 'glove') cand = (c.pool || []).map(id => GLV.get(id)).filter(x => x && x.rarity === rar).map(x => ({ kind: 'glove', id: x.id, w: 1 }));
     else {
       cand = (c.finishes || []).map(id => FIN.get(id)).filter(f => f && f.rarity === rar).map(f => ({ kind: 'skin', f: f.id, w: f.weight || 1 }));
       if (c.knives) for (const k of CAT.knives) if (k.rarity === rar && !k.gift) cand.push({ kind: 'knife', id: k.id, w: 1 });
@@ -354,7 +356,7 @@ function createCore(userCfg, raw) {
     const p = rollCase(c); v.coins -= c.price;
     const prize = { kind: p.kind, id: p.id, rarity: p.rarity, dupe: false, refund: 0 };
     if (p.kind !== 'sticker') {
-      const key = (p.kind === 'skin' ? 'skin:' : p.kind === 'knife' ? 'knife:' : 'costume:') + p.id;
+      const key = (p.kind === 'skin' ? 'skin:' : p.kind === 'knife' ? 'knife:' : p.kind === 'glove' ? 'glove:' : 'costume:') + p.id;
       prize.item = key;
       if (has(v, key) || nItems(v) >= ITEM_CAP) { prize.dupe = true; prize.refund = (p.kind === 'skin' && FIN.get(p.f) && FIN.get(p.f).holiday) ? RAR[p.rarity].hrefund : RAR[p.rarity].refund; v.coins += prize.refund; } else give(v, key);
     }
@@ -384,7 +386,7 @@ function createCore(userCfg, raw) {
   const MKT = { fee: 0.05, maxMult: 20, perUser: 12, global: 2000, page: 60 };
   const holItem = id => { const m = /^skin:([^@]+)@/.exec(id || ''), f = m && FIN.get(m[1]); return !!(f && f.holiday); };   // holiday skins sell and refund for less (the Holiday Case is cheap)
   const sellOf = (r, id) => { const R = RAR[r]; return R ? ((holItem(id) ? R.hsell : R.sell) || 0) : 0; };
-  function rarityOfItem(id) { const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1); return kind === 'skin' ? FIN.get(rest.split('@')[0]).rarity : kind === 'knife' ? KNV.get(rest).rarity : COS.get(rest).rarity; }
+  function rarityOfItem(id) { const i = id.indexOf(':'), kind = id.slice(0, i), rest = id.slice(i + 1); return kind === 'skin' ? FIN.get(rest.split('@')[0]).rarity : kind === 'knife' ? KNV.get(rest).rarity : kind === 'glove' ? GLV.get(rest).rarity : COS.get(rest).rarity; }
   const bandOf = id => { const s = sellOf(rarityOfItem(id), id); return [s, s * MKT.maxMult]; };
   const live = l => { const o = users.get(l.seller); return !!o && !o.banned; };
   const listingOut = (l, u) => ({ id: l.id, item: l.item, price: l.price, t: l.t, mine: l.seller === u.key });
@@ -404,7 +406,7 @@ function createCore(userCfg, raw) {
     limit('mbrowse:' + user.key, 60, 60e3, 'Slow down');
     const kind = typeof body.kind === 'string' ? body.kind : '', sort = body.sort === 'high' ? 'high' : body.sort === 'new' ? 'new' : 'low';
     let list = market.filter(live);
-    if (['skin', 'knife', 'costume'].includes(kind)) list = list.filter(l => l.item.startsWith(kind + ':'));
+    if (['skin', 'knife', 'costume', 'glove'].includes(kind)) list = list.filter(l => l.item.startsWith(kind + ':'));
     if (typeof body.rarity === 'string' && RAR[body.rarity]) list = list.filter(l => rarityOfItem(l.item) === body.rarity);
     list = list.slice().sort((a, b) => sort === 'high' ? b.price - a.price : sort === 'new' ? b.t - a.t : a.price - b.price);
     return { listings: list.slice(0, MKT.page).map(l => listingOut(l, user)), total: list.length, mine: market.filter(l => l.seller === user.key).map(l => listingOut(l, user)), fee: MKT.fee, maxMult: MKT.maxMult };
